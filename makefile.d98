@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00j
+VERSION	= 3.00k
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -192,8 +192,8 @@ ALLOC	=
 DEBUG	=
 
 LDFLAGS	=     $(ALLOC)
-CFLAGS	= -DPC98=1 -O $(DEBUG)
-HOSTCFLAGS = -DPC98=1 -O
+CFLAGS	= -DPC98 -O $(DEBUG)
+HOSTCFLAGS = -DPC98 -O
 SLDFLAGS =   $(ALLOC)
 NLDFLAGS =    $(ALLOC)
 FDCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFD=$(VERMAJ)
@@ -670,7 +670,7 @@ sprintf$(OBJ): printf.c
 	$(CC) $(SHCFLAGS) -c -o $@ printf.c
 
 stermio$(OBJ): termio.c
-	$(CC) $(SHCFLAGS) -c -o $@ termio.c
+	$(CC) $(SHCFLAGS)  -c -o $@ termio.c
 
 sstream$(OBJ): stream.c
 	$(CC) $(SHCFLAGS) -c -o $@ stream.c
@@ -716,7 +716,7 @@ bprintf$(OBJ): printf.c
 	$(CC) $(BSHCFLAGS) -c -o $@ printf.c
 
 btermio$(OBJ): termio.c
-	$(CC) $(BSHCFLAGS) -c -o $@ termio.c
+	$(CC) $(BSHCFLAGS)  -c -o $@ termio.c
 
 bstream$(OBJ): stream.c
 	$(CC) $(BSHCFLAGS) -c -o $@ stream.c
@@ -763,7 +763,7 @@ nprintf$(OBJ): printf.c
 	$(CC) $(NSHCFLAGS) -c -o $@ printf.c
 
 ntermio$(OBJ): termio.c
-	$(CC) $(NSHCFLAGS) -c -o $@ termio.c
+	$(CC) $(NSHCFLAGS)  -c -o $@ termio.c
 
 nstream$(OBJ): stream.c
 	$(CC) $(NSHCFLAGS) -c -o $@ stream.c

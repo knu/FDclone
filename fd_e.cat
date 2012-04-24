@@ -2161,6 +2161,7 @@ DDEESSCCRRIIPPTTIIOONN
           WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
           CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
           SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          KKIILLLL_WWIINNDDOOWW
 
      When you want to register a new archive browser, you must
      describe the format listed by the archiver as the following
@@ -3870,4 +3871,4 @@ BBUUGGSS
      The user interface is cheap.
 
 CCOOPPYYRRIIGGHHTT
-     Copyright (C) 1995-2010 by Takashi SHIRAI
+     Copyright (C) 1995-2012 by Takashi SHIRAI

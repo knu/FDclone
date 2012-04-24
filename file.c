@@ -81,7 +81,7 @@ static char *NEAR maketmpfile __P_((int, int, CONST char *, CONST char *));
 static off_t NEAR getdirblocksize __P_((CONST char *));
 static u_char *NEAR getentnum __P_((CONST char *, off_t));
 #endif
-static VOID NEAR restorefile __P_((char *, char *, int));
+static VOID NEAR restorefile __P_((char *, char *, char *));
 #endif	/* !_NOWRITEFS */
 
 char *deftmpdir = NULL;
@@ -301,7 +301,7 @@ CONST char *arcregstr;
 		tmp.name = dp -> d_name;
 		tmp.flags = 0;
 		tmp.tmpflags = F_STAT;
-		i = searcharc(arcregstr, &tmp, 1, -1);
+		i = searcharcf(arcregstr, &tmp, 1, -1);
 		if (i < 0) return(NULL);
 		if (i) break;
 	}
@@ -858,7 +858,7 @@ char *path;
 	if (path != fullpath) Xstrncpy(fullpath, path, MAXPATHLEN - 1);
 	warning(0, cp);
 #ifndef	_NOUSEHASH
-	searchhash(NULL, nullstr, nullstr);
+	VOID_C searchhash(NULL, nullstr, nullstr);
 #endif
 	errno = duperrno;
 }
@@ -1652,21 +1652,20 @@ off_t bsiz;
 #endif	/* !MSDOS */
 
 static VOID NEAR restorefile(dir, path, fnamp)
-char *dir, *path;
-int fnamp;
+char *dir, *path, *fnamp;
 {
 	DIR *dirp;
 	struct dirent *dp;
+	int n;
 
 	if (!(dirp = Xopendir(dir))) warning(-1, dir);
 	else {
 		while ((dp = Xreaddir(dirp))) {
 			if (isdotdir(dp -> d_name)) continue;
-			else {
-				Xstrcpy(&(path[fnamp]), dp -> d_name);
-				if (saferename(path, dp -> d_name) < 0)
-					warning(-1, path);
-			}
+
+			n = strcatpath(path, fnamp, dp -> d_name);
+			if (n < 0 || saferename(path, dp -> d_name) < 0)
+				warning(-1, path);
 		}
 		VOID_C Xclosedir(dirp);
 	}
@@ -1681,7 +1680,7 @@ int fs;
 	off_t persec, totalent, dirblocksize;
 	u_char *entnum;
 	char **tmpfiles;
-	int n, tmpno, block, ptr, totalptr, headbyte;
+	int tmpno, block, ptr, totalptr, headbyte;
 #endif
 #ifndef	PATHNOCASE
 	int duppathignorecase;
@@ -1689,9 +1688,9 @@ int fs;
 	DIR *dirp;
 	struct dirent *dp;
 	int fat, boundary, dirsize, namofs;
-	int i, top, size, len, fnamp, ent;
+	int i, n, top, size, len, ent;
 	CONST char *cp;
-	char *tmp, *tmpdir, **fnamelist, path[MAXPATHLEN];
+	char *tmp, *tmpdir, *fnamp, **fnamelist, path[MAXPATHLEN];
 
 	switch (fs) {
 #if	!MSDOS
@@ -1794,7 +1793,7 @@ int fs;
 	persec = getblocksize(tmpdir);
 	dirblocksize = getdirblocksize(tmpdir);
 #endif
-	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
+	fnamp = strcatdelim2(path, tmpdir, NULL);
 	waitmes();
 
 	if (!(dirp = Xopendir(curpath))) {
@@ -1822,10 +1821,10 @@ int fs;
 			ent = i;
 		}
 		else {
-			Xstrcpy(&(path[fnamp]), dp -> d_name);
-			if (saferename(dp -> d_name, path) < 0) {
-				VOID_C Xclosedir(dirp);
+			n = strcatpath(path, fnamp, dp -> d_name);
+			if (n < 0 || saferename(dp -> d_name, path) < 0) {
 				warning(-1, dp -> d_name);
+				VOID_C Xclosedir(dirp);
 				restorefile(tmpdir, path, fnamp);
 				freevar(fnamelist);
 #ifndef	PATHNOCASE
@@ -1852,7 +1851,7 @@ int fs;
 		}
 		Xfree(tmpdir);
 		tmpdir = tmp;
-		fnamp = strcatdelim2(path, tmpdir, NULL) - path;
+		fnamp = strcatdelim2(path, tmpdir, NULL);
 	}
 
 #if	!MSDOS
@@ -1909,8 +1908,8 @@ int fs;
 			if (entnum) totalptr = entnum[++block];
 		}
 #endif	/* !MSDOS */
-		Xstrcpy(&(path[fnamp]), fnamelist[i]);
-		if (saferename(path, fnamelist[i]) < 0) {
+		n = strcatpath(path, fnamp, fnamelist[i]);
+		if (n < 0 || saferename(path, fnamelist[i]) < 0) {
 			warning(-1, path);
 			break;
 		}
@@ -1936,9 +1935,9 @@ int fs;
 		Xfree(tmpdir);
 		tmpdir = tmp;
 	}
-	fnamp = strcatdelim2(path, tmpdir, NULL) - path;
-	VOID_C Xsnprintf(&(path[fnamp]), sizeof(path) - fnamp, fnamelist[top]);
-	if (saferename(path, fnamelist[top]) < 0) warning(-1, path);
+	fnamp = strcatdelim2(path, tmpdir, NULL);
+	n = strcatpath(path, fnamp, fnamelist[top]);
+	if (n < 0 || saferename(path, fnamelist[top]) < 0) warning(-1, path);
 	restorefile(tmpdir, path, fnamp);
 
 	freevar(fnamelist);

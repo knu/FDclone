@@ -97,7 +97,7 @@ CONST char *path;
 	int fd, duperrno;
 #endif
 #ifdef	CYGWIN
-	char tmp[MAXPATHLEN], upath[MAXPATHLEN], spath[MAXPATHLEN];
+	char *cygdrive, tmp[MAXPATHLEN];
 	int len;
 #endif
 	char cwd[MAXPATHLEN];
@@ -113,26 +113,25 @@ CONST char *path;
 	if (urlpath(nullstr, NULL, NULL, NULL)) /*EMPTY*/;
 	else
 # endif
-	{
-		if ((fd = open(curpath, O_RDONLY, 0666)) < 0) {
+	if ((fd = open(curpath, O_RDONLY, 0666)) >= 0) VOID_C close(fd);
+	else {
 # ifdef	CYGWIN
-			if (Xgetwd(tmp)) {
-				len = strlen(tmp);
-				cygwin_internal(CW_GET_CYGDRIVE_PREFIXES,
-					upath, spath);
-				if ((*upath && !strnpathcmp(tmp, upath, len)
-				&& (!upath[len] || upath[len] == _SC_))
-				|| (*spath && !strnpathcmp(tmp, spath, len)
-				&& (!spath[len] || spath[len] == _SC_)))
-					return(0);
-			}
-# endif	/* CYGWIN */
-			duperrno = errno;
-			if (Xchdir(cwd) < 0) lostcwd(cwd);
-			errno = duperrno;
-			return(-1);
+		if (Xgetwd(tmp)) {
+			len = strlen(tmp);
+			cygdrive = getcygdrive_user();
+			if ((*cygdrive && !strnpathcmp(tmp, cygdrive, len)
+			&& (!cygdrive[len] || cygdrive[len] == _SC_)))
+				return(0);
+			cygdrive = getcygdrive_system();
+			if ((*cygdrive && !strnpathcmp(tmp, cygdrive, len)
+			&& (!cygdrive[len] || cygdrive[len] == _SC_)))
+				return(0);
 		}
-		VOID_C close(fd);
+# endif	/* CYGWIN */
+		duperrno = errno;
+		if (Xchdir(cwd) < 0) lostcwd(cwd);
+		errno = duperrno;
+		return(-1);
 	}
 #endif	/* !MSDOS */
 
@@ -239,13 +238,9 @@ int raw;
 	if (!cwd) {
 		if (!Xgetwd(fullpath)) lostcwd(fullpath);
 	}
-	else {
-		Xfree(findpattern);
-		findpattern = NULL;
 #ifndef	_NOUSEHASH
-		searchhash(NULL, nullstr, nullstr);
+	else VOID_C searchhash(NULL, nullstr, nullstr);
 #endif
-	}
 
 	return(0);
 }
@@ -259,7 +254,7 @@ CONST char *arcf;
 	CONST char *cp;
 
 #ifndef	_NOARCHIVE
-	if (!arcf) /*EMPTY*/;
+	if (!arcf || getpathtop(path, NULL, NULL)) /*EMPTY*/;
 	else if (!path || *path != _SC_) {
 		if (!(cp = archchdir(path))) return(-1);
 
@@ -268,7 +263,7 @@ CONST char *arcf;
 		}
 		else {
 			setlastfile(arcf);
-			escapearch();
+			escapearch(0);
 		}
 
 		return(0);
@@ -288,18 +283,12 @@ CONST char *arcf;
 		setlastfile(cp);
 	}
 
+	Xfree(findpattern);
+	findpattern = NULL;
 #ifndef	_NOARCHIVE
 	if (archivefile) {
 		Xstrcpy(dupfullpath, fullpath);
-		while (archivefile) {
-# ifdef	_NOBROWSE
-			escapearch();
-# else
-			do {
-				escapearch();
-			} while (browselist);
-# endif
-		}
+		while (archivefile) escapearch(1);
 		Xstrcpy(fullpath, dupfullpath);
 	}
 #endif	/* !_NOARCHIVE */

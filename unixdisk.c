@@ -113,26 +113,24 @@ static CONST char *inhibitname[] = INHIBITNAME;
 static char *NEAR duplpath(path)
 CONST char *path;
 {
-#ifdef	DOUBLESLASH
-	int len;
-#endif
 	static char buf[MAXPATHLEN];
-	int i, j, ps;
+	int i, j, ps, len, type;
 
 	if (path == buf) return((char *)path);
 	i = j = ps = 0;
-	if (_dospath(path)) {
-		buf[j++] = path[i++];
-		buf[j++] = path[i++];
-	}
-#ifdef	DOUBLESLASH
-	if ((len = isdslash(path))) {
+	if ((len = getpathtop(path, NULL, &type))) {
 		memcpy(buf, path, len);
 		i = j = len;
 	}
-	else
-#endif
-	if (path[i] == _SC_) buf[j++] = path[i++];
+	switch (type) {
+		case PT_NONE:
+		case PT_DOS:
+			if (path[i] == _SC_) buf[j++] = path[i++];
+			break;
+		default:
+			break;
+	}
+
 	for (; path[i]; i++) {
 		if (path[i] == _SC_) ps = 1;
 		else {
@@ -2143,8 +2141,8 @@ struct lfnfind_t *lbuf;
 #endif
 		n = dos_findfirst(tmp, SEARCHATTRS, dbuf);
 	}
-#ifdef	DOUBLESLASH
 	else {
+#ifdef	DOUBLESLASH
 		if (isdslash(path)) return(-1);
 		else if (_dospath(path)) /*EMPTY*/;
 		else if (getcurdrv() == '_') return(-1);
@@ -2272,7 +2270,7 @@ CONST struct utimes_t *utp;
 		if ((fd = open(path, O_RDONLY, 0666)) >= 0) {
 			reg.x.ax = 0x5701;
 			reg.x.bx = (u_short)fd;
-			getdostime(&(reg.x.dx), &(reg.x.cx), t);
+			VOID_C getdostime(&(reg.x.dx), &(reg.x.cx), t);
 			i = int21call(&reg, &sreg);
 			VOID_C close(fd);
 			return(i);
@@ -2282,7 +2280,7 @@ CONST struct utimes_t *utp;
 
 	reg.x.ax = 0x7143;
 	reg.h.bl = 0x03;
-	getdostime(&(reg.x.di), &(reg.x.cx), t);
+	VOID_C getdostime(&(reg.x.di), &(reg.x.cx), t);
 # ifdef	DJGPP
 	dos_putpath(path, 0);
 # endif

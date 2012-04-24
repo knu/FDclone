@@ -1578,7 +1578,7 @@ int raw;
 {
 	if (chdir2(dir) < 0) return(-1);
 # ifndef	_NOUSEHASH
-	searchhash(NULL, nullstr, nullstr);
+	VOID_C searchhash(NULL, nullstr, nullstr);
 # endif
 
 	return(0);
@@ -2186,7 +2186,7 @@ int noexit;
 	}
 #ifndef	NOJOB
 	if (ttyio >= 0 && ttypgrp >= (p_id_t)0 && oldttypgrp >= (p_id_t)0)
-		settcpgrp(ttyio, oldttypgrp);
+		VOID_C settcpgrp(ttyio, oldttypgrp);
 #endif
 #ifdef	DEP_URLPATH
 	VOID_C urlallclose();
@@ -2220,7 +2220,7 @@ int noexit;
 	shellalias = NULL;
 # endif
 # ifndef	_NOUSEHASH
-	searchhash(NULL, NULL, NULL);
+	VOID_C searchhash(NULL, NULL, NULL);
 # endif
 # if	!MSDOS && !defined (MINIMUMSHELL)
 	checkmail(1);
@@ -2248,6 +2248,9 @@ int noexit;
 		joblist = NULL;
 	}
 # endif	/* !NOJOB */
+# ifdef	CYGWIN
+	freecygdrive();
+# endif
 # if	defined (DEP_KANJIPATH) || defined (DEP_ROCKRIDGE) \
 || defined (DEP_PSEUDOPATH)
 	freeopenlist();
@@ -2647,7 +2650,7 @@ int stop;
 			prepareexit(-1);
 			Xexit(RET_FATALERR);
 		}
-		if (tty) gettermio(childpgrp, jobok);
+		if (tty) VOID_C gettermio(childpgrp, jobok);
 #  if	defined (DEP_PTY) && defined (CYGWIN)
 		Xfree(mychildren);
 		mychildren = NULL;
@@ -2709,7 +2712,7 @@ syntaxtree *trp;
 		if (mypid != orgpgrp) continue;
 
 		if (trapok >= 0) trapok = 0;
-		gettermio(orgpgrp, jobok);
+		VOID_C gettermio(orgpgrp, jobok);
 #  ifdef	FD
 		checkscreen(-1, -1);
 #  endif
@@ -2749,7 +2752,7 @@ syntaxtree *trp;
 #   ifndef	FD
 			lflag |= LPASS8 | LCRTBS | LCRTERA | LCRTKIL | LCTLECH;
 			lflag &= ~(LLITOUT | LPENDIN);
-			ioctl(ttyio, TIOCLSET, &lflag);
+			Xioctl(ttyio, TIOCLSET, &lflag);
 #   endif
 		}
 #  endif	/* USESGTTY */
@@ -2767,7 +2770,7 @@ syntaxtree *trp;
 
 # ifndef	NOJOB
 	if (mypid == orgpgrp) {
-		gettermio(orgpgrp, jobok);
+		VOID_C gettermio(orgpgrp, jobok);
 #  ifdef	FD
 		checkscreen(-1, -1);
 #  endif
@@ -3225,9 +3228,9 @@ syntaxtree *trp;
 	return(NULL);
 }
 
-static syntaxtree *NEAR childstree(trp, no)
+static syntaxtree *NEAR childstree(trp, n)
 syntaxtree *trp;
-int no;
+int n;
 {
 	syntaxtree *new;
 
@@ -3236,7 +3239,7 @@ int no;
 	(trp -> comm) -> argc = 0;
 	(trp -> comm) -> argv = (char **)new;
 	(trp -> comm) -> type = CT_STATEMENT;
-	(trp -> comm) -> id = no;
+	(trp -> comm) -> id = n;
 	trp -> type = OP_NONE;
 	trp -> flags &= ~ST_NODE;
 
@@ -4295,9 +4298,19 @@ int len;
 	keyseq_t *keymap;
 	CONST char *term;
 #endif
+#if	(!MSDOS && (!defined (MINIMUMSHELL) || defined (FD))) \
+|| !defined (NOPOSIXUTIL) \
+|| !defined (FD) \
+&& (defined (DEP_URLPATH) || defined (DEP_FTPPATH) || defined (DEP_HTTPPATH))
 	CONST char *cp;
+#endif
 
+#if	(!MSDOS && (!defined (MINIMUMSHELL) || defined (FD))) \
+|| !defined (NOPOSIXUTIL) \
+|| !defined (FD) \
+&& (defined (DEP_URLPATH) || defined (DEP_FTPPATH) || defined (DEP_HTTPPATH))
 	cp = &(s[len + 1]);
+#endif
 
 	if (checkrestrict(s, len) < 0) return(-1);
 #ifdef	BASHSTYLE
@@ -4307,7 +4320,8 @@ int len;
 	else if (unsetshfunc(s, len) < 0) return(-1);
 #endif
 #ifndef	_NOUSEHASH
-	else if (constequal(s, ENVPATH, len)) searchhash(NULL, NULL, NULL);
+	else if (constequal(s, ENVPATH, len))
+		VOID_C searchhash(NULL, NULL, NULL);
 #endif
 #if	!MSDOS
 # ifdef	MINIMUMSHELL
@@ -4734,20 +4748,20 @@ syntaxtree *trp;
 	return(statementlist[id].type & STT_TYPE);
 }
 
-static int NEAR parsestatement(trpp, no, prev, type)
+static int NEAR parsestatement(trpp, n, prev, type)
 syntaxtree **trpp;
-int no, prev, type;
+int n, prev, type;
 {
 	syntaxtree *tmptr;
 	int i;
 
-	if (!(statementlist[no].prev[0])) {
+	if (!(statementlist[n].prev[0])) {
 		if ((*trpp) -> comm) return(-1);
 		if (prev > 0) {
 			if ((statementlist[prev - 1].type & STT_FUNC)) {
 #ifdef	BASHSTYLE
 	/* bash does not allow the function definition without "{ }" */
-				if (no != SM_LIST - 1) return(-1);
+				if (n != SM_LIST - 1) return(-1);
 #endif
 			}
 			else if (!(statementlist[prev - 1].type
@@ -4760,13 +4774,13 @@ int no, prev, type;
 		if (prev <= 0 || !(tmptr = parentstree(*trpp))) return(-1);
 
 		for (i = 0; i < SMPREV; i++) {
-			if (!(statementlist[no].prev[i])) continue;
-			if (statementlist[no].prev[i] == SM_ANOTHER) return(0);
-			if (prev == statementlist[no].prev[i]) break;
+			if (!(statementlist[n].prev[i])) continue;
+			if (statementlist[n].prev[i] == SM_ANOTHER) return(0);
+			if (prev == statementlist[n].prev[i]) break;
 		}
 		if (i >= SMPREV) return(-1);
 
-		if (!(statementlist[no].type & STT_CASEEND)
+		if (!(statementlist[n].type & STT_CASEEND)
 		&& (type & STT_NEEDLIST) && !isopnot(statementbody(tmptr))
 		&& !(statementbody(tmptr) -> comm))
 			return(-1);
@@ -4774,7 +4788,7 @@ int no, prev, type;
 		*trpp = tmptr;
 	}
 
-	if (statementlist[no].type & STT_NEEDNONE) {
+	if (statementlist[n].type & STT_NEEDNONE) {
 		if (!(tmptr = parentstree(*trpp))) return(-1);
 		*trpp = tmptr;
 		if (getstatid(tmptr = getparent(tmptr)) == SM_FUNC - 1) {
@@ -4783,12 +4797,12 @@ int no, prev, type;
 		}
 	}
 	else {
-		if (statementlist[no].prev[0]) {
+		if (statementlist[n].prev[0]) {
 			tmptr = (*trpp) -> next = newstree(*trpp);
 			tmptr -> flags = ST_NEXT;
 			*trpp = tmptr;
 		}
-		*trpp = childstree(*trpp, no + 1);
+		*trpp = childstree(*trpp, n + 1);
 	}
 
 	return(1);
@@ -8153,7 +8167,7 @@ syntaxtree *trp;
 	}
 
 	if (!strcmp((trp -> comm) -> argv[1], "-r")) {
-		searchhash(NULL, NULL, NULL);
+		VOID_C searchhash(NULL, NULL, NULL);
 		return(RET_SUCCESS);
 	}
 
@@ -8564,7 +8578,7 @@ syntaxtree *trp;
 
 	if ((trp -> comm) -> argc <= 1) {
 		n = umask(022);
-		umask(n);
+		VOID_C umask(n);
 #ifdef	BASHSTYLE
 		VOID_C Xprintf("%03o\n", n & 0777);
 #else
@@ -8584,7 +8598,7 @@ syntaxtree *trp;
 #else
 		n &= 0777;
 #endif
-		umask(n);
+		VOID_C umask(n);
 	}
 
 	return(RET_SUCCESS);
@@ -9111,7 +9125,7 @@ static int NEAR dopushd(trp)
 syntaxtree *trp;
 {
 	char *cp, path[MAXPATHLEN];
-	int i;
+	int n;
 
 	if (getworkdir(path) < 0) return(RET_FAIL);
 	if ((trp -> comm) -> argc < 2) {
@@ -9120,9 +9134,9 @@ syntaxtree *trp;
 			return(RET_FAIL);
 		}
 		cp = evalpath(Xstrdup(dirstack[0]), 0);
-		i = chdir4(cp, 1, NULL);
+		n = chdir4(cp, 1, NULL);
 		Xfree(cp);
-		if (i < 0) {
+		if (n < 0) {
 			execerror((trp -> comm) -> argv,
 				dirstack[0], ER_BADDIR, 0);
 			return(RET_FAIL);
@@ -9138,12 +9152,12 @@ syntaxtree *trp;
 				(trp -> comm) -> argv[1], ER_BADDIR, 0);
 			return(RET_FAIL);
 		}
-		i = countvar(dirstack);
+		n = countvar(dirstack);
 		dirstack = (char **)Xrealloc(dirstack,
-			(i + 1 + 1) * sizeof(char *));
+			(n + 1 + 1) * sizeof(char *));
 		memmove((char *)&(dirstack[1]), (char *)&(dirstack[0]),
-			i * sizeof(char *));
-		dirstack[i + 1] = NULL;
+			n * sizeof(char *));
+		dirstack[n + 1] = NULL;
 	}
 	dirstack[0] = Xstrdup(path);
 	dodirs(trp);
@@ -9158,23 +9172,23 @@ static int NEAR dopopd(trp)
 syntaxtree *trp;
 {
 	char *cp;
-	int i;
+	int n;
 
 	if (!dirstack || !dirstack[0]) {
 		execerror((trp -> comm) -> argv, NULL, ER_DIREMPTY, 2);
 		return(RET_FAIL);
 	}
 	cp = evalpath(Xstrdup(dirstack[0]), 0);
-	i = chdir4(cp, 1, NULL);
+	n = chdir4(cp, 1, NULL);
 	Xfree(cp);
-	if (i < 0) {
+	if (n < 0) {
 		execerror((trp -> comm) -> argv, dirstack[0], ER_BADDIR, 0);
 		return(RET_FAIL);
 	}
-	i = countvar(dirstack);
+	n = countvar(dirstack);
 	Xfree(dirstack[0]);
 	memmove((char *)&(dirstack[0]), (char *)&(dirstack[1]),
-		i * sizeof(char *));
+		n * sizeof(char *));
 	dodirs(trp);
 # ifdef	DEP_PTY
 	sendparent(TE_POPVAR, &dirstack);
@@ -9438,9 +9452,9 @@ syntaxtree *trp;
 }
 #endif	/* FD */
 
-static int NEAR doshfunc(trp, no)
+static int NEAR doshfunc(trp, n)
 syntaxtree *trp;
-int no;
+int n;
 {
 #ifndef	MINIMUMSHELL
 	long dupshlineno;
@@ -9454,7 +9468,7 @@ int no;
 	avar = argvar;
 	argvar = duplvar((trp -> comm) -> argv, 0);
 	shfunclevel++;
-	ret = exec_stree(shellfunc[no].func, 0);
+	ret = exec_stree(shellfunc[n].func, 0);
 	if (returnlevel >= shfunclevel) returnlevel = 0;
 	shfunclevel--;
 	freevar(argvar);
@@ -9997,10 +10011,10 @@ int *contp, bg;
 	if (keepvar) {
 #ifndef	_NOUSEHASH
 		if (pathvar != getconstvar(ENVPATH)) {
-			searchhash(NULL, NULL, NULL);
+			VOID_C searchhash(NULL, NULL, NULL);
 			hashtable = htable;
 		}
-		else if (htable) searchhash(htable, NULL, NULL);
+		else if (htable) VOID_C searchhash(htable, NULL, NULL);
 #endif
 		freevar(shellvar);
 		freevar(exportvar);
@@ -10733,15 +10747,12 @@ int prepareterm(VOID_A)
 
 #ifndef	NOJOB
 	if (!interactive) oldttypgrp = (p_id_t)-1;
-	else {
-		gettcpgrp(ttyio, &oldttypgrp);
-		if (oldttypgrp < (p_id_t)0) {
+	else if (gettcpgrp(ttyio, &oldttypgrp) < (p_id_t)0) {
+		closetty(&ttyio, &ttyout);
+		if ((ttyio = newdup(Xdup(STDIN_FILENO))) < 0
+		|| opentty(&ttyio, &ttyout) < 0) {
 			closetty(&ttyio, &ttyout);
-			if ((ttyio = newdup(Xdup(STDIN_FILENO))) < 0
-			|| opentty(&ttyio, &ttyout) < 0) {
-				closetty(&ttyio, &ttyout);
-				return(-1);
-			}
+			return(-1);
 		}
 	}
 #endif	/* !NOJOB */
@@ -10896,7 +10907,7 @@ char *CONST *argv;
 	shellalias[0].ident = NULL;
 #endif
 #ifndef	_NOUSEHASH
-	searchhash(NULL, NULL, NULL);
+	VOID_C searchhash(NULL, NULL, NULL);
 #endif
 	if ((!interactive || isstdin) && n < argc) {
 		argvar = (char **)Xmalloc((argc - n + 1 + isstdin)
@@ -10997,13 +11008,13 @@ char *CONST *argv;
 				return(-1);
 			}
 		}
-		gettcpgrp(ttyio, &ttypgrp);
+		VOID_C gettcpgrp(ttyio, &ttypgrp);
 # ifdef	SIGTTIN
 		while (ttypgrp >= (p_id_t)0 && ttypgrp != orgpgrp) {
 			signal2(SIGTTIN, SIG_DFL);
 			VOID_C kill(0, SIGTTIN);
 			signal2(SIGTTIN, oldsigfunc[SIGTTIN]);
-			gettcpgrp(ttyio, &ttypgrp);
+			VOID_C gettcpgrp(ttyio, &ttypgrp);
 		}
 # endif
 # if	defined (NTTYDISC) && defined (ldisc)

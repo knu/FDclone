@@ -250,7 +250,6 @@ typedef char **			orighelpindex_t;
 #define	FNC_UPDATE		2
 #define	FNC_HELPSPOT		3
 #define	FNC_EFFECT		4
-#define	FNC_CHDIR		5
 #define	FNC_QUIT		(-1)
 #define	FNC_FAIL		(-2)
 

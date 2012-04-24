@@ -958,7 +958,7 @@ CONST char *path;
 		if (path[0] == '.' && path[1] == _SC_) path += 2;
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
-		VOID_C XXcprintf("[%.*k]", n_column - 2, path);
+		VOID_C XXcprintf("[%^.*k]", n_column - 2, path);
 		if (yesno(FOUND_K)) {
 			destpath = Xstrdup(path);
 			return(APL_CANCEL);
@@ -1048,7 +1048,7 @@ int yy;
 	Xlocate(0, ++y);
 	Xputterm(L_CLEAR);
 	Xlocate(x1, y);
-	VOID_C XXcprintf("[%-*.*k]", w, w, namep -> name);
+	VOID_C XXcprintf("[%^-*.*k]", w, w, namep -> name);
 	Xlocate(x2 + 3, y);
 	VOID_C Xkanjiputs(TOLD_K);
 	Xlocate(x2 + 13, y);
@@ -1109,9 +1109,7 @@ int yy;
 	Xlocate(x2, y++);
 	putowner(buf, attr -> uid);
 	VOID_C XXputch('<');
-	if (attr -> nlink & TCH_UID) Xputterm(T_STANDOUT);
-	VOID_C Xkanjiputs(buf);
-	if (attr -> nlink & TCH_UID) Xputterm(END_STANDOUT);
+	Xattrkanjiputs(buf, attr -> nlink & TCH_UID);
 	VOID_C XXputch('>');
 # ifdef	HAVEFLAGS
 	y++;
@@ -1121,9 +1119,7 @@ int yy;
 	Xlocate(x2, y++);
 	putgroup(buf, attr -> gid);
 	VOID_C XXputch('<');
-	if (attr -> nlink & TCH_GID) Xputterm(T_STANDOUT);
-	VOID_C Xkanjiputs(buf);
-	if (attr -> nlink & TCH_GID) Xputterm(END_STANDOUT);
+	Xattrkanjiputs(buf, attr -> nlink & TCH_GID);
 	VOID_C XXputch('>');
 #endif	/* !_NOEXTRAATTR && !NOUID */
 }
@@ -1672,7 +1668,7 @@ int *maxp, depth;
 	cp = strcatdelim(dir);
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		Xstrcpy(cp, dp -> d_name);
+		if (strcatpath(dir, cp, dp -> d_name) < 0) continue;
 
 		if (Xlstat(dir, &st) < 0 || !s_isdir(&st)) continue;
 		dirlist = b_realloc(dirlist, *maxp, char *);
@@ -1712,7 +1708,7 @@ int verbose;
 		Xlocate(0, L_CMDLINE);
 		Xputterm(L_CLEAR);
 		cp = (dir[0] == '.' && dir[1] == _SC_) ? &(dir[2]) : dir;
-		VOID_C XXcprintf("[%.*k]", n_column - 2, cp);
+		VOID_C XXcprintf("[%^.*k]", n_column - 2, cp);
 		Xtflush();
 	}
 #ifdef	FAKEUNINIT
@@ -1765,7 +1761,7 @@ int verbose;
 		if (verbose) {
 			Xlocate(0, L_CMDLINE);
 			Xputterm(L_CLEAR);
-			VOID_C XXcprintf("[%.*k]", n_column - 2, cp);
+			VOID_C XXcprintf("[%^.*k]", n_column - 2, cp);
 			Xtflush();
 		}
 	}
@@ -1779,7 +1775,8 @@ int verbose;
 				break;
 			}
 			if (isdotdir(dp -> d_name)) continue;
-			Xstrcpy(fname, dp -> d_name);
+			if (strcatpath(path, fname, dp -> d_name) < 0)
+				continue;
 
 			if (Xlstat(path, &st) < 0) warning(-1, path);
 			else if (s_isdir(&st)) continue;

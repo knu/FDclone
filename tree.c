@@ -26,7 +26,7 @@ extern int win_y;
 static int NEAR evaldir __P_((CONST char *, int));
 static treelist *NEAR maketree __P_((CONST char *, treelist *, treelist *,
 		int, int *));
-static int NEAR _showtree __P_((treelist *, int, int, int, int));
+static int NEAR _showtree __P_((treelist *, int, int, int));
 static VOID NEAR showtree __P_((VOID_A));
 static VOID NEAR treebar __P_((VOID_A));
 static treelist *NEAR _searchtree __P_((treelist *, int, int));
@@ -84,7 +84,8 @@ int disp;
 
 	while ((dp = Xreaddir(dirp))) {
 		if (isdotdir(dp -> d_name)) continue;
-		Xstrcpy(cp, dp -> d_name);
+		if (strcatpath(path, cp, dp -> d_name) < 0) continue;
+
 		if (limit-- <= 0 || (stat2(path, &st) >= 0 && s_isdir(&st))) {
 			if (!disp) {
 				i++;
@@ -144,19 +145,7 @@ int level, *maxp;
 		return(NULL);
 	}
 
-#ifdef	DEP_DOSPATH
-	if (_dospath(path)) len = 2;
-	else
-#endif
-#ifdef	DOUBLESLASH
-	if ((len = isdslash(path))) /*EMPTY*/;
-	else
-#endif
-#ifdef	DEP_URLPATH
-	if ((len = _urlpath(path, NULL, NULL))) /*EMPTY*/;
-	else
-#endif
-	len = 0;
+	len = getpathtop(path, NULL, NULL);
 	cp = &(path[len]);
 
 	if (*cp == _SC_) cp++;
@@ -209,7 +198,7 @@ int level, *maxp;
 			if (++(*maxp) >= 2) break;
 		}
 		else {
-			if (!(*maxp)) {
+			if (!*maxp) {
 				list[0].name = NULL;
 				list[0].sub = NULL;
 				list[0].max = -1;
@@ -279,9 +268,9 @@ int level, *maxp;
 	return(list);
 }
 
-static int NEAR _showtree(list, max, nest, min, y)
+static int NEAR _showtree(list, max, nest, y)
 treelist *list;
-int max, nest, min, y;
+int max, nest, y;
 {
 	char *cp;
 	int i, j, w, tmp;
@@ -318,8 +307,7 @@ int max, nest, min, y;
 		y++;
 		tmp = y;
 		if (w >= DIRFIELD && list[i].sub)
-			y = _showtree(list[i].sub, list[i].max,
-				nest + 1, min, y);
+			y = _showtree(list[i].sub, list[i].max, nest + 1, y);
 	}
 
 	return(y);
@@ -338,12 +326,10 @@ static VOID NEAR showtree(VOID_A)
 		memset(bufptr(i), ' ', TREEFIELD);
 		bufptr(i)[TREEFIELD] = '\0';
 	}
-	_showtree(tr_root -> sub, 1, 0, min, tr_top - min);
+	_showtree(tr_root -> sub, 1, 0, tr_top - min);
 	for (i = 1; i < FILEPERROW; i++) {
 		Xlocate(1, min + i);
-		if (min + i == tr_line) Xputterm(T_STANDOUT);
-		cputstr(TREEFIELD, bufptr(i));
-		if (min + i == tr_line) Xputterm(END_STANDOUT);
+		attrputstr(TREEFIELD, bufptr(i), min + i == tr_line);
 	}
 	VOID_C evaldir(treepath, 1);
 	keyflush();
@@ -383,20 +369,17 @@ int max, nest;
 			else *treepath = '\0';
 		}
 		tr_bottom++;
-		if (w >= DIRFIELD && list[i].sub) {
-			tmplp = _searchtree(list[i].sub, list[i].max,
-				nest + 1);
-			if (tmplp) {
-				lp = (tmplp == tr_root) ? &(list[i]) : tmplp;
-				len = strlen(list[i].name);
-				if (len > 0 && list[i].name[len - 1] == _SC_)
-					len--;
-				memmove(&(treepath[len + 1]), treepath,
-					strlen(treepath) + 1);
-				memcpy(treepath, list[i].name, len);
-				treepath[len] = _SC_;
-			}
-		}
+
+		if (w < DIRFIELD || !(list[i].sub)) continue;
+		tmplp = _searchtree(list[i].sub, list[i].max, nest + 1);
+		if (!tmplp) continue;
+
+		lp = (tmplp == tr_root) ? &(list[i]) : tmplp;
+		len = strlen(list[i].name);
+		if (len > 0 && list[i].name[len - 1] == _SC_) len--;
+		memmove(&(treepath[len + 1]), treepath, strlen(treepath) + 1);
+		memcpy(treepath, list[i].name, len);
+		treepath[len] = _SC_;
 	}
 
 	return(lp);
@@ -503,7 +486,7 @@ static int NEAR treeup(VOID_A)
 
 static int NEAR treedown(VOID_A)
 {
-	char *cp;
+	char *cp, *dir;
 	int min, oy, otop;
 
 	min = filetop(win);
@@ -515,13 +498,18 @@ static int NEAR treedown(VOID_A)
 	else return(-1);
 	searchtree();
 
-	if (!tr_cur || !(tr_cur -> sub)
-	|| tr_cur -> sub[tr_no].max >= 0 || tr_cur -> sub[tr_no].name)
+	if (!tr_cur || !(tr_cur -> sub)) return(0);
+	if (tr_cur -> sub[tr_no].max >= 0 || tr_cur -> sub[tr_no].name)
 		return(0);
 
 	waitmes();
-	cp = strrdelim(treepath, 0);
-	if (cp == treepath) cp++;
+	dir = treepath;
+#ifdef	DEP_DOSPATH
+	if (_dospath(treepath)) dir += 2;
+#endif
+
+	cp = strrdelim(dir, 0);
+	if (cp == dir) cp++;
 #ifdef	DOUBLESLASH
 	else if (cp - treepath < isdslash(treepath)) cp++;
 #endif
@@ -696,9 +684,9 @@ static int NEAR _tree_input(VOID_A)
 			} while (&(tr_cur -> sub[tr_no]) != old);
 			break;
 		case 'l':
-			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, HST_PATH))
-			|| !*(cwd = evalpath(cwd, 0)))
+			if (!(cwd = inputstr(LOGD_K, 0, -1, NULL, HST_PATH)))
 				break;
+			if (!*(cwd = evalpath(cwd, 0))) break;
 			if (chdir2(cwd) >= 0) {
 				Xfree(cwd);
 				break;
@@ -716,6 +704,7 @@ static int NEAR _tree_input(VOID_A)
 		case K_ESC:
 			break;
 		default:
+			if (ch >= K_MIN) break;
 			if (!Xisupper(ch)) break;
 			if (tr_line == tr_bottom - 1) {
 				tr_line = tr_top = min + 1;
@@ -723,6 +712,7 @@ static int NEAR _tree_input(VOID_A)
 			}
 			else do {
 				if (treedown() < 0) break;
+				if (!tr_cur || !(tr_cur -> sub)) break;
 				tmp = Xtoupper(*(tr_cur -> sub[tr_no].name));
 			} while (ch != tmp);
 			break;
@@ -826,9 +816,7 @@ static char *NEAR _tree(VOID_A)
 		if (redraw || tr_top != otop) showtree();
 		else if (oy != tr_line) {
 			Xlocate(1, tr_line);
-			Xputterm(T_STANDOUT);
-			cputstr(TREEFIELD, bufptr(tr_line - min));
-			Xputterm(END_STANDOUT);
+			attrputstr(TREEFIELD, bufptr(tr_line - min), 1);
 			Xlocate(1, oy);
 			if (stable_standout) Xputterm(END_STANDOUT);
 			else cputstr(TREEFIELD, bufptr(oy - min));

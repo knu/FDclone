@@ -315,12 +315,14 @@ extern VOID Xputterm __P_((int));
 extern VOID XXputch __P_((int));
 extern VOID XXcputs __P_((CONST char *));
 extern int XXcprintf __P_((CONST char *, ...));
+extern int Xattrprintf __P_((CONST char *, int, ...));
 #else
 #define	Xlocate			locate
 #define	Xputterm		putterm
 #define	XXputch			Xputch
 #define	XXcputs			Xcputs
 #define	XXcprintf		Xcprintf
+#define	Xattrprintf		attrprintf
 #endif
 
 extern bindlist_t bindlist;
@@ -487,9 +489,7 @@ int arch;
 		i = n_column - (int)strlen(distributor) - 24;
 		Xlocate(i, L_HELP);
 		VOID_C XXputch('[');
-		Xputterm(T_STANDOUT);
-		VOID_C XXcprintf(" Distributed by: %s ", distributor);
-		Xputterm(END_STANDOUT);
+		VOID_C Xattrprintf(" Distributed by: %s ", 1, distributor);
 		VOID_C XXputch(']');
 	}
 

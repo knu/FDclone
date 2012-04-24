@@ -1207,7 +1207,7 @@ int *ndestp, nsrc;
 static int NEAR custputs(s)
 CONST char *s;
 {
-	return(XXcprintf("%.*k", n_lastcolumn, s));
+	return(XXcprintf("%^.*k", n_lastcolumn, s));
 }
 
 static char *NEAR strcatalloc(s1, s2)
@@ -1226,18 +1226,14 @@ CONST char *s2;
 
 static VOID NEAR putsep(VOID_A)
 {
-	Xputterm(T_STANDOUT);
-	VOID_C XXputch(' ');
-	Xputterm(END_STANDOUT);
+	Xattrputs(" ", 1);
 }
 
 static VOID NEAR fillline(y, w)
 int y, w;
 {
 	Xlocate(0, y);
-	Xputterm(T_STANDOUT);
-	cputspace(w);
-	Xputterm(END_STANDOUT);
+	VOID_C attrputstr(w, NULL, 1);
 }
 
 static char *NEAR inputcuststr(prompt, delsp, s, h)
@@ -1410,12 +1406,7 @@ static VOID NEAR custtitle(VOID_A)
 	Xlocate(0, filetop(win));
 	Xputterm(L_CLEAR);
 	for (i = 0; i < MAXCUSTOM; i++) {
-		if (i != custno) VOID_C XXcprintf("/%.*k", width, str[i]);
-		else {
-			Xputterm(T_STANDOUT);
-			VOID_C XXcprintf("/%.*k", width, str[i]);
-			Xputterm(END_STANDOUT);
-		}
+		VOID_C Xattrprintf("/%^.*k", i == custno, width, str[i]);
 		if (len) VOID_C XXputch(' ');
 	}
 
@@ -1457,9 +1448,7 @@ CONST char *s;
 {
 	Xlocate(0, L_HELP);
 	Xputterm(L_CLEAR);
-	Xputterm(T_STANDOUT);
-	VOID_C XXcprintf("%.*k", n_column, s);
-	Xputterm(END_STANDOUT);
+	VOID_C Xattrprintf("%^.*k", 1, n_column, s);
 }
 
 static char **NEAR copyenv(list)
@@ -1800,9 +1789,10 @@ int no;
 			break;
 	}
 
-	if (!getenv2(fdenv_str(no)))
-		cp = new = strcatalloc(Xstrdup(cp),
-			(cp && *cp) ? VDEF_K : VUDEF_K);
+	if (!getenv2(fdenv_str(no))) {
+		if (!new) new = Xstrdup(cp);
+		cp = new = strcatalloc(new, (cp && *cp) ? VDEF_K : VUDEF_K);
+	}
 	cputstr(MAXCUSTVAL, cp);
 	n = strlen2(cp);
 	if (n > MAXCUSTVAL - 1) n = MAXCUSTVAL - 1;
@@ -3101,7 +3091,7 @@ lsparse_t *list;
 		VOID_C XXputch('/');
 		len--;
 	}
-	VOID_C XXcprintf("%.*k", len, &(list -> ext[1]));
+	VOID_C XXcprintf("%^.*k", len, &(list -> ext[1]));
 	putsep();
 	cputstr(MAXCUSTVAL, list -> comm);
 	putsep();
@@ -3118,21 +3108,15 @@ lsparse_t *list;
 			else {
 				Xlocate(0, yy + y);
 				putsep();
-				Xputterm(T_STANDOUT);
-				XXcputs("-t");
-				Xputterm(END_STANDOUT);
+				Xattrputs("-t", 1);
 				VOID_C XXcprintf("%3d",
 					(int)(list -> topskip));
 				putsep();
-				Xputterm(T_STANDOUT);
-				XXcputs("-b");
-				Xputterm(END_STANDOUT);
+				Xattrputs("-b", 1);
 				VOID_C XXcprintf("%3d",
 					(int)(list -> bottomskip));
 				putsep();
-				Xputterm(T_STANDOUT);
-				XXcputs("-f");
-				Xputterm(END_STANDOUT);
+				Xattrputs("-f", 1);
 				putsep();
 			}
 			cputstr(MAXCUSTVAL, list -> format[nf]);
@@ -3148,9 +3132,7 @@ lsparse_t *list;
 			else if (ni) fillline(yy + y, MAXCUSTNAM + 2);
 			else {
 				fillline(yy + y, MAXCUSTNAM - 2 + 1);
-				Xputterm(T_STANDOUT);
-				XXcputs("-i");
-				Xputterm(END_STANDOUT);
+				Xattrputs("-i", 1);
 				putsep();
 			}
 			cputstr(MAXCUSTVAL, list -> lignore[ni]);
@@ -3166,9 +3148,7 @@ lsparse_t *list;
 			else if (ne) fillline(yy + y, MAXCUSTNAM + 2);
 			else {
 				fillline(yy + y, MAXCUSTNAM - 2 + 1);
-				Xputterm(T_STANDOUT);
-				XXcputs("-e");
-				Xputterm(END_STANDOUT);
+				Xattrputs("-e", 1);
 				putsep();
 			}
 			cputstr(MAXCUSTVAL, list -> lerror[ne]);
@@ -4679,13 +4659,8 @@ int no, y, isstandout;
 	len = strlen2(cp);
 	if (len >= MAXCUSTNAM) len = MAXCUSTNAM;
 	fillline(y, MAXCUSTNAM + 1 - len);
-	if (isstandout) {
-		Xputterm(T_STANDOUT);
-		VOID_C XXcprintf("%.*k", MAXCUSTNAM, cp);
-		Xputterm(END_STANDOUT);
-	}
-	else if (stable_standout) Xlocate(MAXCUSTNAM + 1, y);
-	else VOID_C XXcprintf("%.*k", MAXCUSTNAM, cp);
+	if (!isstandout && stable_standout) Xlocate(MAXCUSTNAM + 1, y);
+	else VOID_C Xattrprintf("%^.*k", isstandout, MAXCUSTNAM, cp);
 	putsep();
 }
 
@@ -4733,7 +4708,8 @@ static VOID NEAR dispcust(VOID_A)
 				break;
 			default:
 				cs_len[i - start] =
-					XXcprintf("%.*k", MAXCUSTVAL, NIMPL_K);
+					XXcprintf("%^.*k",
+						MAXCUSTVAL, NIMPL_K);
 				if (cs_len[i - start] > MAXCUSTVAL - 1)
 					cs_len[i - start] = MAXCUSTVAL - 1;
 				else cputspace(MAXCUSTVAL - cs_len[i - start]);

@@ -201,6 +201,9 @@ extern VOID Xtflush __P_((VOID_A));
 extern int XXcprintf __P_((CONST char *, ...));
 extern VOID Xcputnl __P_((VOID_A));
 extern int Xkanjiputs __P_((CONST char *));
+extern VOID Xattrputs __P_((CONST char *, int));
+extern int Xattrprintf __P_((CONST char *, int, ...));
+extern int Xattrkanjiputs __P_((CONST char *, int));
 extern VOID Xchgcolor __P_((int, int));
 extern VOID Xmovecursor __P_((int, int, int));
 extern VOID changewin __P_((int, p_id_t));
@@ -227,6 +230,9 @@ extern int frontend __P_((VOID_A));
 #define	XXcprintf		Xcprintf
 #define	Xcputnl			cputnl
 #define	Xkanjiputs		kanjiputs
+#define	Xattrputs		attrputs
+#define	Xattrprintf		attrprintf
+#define	Xattrkanjiputs		attrkanjiputs
 #define	Xchgcolor		chgcolor
 #define	Xmovecursor		movecursor
 #endif	/* !DEP_PTY */
@@ -374,6 +380,7 @@ extern int Xgetkey __P_((int, int, int));
 extern int kanjiputs2 __P_((CONST char *, int, int));
 extern VOID cputspace __P_((int));
 extern VOID cputstr __P_((int, CONST char *));
+extern VOID attrputstr __P_((int, CONST char *, int));
 extern char *inputstr __P_((CONST char *, int, int, CONST char *, int));
 extern int yesno __P_((CONST char *, ...));
 extern VOID warning __P_((int, CONST char *));
@@ -429,7 +436,7 @@ extern char *tree __P_((int, int *));
 
 /* archive.c */
 #ifndef	_NOARCHIVE
-extern VOID escapearch __P_((VOID_A));
+extern VOID escapearch __P_((int));
 extern VOID archbar __P_((CONST char *, CONST char *));
 extern VOID copyarcf __P_((CONST reg_t *, CONST char *));
 extern CONST char *archchdir __P_((CONST char *));
@@ -442,7 +449,7 @@ extern int pack __P_((CONST char *));
 extern int unpack __P_((CONST char *, CONST char *, CONST char *, int, int));
 extern char *tmpunpack __P_((int));
 extern int backup __P_((CONST char *));
-extern int searcharc __P_((CONST char *, namelist *, int, int));
+extern int searcharcf __P_((CONST char *, namelist *, int, int));
 #endif
 
 /* custom.c */
@@ -492,6 +499,7 @@ extern VOID waitmes __P_((VOID_A));
 extern int filetop __P_((int));
 extern int calcwidth __P_((VOID_A));
 extern int putname __P_((namelist *, int, int));
+extern VOID setlastfile __P_((CONST char *));
 extern int listupfile __P_((namelist *, int, CONST char *, int));
 #ifndef	_NOSPLITWIN
 extern int shutwin __P_((int));
@@ -499,6 +507,6 @@ extern int shutwin __P_((int));
 extern VOID calcwin __P_((VOID_A));
 extern VOID movepos __P_((int, int));
 extern VOID rewritefile __P_((int));
-extern VOID setlastfile __P_((CONST char *));
+extern VOID getfilelist __P_((VOID_A));
 extern int dointernal __P_((int, CONST char *, int, int *));
 extern VOID main_fd __P_((char *CONST *, int));

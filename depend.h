@@ -112,6 +112,7 @@
 #undef	DEP_PSEUDOPATH
 #undef	DEP_BIASPATH
 #undef	DEP_DIRENT
+#undef	DEP_PATHTOP
 
 #if	defined (FD) && !defined (_NODOSDRIVE)
 #define	DEP_DOSDRIVE
@@ -205,4 +206,7 @@
 #endif
 #if	MSDOS || defined (DEP_BIASPATH)
 #define	DEP_DIRENT
+#endif
+#if	defined (DEP_DOSEMU) || defined (DOUBLESLASH) || defined (DEP_URLPATH)
+#define	DEP_PATHTOP
 #endif

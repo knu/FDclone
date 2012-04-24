@@ -283,13 +283,11 @@ u_int c;
 }
 #endif	/* DEP_PTY */
 
-static VOID NEAR imeputch(c, so)
-int c, so;
+static VOID NEAR imeputch(c, isstandout)
+int c, isstandout;
 {
-	if (so) Xputterm(T_STANDOUT);
-	VOID_C XXputch(c);
+	VOID_C Xattrprintf("%c", isstandout, c);
 	if (ime_xposp) (*ime_xposp)++;
-	if (so) Xputterm(END_STANDOUT);
 }
 
 static int NEAR imeputs(s)
@@ -656,12 +654,12 @@ int type;
 	kanjierrno = 0;
 }
 
-static VOID NEAR imeputcursor(xpos, n, so)
-int xpos, n, so;
+static VOID NEAR imeputcursor(xpos, n, isstandout)
+int xpos, n, isstandout;
 {
 	(*ime_locate)(xpos, ime_line);
 	n += (n < 10) ? '0' : 'A' - 10;
-	imeputch(n, so);
+	imeputch(n, isstandout);
 #ifdef	DEP_PTY
 	if (ptylist[win].pid) /*EMPTY*/;
 	else
@@ -803,6 +801,7 @@ int sig;
 				if (plen < 0) return(-1);
 				break;
 			default:
+				if (ch >= K_MIN) break;
 				if (Xisdigit(ch)) ch -= '0';
 				else if (Xisupper(ch) && Xisxdigit(ch))
 					ch -= 'A' - 10;
@@ -980,6 +979,7 @@ int sig, type;
 					ch = K_ESC;
 				break;
 			default:
+				if (ch >= K_MIN) break;
 				if (Xisdigit(ch)) ch -= '0';
 				else if (Xisupper(ch) && Xisxdigit(ch))
 					ch -= 'A' - 10;

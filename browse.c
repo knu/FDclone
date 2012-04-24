@@ -80,7 +80,6 @@ static int NEAR searchmove __P_((int, char *));
 static int readstatus __P_((VOID_A));
 #endif
 static int NEAR readfilelist __P_((CONST reg_t *, CONST char *));
-static VOID NEAR getfilelist __P_((VOID_A));
 static int NEAR getfuncno __P_((int));
 static int NEAR browsedir __P_((VOID_A));
 static VOID NEAR initcwd __P_((CONST char *, int));
@@ -272,16 +271,12 @@ static VOID NEAR pathbar(VOID_A)
 		Xputterm(L_CLEAR);
 
 		Xlocate(TC_PATH, TL_PATH);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_PATH);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_PATH, 1);
 		cputstr(TD_PATH, fullpath);
 
 		Xlocate(TC_MARK, TL_PATH);
 		VOID_C XXcprintf("%<*d", TD_MARK, mark);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_MARK);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_MARK, 1);
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
@@ -293,9 +288,7 @@ static VOID NEAR pathbar(VOID_A)
 	Xputterm(L_CLEAR);
 
 	Xlocate(C_PATH, L_PATH);
-	Xputterm(T_STANDOUT);
-	XXcputs(S_PATH);
-	Xputterm(END_STANDOUT);
+	Xattrputs(S_PATH, 1);
 	cputstr(D_PATH, fullpath);
 
 	Xtflush();
@@ -303,7 +296,7 @@ static VOID NEAR pathbar(VOID_A)
 
 VOID helpbar(VOID_A)
 {
-	int i, j, col, gap, width, len, ofs, max, blk, rest;
+	int i, col, gap, width, len, ofs, max, blk, rest;
 
 #if	FD >= 2
 	if (helplayout) {
@@ -360,10 +353,8 @@ VOID helpbar(VOID_A)
 		Xlocate(ofs + (width + 1) * i + (i / blk) * gap, L_HELP);
 		len = (width - strlen2(helpindex[i]) + 1) / 2;
 		if (len < 0) len = 0;
-		Xputterm(T_STANDOUT);
-		for (j = 0; j < len; j++) VOID_C XXputch(' ');
-		cputstr(width - len, helpindex[i]);
-		Xputterm(END_STANDOUT);
+		attrputstr(len, NULL, 1);
+		attrputstr(width - len, helpindex[i], 1);
 	}
 
 	Xtflush();
@@ -389,15 +380,11 @@ static VOID NEAR statusbar(VOID_A)
 		Xputterm(L_CLEAR);
 
 		Xlocate(TC_INFO, TL_STATUS);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_INFO);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_INFO, 1);
 
 		Xlocate(TC_SIZE, TL_STATUS);
 		VOID_C XXcprintf("%<*d", TD_MARK, maxfile);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_SIZE);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_SIZE, 1);
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, totalsize);
 
 		return;
@@ -408,24 +395,18 @@ static VOID NEAR statusbar(VOID_A)
 	Xputterm(L_CLEAR);
 
 	Xlocate(C_PAGE, L_STATUS);
-	Xputterm(T_STANDOUT);
-	XXcputs(S_PAGE);
-	Xputterm(END_STANDOUT);
+	Xattrputs(S_PAGE, 1);
 	VOID_C XXcprintf("%<*d/%<*d",
 		D_PAGE, filepos / FILEPERPAGE + 1,
 		D_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
 	Xlocate(C_MARK, L_STATUS);
-	Xputterm(T_STANDOUT);
-	XXcputs(S_MARK);
-	Xputterm(END_STANDOUT);
+	Xattrputs(S_MARK, 1);
 	VOID_C XXcprintf("%<*d/%<*d", D_MARK, mark, D_MARK, maxfile);
 
 	if (!ishardomit()) {
 		Xlocate(C_SORT, L_STATUS);
-		Xputterm(T_STANDOUT);
-		XXcputs(S_SORT);
-		Xputterm(END_STANDOUT);
+		Xattrputs(S_SORT, 1);
 
 #ifndef	_NOPRECEDE
 		if (haste) VOID_C Xkanjiputs(OMIT_K);
@@ -447,9 +428,7 @@ static VOID NEAR statusbar(VOID_A)
 	}
 
 	Xlocate(C_FIND, L_STATUS);
-	Xputterm(T_STANDOUT);
-	XXcputs(S_FIND);
-	Xputterm(END_STANDOUT);
+	Xattrputs(S_FIND, 1);
 	if (findpattern) cputstr(D_FIND, findpattern);
 
 	Xtflush();
@@ -533,29 +512,21 @@ static VOID NEAR sizebar(VOID_A)
 		Xputterm(L_CLEAR);
 
 		Xlocate(TC_PAGE, TL_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_PAGE);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_PAGE, 1);
 		VOID_C XXcprintf("%<*d/%<*d",
 			TD_PAGE, filepos / FILEPERPAGE + 1,
 			TD_PAGE, (maxfile - 1) / FILEPERPAGE + 1);
 
 		Xlocate(TC_TOTAL, TL_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_TOTAL);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_TOTAL, 1);
 		cputbytes(total, bsize, TD_TOTAL);
 
 		Xlocate(TC_USED, TL_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_USED);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_USED, 1);
 		cputbytes(total - fre, bsize, TD_USED);
 
 		Xlocate(TC_FREE, TL_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_FREE);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_FREE, 1);
 		cputbytes(fre, bsize, TD_FREE);
 
 		return;
@@ -566,24 +537,18 @@ static VOID NEAR sizebar(VOID_A)
 	Xputterm(L_CLEAR);
 
 	Xlocate(C_SIZE, L_SIZE);
-	Xputterm(T_STANDOUT);
-	XXcputs(S_SIZE);
-	Xputterm(END_STANDOUT);
+	Xattrputs(S_SIZE, 1);
 	VOID_C XXcprintf("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
 		Xlocate(C_TOTAL, L_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(S_TOTAL);
-		Xputterm(END_STANDOUT);
+		Xattrputs(S_TOTAL, 1);
 		cputbytes(total, bsize, D_TOTAL);
 	}
 
 	if (!iswellomit()) {
 		Xlocate(C_FREE, L_SIZE);
-		Xputterm(T_STANDOUT);
-		XXcputs(S_FREE);
-		Xputterm(END_STANDOUT);
+		Xattrputs(S_FREE, 1);
 		cputbytes(fre, bsize, D_FREE);
 	}
 
@@ -946,8 +911,8 @@ int w;
 	return(n);
 }
 
-static int NEAR calclocate(i)
-int i;
+static int NEAR calclocate(n)
+int n;
 {
 #ifndef	_NOCOLOR
 	int bgcolor;
@@ -957,9 +922,9 @@ int i;
 	col = n_column;
 	if (ispureshift()) col++;
 	width = col / FILEPERLINE;
-	i %= FILEPERPAGE;
-	calc_x = (i / FILEPERROW) * width;
-	calc_y = i % FILEPERROW + filetop(win);
+	n %= FILEPERPAGE;
+	calc_x = (n / FILEPERROW) * width;
+	calc_y = n % FILEPERROW + filetop(win);
 #ifndef	_NOCOLOR
 	if ((bgcolor = getcolor(CL_BACK)) >= 0) {
 		Xchgcolor(bgcolor, 1);
@@ -1007,9 +972,9 @@ int calcwidth(VOID_A)
 	return(width);
 }
 
-int putname(list, no, isstandout)
+int putname(list, n, isstandout)
 namelist *list;
-int no, isstandout;
+int n, isstandout;
 {
 	char *buf;
 	struct tm *tm;
@@ -1018,22 +983,22 @@ int no, isstandout;
 	int color, bgcolor;
 #endif
 
-	col = calclocate(no) - 2 - 1 + ((isshortwid()) ? 1 : 0);
+	col = calclocate(n) - 2 - 1 + ((isshortwid()) ? 1 : 0);
 	width = calcwidth();
-	VOID_C XXputch(ismark(&(list[no])) ? '*' : ' ');
+	VOID_C XXputch(ismark(&(list[n])) ? '*' : ' ');
 
 	if (list != filelist) {
-		len = strlen3(list[no].name);
-		if (isdisptyp(dispmode) && s_isdir(&(list[no]))) len++;
+		len = strlen3(list[n].name);
+		if (isdisptyp(dispmode) && s_isdir(&(list[n]))) len++;
 		if (col > len) col = len;
 		if (width > len) width = len;
 	}
 
 	if (isstandout < 0 && stable_standout) {
 		Xputterm(END_STANDOUT);
-		calclocate(no);
+		calclocate(n);
 #ifndef	_NOPRECEDE
-		if (!havestat(&(list[no]))) return(width);
+		if (!havestat(&(list[n]))) return(width);
 #endif
 		return(col);
 	}
@@ -1041,28 +1006,26 @@ int no, isstandout;
 	buf = Xmalloc(col * KANAWID + 1);
 	i = (isstandout && fnameofs > 0) ? fnameofs : 0;
 	wid = width;
-	i = strncpy2(buf, list[no].name, &width, i);
+	i = strncpy2(buf, list[n].name, &width, i);
 
 #ifndef	_NOPRECEDE
-	if (!havestat(&(list[no]))) {
-		if (isstandout > 0) Xputterm(T_STANDOUT);
-		VOID_C Xkanjiputs(buf);
+	if (!havestat(&(list[n]))) {
+		VOID_C Xattrkanjiputs(buf, isstandout > 0);
 		Xfree(buf);
-		if (isstandout > 0) Xputterm(END_STANDOUT);
 		return(wid);
 	}
 #endif
 
 	if (isdisptyp(dispmode) && i < width) {
 		for (j = 0; j < MODELISTSIZ; j++)
-			if ((list[no].st_mode & S_IFMT) == modelist[j]) break;
+			if ((list[n].st_mode & S_IFMT) == modelist[j]) break;
 		if (j < SUFFIXLISTSIZ) buf[i] = suffixlist[j];
-		else if (s_isreg(&(list[no]))
-		&& (list[no].st_mode & S_IEXEC_ALL))
+		else if (s_isreg(&(list[n]))
+		&& (list[n].st_mode & S_IEXEC_ALL))
 			buf[i] = '*';
 	}
 #ifndef	_NOCOLOR
-	if (list == filelist) color = getcolor(getcolorid(&(list[no])));
+	if (list == filelist) color = getcolor(getcolorid(&(list[n])));
 	else color = biascolor(ANSI_FG);
 #endif
 	len = width;
@@ -1071,10 +1034,10 @@ int no, isstandout;
 	tm = NULL;
 	if (curcolumns < 5 && len + WIDTH3 <= width) {
 		buf[len++] = ' ';
-		len += putsize2(&(buf[len]), &(list[no]), WSIZE);
+		len += putsize2(&(buf[len]), &(list[n]), WSIZE);
 	}
 	if (curcolumns < 3 && len + WIDTH2 <= width) {
-		tm = localtime(&(list[no].st_mtim));
+		tm = localtime(&(list[n].st_mtim));
 		VOID_C Xsnprintf(&(buf[len]), WIDTH2 + 1,
 			" %02d-%02d-%02d %2d:%02d",
 			tm -> tm_year % 100, tm -> tm_mon + 1, tm -> tm_mday,
@@ -1082,28 +1045,28 @@ int no, isstandout;
 		len += WIDTH2;
 	}
 	if (curcolumns < 2 && len + WIDTH1 <= width) {
-		if (!tm) tm = localtime(&(list[no].st_mtim));
+		if (!tm) tm = localtime(&(list[n].st_mtim));
 		VOID_C Xsnprintf(&(buf[len]), 1 + WSECOND + 1,
 			":%02d", tm -> tm_sec);
 		len += 1 + WSECOND;
 		buf[len++] = ' ';
 #ifndef	NOUID
-		len += putowner(&(buf[len]), list[no].st_uid);
+		len += putowner(&(buf[len]), list[n].st_uid);
 		buf[len++] = ' ';
-		len += putgroup(&(buf[len]), list[no].st_gid);
+		len += putgroup(&(buf[len]), list[n].st_gid);
 		buf[len++] = ' ';
 #endif
 #ifdef	HAVEFLAGS
 		if (isfileflg(dispmode)) {
-			i = putflags(&(buf[len]), list[no].st_flags);
+			i = putflags(&(buf[len]), list[n].st_flags);
 			while (i < WMODE) buf[len + i++] = ' ';
 			len += i;
 		}
 		else
 #endif
 		len += putmode(&(buf[len]),
-			(!isdisplnk(dispmode) && islink(&(list[no])))
-			? (S_IFLNK | 0777) : list[no].st_mode, 0);
+			(!isdisplnk(dispmode) && islink(&(list[n])))
+			? (S_IFLNK | 0777) : list[n].st_mode, 0);
 	}
 	while (len < width) buf[len++] = ' ';
 	buf[len] = '\0';
@@ -1126,6 +1089,13 @@ int no, isstandout;
 	if (isstandout > 0) Xputterm(END_STANDOUT);
 
 	return(col);
+}
+
+VOID setlastfile(cp)
+CONST char *cp;
+{
+	Xfree(lastfile);
+	lastfile = Xstrdup(cp);
 }
 
 static int NEAR calcfilepos(list, max, def)
@@ -1162,11 +1132,9 @@ int isstandout;
 		i = (n_column / FILEPERLINE) - 2 - 1;
 		Xlocate(1, filetop(win));
 		VOID_C XXputch(' ');
-		if (isstandout) Xputterm(T_STANDOUT);
 		cp = NOFIL_K;
 		if (i <= strlen2(cp)) cp = "NoFiles";
-		cputstr(i, cp);
-		if (isstandout) Xputterm(END_STANDOUT);
+		attrputstr(i, cp, isstandout);
 		win_x = calc_x = i + 2;
 		win_y = calc_y = filetop(win);
 		return(0);
@@ -1232,6 +1200,7 @@ CONST char *def;
 static int NEAR listupwin(def)
 CONST char *def;
 {
+	CONST char *file;
 	int i, x, y, n, dupwin;
 
 	dupwin = win;
@@ -1257,14 +1226,19 @@ CONST char *def;
 			n = listupmyself(def);
 			x = win_x;
 			y = win_y;
+			continue;
 		}
+
 # ifdef	DEP_PTY
-		else if (ptylist[win].pid && ptylist[win].status < 0) continue;
+		if (ptylist[win].pid && ptylist[win].status < 0) continue;
 # endif
-		else if (filelist
-		&& (filepos < maxfile || (!filepos && !maxfile)))
-			listupfile(filelist, maxfile,
-				filelist[filepos].name, 0);
+		if (!filelist) continue;
+
+		if ((file = lastfile)) /*EMPTY*/;
+		else if (filepos < maxfile || (!filepos && !maxfile))
+			file = filelist[filepos].name;
+
+		VOID_C listupfile(filelist, maxfile, file, 0);
 	}
 	win = dupwin;
 
@@ -1282,15 +1256,7 @@ int n;
 	dupwin = win;
 	win = n;
 # ifndef	_NOARCHIVE
-	while (archivefile) {
-#  ifdef	_NOBROWSE
-		escapearch();
-#  else
-		do {
-			escapearch();
-		} while (browselist);
-#  endif
-	}
+	while (archivefile) escapearch(1);
 	Xfree(winvar[win].v_archivedir);
 	winvar[win].v_archivedir = NULL;
 # endif	/* !_NOARCHIVE */
@@ -1462,10 +1428,8 @@ char *buf;
 		if (pos < 0 || pos >= maxfile) break;
 	}
 
-	Xputterm(T_STANDOUT);
 	search_x = len;
-	len = Xkanjiputs(str[2 - s - i]);
-	Xputterm(END_STANDOUT);
+	len = Xattrkanjiputs(str[2 - s - i], 1);
 	cputstr(n_column - len - 1, buf);
 	if ((search_x += len) >= n_column) search_x = n_column - 1;
 	search_y = L_HELP;
@@ -1565,7 +1529,7 @@ CONST char *arcre;
 	return(n);
 }
 
-static VOID NEAR getfilelist(VOID_A)
+VOID getfilelist(VOID_A)
 {
 	reg_t *re;
 	char *arcre;
@@ -1615,13 +1579,6 @@ static VOID NEAR getfilelist(VOID_A)
 	maxstat = (haste) ? 0 : maxfile;
 #endif
 	if (sorton) qsort(filelist, maxfile, sizeof(namelist), cmplist);
-}
-
-VOID setlastfile(cp)
-CONST char *cp;
-{
-	Xfree(lastfile);
-	lastfile = Xstrdup(cp);
 }
 
 static int NEAR getfuncno(ch)
@@ -1829,33 +1786,27 @@ static int NEAR browsedir(VOID_A)
 
 	if (no >= FNC_EFFECT) {
 		if (lastfile) /*EMPTY*/;
-		else if (!maxfile) setlastfile(curpath);
+		else if (filepos >= maxfile) setlastfile(curpath);
 		else setlastfile(filelist[filepos].name);
 	}
 #ifndef	_NOARCHIVE
-	else if (archivefile) {
-		if (no < 0) {
-			setlastfile(archivefile);
-# ifdef	_NOBROWSE
-			escapearch();
-# else
-			do {
-				escapearch();
-			} while (browselist);
-# endif
-		}
-		no = FNC_NONE;
+	else if (archivefile && no < FNC_NONE) {
+		setlastfile(archivefile);
+		escapearch(1);
+		if (no > FNC_FAIL) no = FNC_NONE;
 	}
-#endif	/* _NOARCHIVE */
+#endif
 
 #ifndef	_NOARCHIVE
-	if (archivefile) maxfile = 0;
+	if (archivefile) i = 0;
+	else
 #endif
-	while (maxfile > 0) {
-		Xfree(filelist[--maxfile].name);
-		filelist[maxfile].name = NULL;
+	i = maxfile;
+	while (i-- > 0) {
+		Xfree(filelist[i].name);
+		filelist[i].name = NULL;
 	}
-	filepos = 0;
+	maxfile = filepos = 0;
 #ifndef	_NOPRECEDE
 	if (haste && !sorton) sorton = dupsorton;
 #endif
@@ -1931,7 +1882,7 @@ char *CONST *pathlist;
 int internal;
 {
 	char *cwd;
-	int n, argc, ischgdir;
+	int n, argc;
 
 	if (!pathlist) argc = 0;
 	else for (argc = 0; argc < MAXINVOKEARGS; argc++)
@@ -2014,18 +1965,10 @@ int internal;
 	_chdir2(fullpath);
 
 	for (;;) {
-#ifdef	_NOARCHIVE
-		ischgdir = browsedir();
-#else
-		do {
-			ischgdir = browsedir();
-		} while (archivefile);
-#endif
+		if ((n = browsedir()) >= FNC_NONE) continue;
 
-		if (ischgdir < 0) {
-			if (ischgdir > -2) chdir2(cwd);
-			break;
-		}
+		if (n > FNC_FAIL) chdir2(cwd);
+		break;
 	}
 
 	Xfree(cwd);

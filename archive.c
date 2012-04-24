@@ -118,7 +118,7 @@ static char *archfgets __P_((VOID_P));
 static int NEAR readarchive __P_((CONST char *, lsparse_t *, int));
 static CONST char *NEAR skiparchdir __P_((CONST char *));
 static int NEAR getarchdirlen __P_((CONST char *));
-static char *NEAR searcharcdir __P_((CONST char *, int));
+static char *NEAR searcharchdir __P_((CONST char *, int));
 static char *NEAR archoutdir __P_((VOID_A));
 static int NEAR undertmp __P_((CONST char *));
 #ifdef	DEP_PSEUDOPATH
@@ -210,11 +210,13 @@ launchlist_t launchlist
 	{"*.tar.Z",	"zcat %C|tar tvf -",	PM_TAR, 0},
 	{"*.tar.gz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
 	{"*.tar.bz2",	"bzip2 -cd %C|tar tvf -",	PM_TAR, 0},
+	{"*.tar.xz",	"xz -cd %C|tar tvf -",	PM_TAR, 0},
 # ifndef	CYGWIN
 	{"*.taZ",	"zcat %C|tar tvf -",	PM_TAR, 0},
 # endif
 	{"*.taz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
 	{"*.tgz",	"gzip -cd %C|tar tvf -",	PM_TAR, 0},
+	{"*.txz",	"xz -cd %C|tar tvf -",	PM_TAR, 0},
 #endif	/* !MSDOS */
 	{NULL,		NULL,			PM_NULL, 0}
 };
@@ -250,6 +252,8 @@ archivelist_t archivelist
 					"gzip -cd %C|tar xf - %TA", 0},
 	{"*.tar.bz2",	"tar cf - %T|bzip2 -c > %C",
 					"bzip2 -cd %C|tar xf - %TA", 0},
+	{"*.tar.xz",	"tar cf - %T|xz -c > %C",
+					"xz -cd %C|tar xf - %TA", 0},
 # ifndef	CYGWIN
 	{"*.taZ",	"tar cf - %T|compress -c > %C",
 					"zcat %C|tar xf - %TA", 0},
@@ -258,6 +262,8 @@ archivelist_t archivelist
 					"gzip -cd %C|tar xf - %TA", 0},
 	{"*.tgz",	"tar cf - %T|gzip -c > %C",
 					"gzip -cd %C|tar xf - %TA", 0},
+	{"*.txz",	"tar cf - %T|xz -c > %C",
+					"xz -cd %C|tar xf - %TA", 0},
 #endif	/* !MSDOS */
 	{NULL,		NULL,			NULL, 0}
 };
@@ -338,13 +344,27 @@ static VOID NEAR pusharchdupl(VOID_A)
 	archduplp = new;
 }
 
-VOID escapearch(VOID_A)
+/*ARGSUSED*/
+VOID escapearch(all)
+int all;
 {
+	for (;;) {
 #ifndef	_NOBROWSE
-	if (!archduplp) return;
-	if (browselist) popbrowsevar();
+		if (!archduplp) {
+			freebrowse(browselist);
+			Xfree(archivefile);
+			browselist = NULL;
+			archivefile = NULL;
+			break;
+		}
+		if (browselist) popbrowsevar();
 #endif
-	poparchdupl();
+		poparchdupl();
+#ifndef	_NOBROWSE
+		if (all && browselist) continue;
+#endif
+		break;
+	}
 }
 
 static VOID NEAR poparchdupl(VOID_A)
@@ -388,8 +408,7 @@ static VOID NEAR poparchdupl(VOID_A)
 	findpattern = old -> v_findpattern;
 	filepos = old -> v_filepos;
 	sorton = old -> v_sorton;
-	maxfile = maxent;
-	while (maxfile > 0) filelist[--maxfile].name = NULL;
+	maxfile = 0;
 
 #ifndef	_NOBROWSE
 	if (browselist) {
@@ -424,6 +443,7 @@ CONST char *file, *dir;
 #ifndef	_NOBROWSE
 	int i;
 #endif
+	CONST char *cp;
 	char *arch;
 	int len;
 
@@ -458,27 +478,24 @@ CONST char *file, *dir;
 		Xputterm(L_CLEAR);
 
 		Xlocate(TC_PATH, TL_PATH);
-		Xputterm(T_STANDOUT);
 # ifndef	_NOBROWSE
 		if (browselist) {
-			XXcputs(TS_BROWSE);
+			cp = TS_BROWSE;
 			len = TD_BROWSE;
 		}
 		else
 # endif
 		{
-			XXcputs(TS_ARCH);
+			cp = TS_ARCH;
 			len = TD_ARCH;
 		}
-		Xputterm(END_STANDOUT);
+		Xattrputs(cp, 1);
 		cputstr(len, arch);
 		Xfree(arch);
 
 		Xlocate(TC_MARK, TL_PATH);
 		VOID_C XXcprintf("%<*d", TD_MARK, mark);
-		Xputterm(T_STANDOUT);
-		XXcputs(TS_MARK);
-		Xputterm(END_STANDOUT);
+		Xattrputs(TS_MARK, 1);
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
@@ -490,19 +507,18 @@ CONST char *file, *dir;
 	Xputterm(L_CLEAR);
 
 	Xlocate(C_PATH, L_PATH);
-	Xputterm(T_STANDOUT);
 #ifndef	_NOBROWSE
 	if (browselist) {
-		XXcputs(S_BROWSE);
+		cp = S_BROWSE;
 		len = D_BROWSE;
 	}
 	else
 #endif
 	{
-		XXcputs(S_ARCH);
+		cp = S_ARCH;
 		len = D_ARCH;
 	}
-	Xputterm(END_STANDOUT);
+	Xattrputs(cp, 1);
 	cputstr(len, arch);
 	Xfree(arch);
 
@@ -609,9 +625,9 @@ CONST char *file;
 	return(len);
 }
 
-VOID copyarcf(re, arcre)
+VOID copyarcf(re, archre)
 CONST reg_t *re;
-CONST char *arcre;
+CONST char *archre;
 {
 	CONST char *cp;
 	int i, j, n, len, parent;
@@ -632,8 +648,8 @@ CONST char *arcre;
 		if (len < 0) continue;
 		if (re && !regexp_exec(re, cp, 1)) continue;
 
-		if (arcre) {
-			if (!(n = searcharc(arcre, arcflist, maxarcf, i)))
+		if (archre) {
+			if (!(n = searcharcf(archre, arcflist, maxarcf, i)))
 				continue;
 			if (n < 0) break;
 		}
@@ -666,7 +682,7 @@ CONST char *arcre;
 #endif
 }
 
-static char *NEAR searcharcdir(file, flen)
+static char *NEAR searcharchdir(file, flen)
 CONST char *file;
 int flen;
 {
@@ -704,14 +720,14 @@ static char *NEAR archoutdir(VOID_A)
 	char *cp, *file;
 
 	if (!*archivedir) return((char *)-1);
-	if (!(file = searcharcdir(NULL, 0))) return(NULL);
+	if (!(file = searcharchdir(NULL, 0))) return(NULL);
 
 	cp = &(file[(int)strlen(file) - 1]);
 	while (cp > file && *cp == _SC_) cp--;
 #ifdef	BSPATHDELIM
 	if (onkanji1(file, cp - file)) cp++;
 #endif
-	cp = strrdelim2(file, cp);
+	cp = strrdelim2(file, 0, cp);
 	if (!cp) *archivedir = '\0';
 	else {
 		if (cp == file) copyrootpath(archivedir);
@@ -729,7 +745,7 @@ CONST char *path;
 	int i, n, flags, dupfilepos;
 #endif
 	CONST char *cp, *file;
-	char *tmp, duparcdir[MAXPATHLEN];
+	char *tmp, duparchdir[MAXPATHLEN];
 	int len;
 
 	Xfree(findpattern);
@@ -743,8 +759,8 @@ CONST char *path;
 				errno = ENOENT;
 				return(NULL);
 			}
-			Xstrncpy(duparcdir, path, (cp - path));
-			path = duparcdir;
+			Xstrncpy(duparchdir, path, (cp - path));
+			path = duparchdir;
 		}
 
 		n = browselevel;
@@ -784,7 +800,7 @@ CONST char *path;
 #endif	/* !_NOBROWSE */
 
 	if (!path) return(archoutdir());
-	Xstrcpy(duparcdir, archivedir);
+	Xstrcpy(duparchdir, archivedir);
 	file = nullstr;
 	do {
 		if (*path == _SC_) len = 1;
@@ -797,13 +813,13 @@ CONST char *path;
 		else if (len == 2 && cp[1] == '.') cp = nullstr;
 
 		if (!cp) /*EMPTY*/;
-		else if (searcharcdir(cp, len)) {
+		else if (searcharchdir(cp, len)) {
 			if (*(tmp = archivedir)) tmp = strcatdelim(archivedir);
 			Xstrncpy(tmp, path, len);
 			file = parentpath;
 		}
 		else if (*cp || !(file = archoutdir())) {
-			Xstrcpy(archivedir, duparcdir);
+			Xstrcpy(archivedir, duparchdir);
 			errno = ENOENT;
 			return(NULL);
 		}
@@ -823,14 +839,14 @@ int flen, argc;
 char ***argvp;
 {
 	CONST char *cp, *file;
-	char *new, dir[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	char *new, dir[MAXPATHLEN], duparchdir[MAXPATHLEN];
 	int i, len, parent;
 
 # ifdef	DEP_DOSPATH
 	if (_dospath(path)) return(argc);
 # endif
 
-	Xstrcpy(duparcdir, archivedir);
+	Xstrcpy(duparchdir, archivedir);
 	if (!(file = strrdelim(path, 0))) file = path;
 # ifndef	_NOBROWSE
 	else if (browselist) return(argc);
@@ -838,7 +854,7 @@ char ***argvp;
 	else {
 		Xstrncpy(dir, path, (file == path) ? 1 : file - path);
 		if (!(cp = archchdir(dir)) || cp == (char *)-1) {
-			Xstrcpy(archivedir, duparcdir);
+			Xstrcpy(archivedir, duparchdir);
 			return(argc);
 		}
 		flen -= ++file - path;
@@ -864,7 +880,7 @@ char ***argvp;
 		new[len] = '\0';
 		argc = addcompletion(NULL, new, argc, argvp);
 	}
-	Xstrcpy(archivedir, duparcdir);
+	Xstrcpy(archivedir, duparchdir);
 
 	return(argc);
 }
@@ -953,8 +969,7 @@ int flags;
 		poparchdupl();
 		return(-1);
 	}
-	maxfile = 0;
-	filepos = -1;
+	maxfile = filepos = 0;
 
 	return(1);
 }
@@ -1121,8 +1136,8 @@ CONST char *full;
 }
 #endif	/* DEP_PSEUDOPATH */
 
-int pack(arc)
-CONST char *arc;
+int pack(arch)
+CONST char *arch;
 {
 #ifdef	DEP_PSEUDOPATH
 	char *dest, *tmpdest;
@@ -1139,7 +1154,7 @@ CONST char *arc;
 		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(archivelist[i].ext, -1);
-		n = regexp_exec(re, arc, 0);
+		n = regexp_exec(re, arch, 0);
 		regexp_free(re);
 #ifndef	PATHNOCASE
 		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase--;
@@ -1158,11 +1173,11 @@ CONST char *arc;
 	tmpdest = NULL;
 	drive = 0;
 
-	Xstrcpy(path, arc);
+	Xstrcpy(path, arch);
 	if ((dest = strrdelim(path, 1))) *(++dest) = '\0';
 	else copycurpath(path);
 	if ((n = archdostmpdir(path, &tmpdest, full)) < 0) {
-		warning(ENOENT, arc);
+		warning(ENOENT, arch);
 		return(0);
 	}
 	if (n) dest = Xstrdup(path);
@@ -1184,9 +1199,9 @@ CONST char *arc;
 #endif
 
 #ifdef	DEP_PSEUDOPATH
-	if (!genfullpath(path, arc, full, tmpdest)) warning(-1, arc);
+	if (!genfullpath(path, arch, full, tmpdest)) warning(-1, arch);
 #else
-	if (!genfullpath(path, arc, full)) warning(-1, arc);
+	if (!genfullpath(path, arch, full)) warning(-1, arch);
 #endif
 	else {
 		duparchivefile = archivefile;
@@ -1221,8 +1236,8 @@ CONST char *arc;
 }
 
 /*ARGSUSED*/
-int unpack(arc, dir, arg, tr, flags)
-CONST char *arc, *dir, *arg;
+int unpack(arch, dir, arg, tr, flags)
+CONST char *arch, *dir, *arg;
 int tr, flags;
 {
 #ifdef	DEP_PSEUDOPATH
@@ -1247,7 +1262,7 @@ int tr, flags;
 		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase++;
 #endif
 		re = regexp_init(archivelist[i].ext, -1);
-		n = regexp_exec(re, arc, 0);
+		n = regexp_exec(re, arch, 0);
 		regexp_free(re);
 #ifndef	PATHNOCASE
 		if (archivelist[i].flags & AF_IGNORECASE) pathignorecase--;
@@ -1310,7 +1325,7 @@ int tr, flags;
 	dupfilelist = filelist;
 	dupmaxfile = maxfile;
 	dupfilepos = filepos;
-	alist[0].name = (char *)arc;
+	alist[0].name = (char *)arch;
 # ifndef	NOSYMLINK
 	alist[0].linkname = NULL;
 # endif
@@ -1318,20 +1333,20 @@ int tr, flags;
 	filelist = alist;
 	maxfile = 1;
 	filepos = 0;
-	drive = tmpdosdupl(arc, &tmpdir, 0);
+	drive = tmpdosdupl(arch, &tmpdir, 0);
 	filelist = dupfilelist;
 	maxfile = dupmaxfile;
 	filepos = dupfilepos;
 
-	if (drive < 0) warning(-1, arc);
+	if (drive < 0) warning(-1, arch);
 	else
 #endif	/* DEP_PSEUDOPATH */
 	if ((!dir && preparedir(path) < 0) || _chdir2(cp) < 0)
 		warning(-1, path);
 #ifdef	DEP_PSEUDOPATH
-	else if (!genfullpath(path, arc, fullpath, tmpdir)) warning(-1, arc);
+	else if (!genfullpath(path, arch, fullpath, tmpdir)) warning(-1, arch);
 #else
-	else if (!genfullpath(path, arc, fullpath)) warning(-1, arc);
+	else if (!genfullpath(path, arch, fullpath)) warning(-1, arch);
 #endif
 	else {
 		Xwaitmes();
@@ -1351,7 +1366,7 @@ int tr, flags;
 		Xfree(dest);
 		removetmp(tmpdest, NULL);
 	}
-	if (tmpdir) removetmp(tmpdir, arc);
+	if (tmpdir) removetmp(tmpdir, arch);
 	else
 #endif	/* DEP_PSEUDOPATH */
 	if (_chdir2(fullpath) < 0) lostcwd(fullpath);
@@ -1390,29 +1405,29 @@ namelist *list;
 CONST char *dir;
 {
 	namelist duplist;
-	char *cp, path[MAXPATHLEN], duparcdir[MAXPATHLEN];
+	char *cp, path[MAXPATHLEN], duparchdir[MAXPATHLEN];
 	int i, ret;
 
 	if (!(list -> linkname)) return(0);
 
 	if (!islink(list)) cp = list -> linkname;
 	else {
-		strcatdelim2(duparcdir, archivedir, list -> linkname);
-		cp = duparcdir;
+		strcatdelim2(duparchdir, archivedir, list -> linkname);
+		cp = duparchdir;
 	}
 	*path = '\0';
 	if (archrealpath(cp, path) < 0) return(-1);
 
 	for (i = 0; i < maxarcf; i++) {
-		*duparcdir = '\0';
-		if (archrealpath(arcflist[i].name, duparcdir) < 0) continue;
-		if (!strcmp(path, duparcdir)) break;
+		*duparchdir = '\0';
+		if (archrealpath(arcflist[i].name, duparchdir) < 0) continue;
+		if (!strcmp(path, duparchdir)) break;
 	}
 	if (i >= maxarcf) return(-1);
 
 	if (unpacklink(&(arcflist[i]), dir) < 0) return(-1);
 
-	Xstrcpy(duparcdir, archivedir);
+	Xstrcpy(duparchdir, archivedir);
 	memcpy(&duplist, &(filelist[filepos]), sizeof(namelist));
 	memcpy(&(filelist[filepos]), &(arcflist[i]), sizeof(namelist));
 	if (!(cp = strrdelim(filelist[filepos].name, 0))) *archivedir = '\0';
@@ -1424,7 +1439,7 @@ CONST char *dir;
 	ret = unpack(archivefile, dir, NULL,
 		0, F_ARGSET | F_ISARCH | F_NOADDOPT);
 	memcpy(&(filelist[filepos]), &duplist, sizeof(namelist));
-	Xstrcpy(archivedir, duparcdir);
+	Xstrcpy(archivedir, duparchdir);
 
 	return(ret);
 }
@@ -1548,7 +1563,7 @@ CONST char *dev;
 	return(1);
 }
 
-int searcharc(regstr, flist, maxf, n)
+int searcharcf(regstr, flist, maxf, n)
 CONST char *regstr;
 namelist *flist;
 int maxf, n;
@@ -1559,7 +1574,7 @@ int maxf, n;
 	reg_t *re;
 	XFILE *fp;
 	char *cp, *next, *tmpdir, *file;
-	int i, c, no, match, dupmaxfile, dupfilepos;
+	int i, c, nline, match, dupmaxfile, dupfilepos;
 
 	if (n < 0) {
 		file = flist -> name;
@@ -1612,9 +1627,7 @@ int maxf, n;
 
 	Xlocate(0, L_MESLINE);
 	Xputterm(L_CLEAR);
-	Xputterm(T_STANDOUT);
-	VOID_C Xkanjiputs(SEACH_K);
-	Xputterm(END_STANDOUT);
+	VOID_C Xattrkanjiputs(SEACH_K, 1);
 	VOID_C Xkanjiputs(file);
 	Xtflush();
 
@@ -1623,12 +1636,12 @@ int maxf, n;
 		Xfree(cp);
 	}
 
-	no = match = 0;
+	nline = match = 0;
 	re = regexp_init(regstr, -1);
 	parsefilelist(NULL, list, NULL, NULL, NULL);
 	for (;;) {
-		if (match && match <= no - (int)(list -> bottomskip)) break;
-		i = parsefilelist(fp, list, &tmp, &no, archfgets);
+		if (match && match <= nline - (int)(list -> bottomskip)) break;
+		i = parsefilelist(fp, list, &tmp, &nline, archfgets);
 		if (i < 0) {
 			if (i == -1) break;
 			VOID_C pclose2(fp);
@@ -1645,7 +1658,7 @@ int maxf, n;
 			if (regexp_exec(re, cp, 1)) break;
 			cp = next;
 		}
-		if (cp) match = no;
+		if (cp) match = nline;
 		Xfree(tmp.name);
 #ifndef	NOSYMLINK
 		Xfree(tmp.linkname);
@@ -1656,7 +1669,7 @@ int maxf, n;
 	if (n >= 0) removetmp(tmpdir, file);
 
 	if ((i = pclose2(fp))) return((i > 0) ? -1 : 0);
-	if (match > no - (int)(list -> bottomskip)) match = 0;
+	if (match > nline - (int)(list -> bottomskip)) match = 0;
 
 	return(match);
 }

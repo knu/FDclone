@@ -85,7 +85,7 @@ typedef struct termios		ldiscioctl_t;
 typedef struct termio		termioctl_t;
 typedef struct termio		ldiscioctl_t;
 #define	tioctl			Xioctl
-#define	ttyflush(f, a)		Xioctl(f, TCFLSH, a)
+#define	ttyflush(f, a)		Xioctl(f, TCFLSH, (VOID_P)a)
 #define	getspeed(t)		((t).c_cflag & CBAUD)
 #define	ldisc(a)		((a).c_line)
 #define	REQGETP			TCGETA
@@ -115,7 +115,8 @@ typedef int			ldiscioctl_t;
 #define	FLSHIO			(FREAD | FWRITE)
 #endif	/* !USESGTTY */
 
-#ifdef	CYGWIN
+#if	defined (CYGWIN) && (CYGWIN > 1007009)
+/* for Cygwin buggy ioctl */
 #undef	ttyflush
 #define	ttyflush(f, a)		Xioctl(f, TCFLSH, (VOID_P)a)
 #endif

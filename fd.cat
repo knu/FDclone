@@ -1965,6 +1965,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
           WWRRIITTEE_DDIIRR      TTRREEEE_DDIIRR       EEDDIITT_FFIILLEE      LLOOGG_TTRREEEE
           CCOOPPYY_TTRREEEE      MMOOVVEE_TTRREEEE      FFIINNDD_DDIIRR       AATTTTRR_DDIIRR
           SSYYMMLLIINNKK_MMOODDEE   DDOOTTFFIILLEE_MMOODDEE   FFIILLEEFFLLGG_MMOODDEE   SSPPLLIITT_WWIINNDDOOWW
+          KKIILLLL_WWIINNDDOOWW
 
      また、新しいアーカイブブラウザを登録したい場合、以下のような
      書式でアーカイバの一覧表示形式のフォーマットを記述してやる必
@@ -3513,4 +3514,4 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ユーザインタフェースが稚拙です。
 
 著著作作権権
-     Copyright (C) 1995-2010 by Takashi SHIRAI
+     Copyright (C) 1995-2012 by Takashi SHIRAI

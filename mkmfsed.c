@@ -11,6 +11,9 @@
 #ifdef	USESELECTH
 #include <sys/select.h>
 #endif
+#ifdef	__CYGWIN__
+#include <cygwin/version.h>
+#endif
 
 #if	defined (USESYSCONF) && defined (_SC_OPEN_MAX)
 #define	MAXOPENFILE		sysconf(_SC_OPEN_MAX)
@@ -125,7 +128,15 @@ char *CONST argv[];
 	printf("s:__COPY__:cp:\n");
 	printf("s:__RM__:rm -f:\n");
 
-	printf("s:__OSTYPE__:%s:\n", OSTYPE);
+#if	!defined (__CYGWIN__) || !defined (CYGWIN_VERSION_DLL_MAJOR)
+	n = 1;
+#else	/* __CYGWIN__ && CYGWIN_VERSION_DLL_MAJOR */
+	n = (CYGWIN_VERSION_DLL_MAJOR) * 1000;
+# ifdef	CYGWIN_VERSION_DLL_MINOR
+	n += CYGWIN_VERSION_DLL_MINOR;
+# endif
+#endif	/* __CYGWIN__ && CYGWIN_VERSION_DLL_MAJOR */
+	printf("s:__OSTYPE__:%s=%d:\n", OSTYPE, n);
 
 #ifdef	USEMANLANG
 	if ((cp = (char *)getenv("LANG")) && *cp)

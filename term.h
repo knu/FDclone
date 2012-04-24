@@ -184,7 +184,6 @@ extern VOID stdiomode __P_((VOID_A));
 extern int termmode __P_((int));
 extern VOID exit2 __P_((int));
 extern int getxy __P_((int *, int *));
-extern char *tparamstr __P_((CONST char *, int, int));
 extern VOID getterment __P_((CONST char *));
 #if	!MSDOS
 extern VOID freeterment __P_((VOID_A));
@@ -197,16 +196,16 @@ extern int getkeyseq __P_((keyseq_t *));
 extern keyseq_t *copykeyseq __P_((keyseq_t *));
 extern VOID freekeyseq __P_((keyseq_t *));
 #endif
+extern int tputparam __P_((int, int, int, int));
 extern VOID initterm __P_((VOID_A));
 extern VOID endterm __P_((VOID_A));
 extern VOID putterm __P_((int));
 extern int Xputch __P_((int));
 extern VOID Xcputs __P_((CONST char *));
+extern VOID tputs2 __P_((CONST char *, int));
 #if	MSDOS
-#define	tputs2(s,n)		Xcputs(s)
 #define	putterms		putterm
 #else
-extern VOID tputs2 __P_((CONST char *, int));
 extern VOID putterms __P_((int));
 extern VOID checksuspend __P_((VOID_A));
 #endif
@@ -224,9 +223,14 @@ extern VOID locate __P_((int, int));
 extern VOID tflush __P_((VOID_A));
 extern char *getwsize __P_((int, int));
 extern VOID setwsize __P_((int, int, int));
+extern int cvasprintf __P_((char **sp, CONST char *fmt, va_list));
 extern int Xcprintf __P_((CONST char *, ...));
+extern VOID tprintf __P_((CONST char *, int, ...));
 extern VOID cputnl __P_((VOID_A));
 extern int kanjiputs __P_((CONST char *));
+extern VOID attrputs __P_((CONST char *, int));
+extern int attrprintf __P_((CONST char *, int, ...));
+extern int attrkanjiputs __P_((CONST char *, int));
 extern VOID chgcolor __P_((int, int));
 extern VOID movecursor __P_((int, int, int));
 
@@ -235,6 +239,9 @@ extern VOID movecursor __P_((int, int, int));
 #endif
 #ifndef	WAITKEYPAD
 #define	WAITKEYPAD		360		/* msec */
+#endif
+#ifndef	WAITTERMINAL
+#define	WAITTERMINAL		WAITKEYPAD	/* msec */
 #endif
 #ifndef	WAITKANJI
 #define	WAITKANJI		120		/* msec */

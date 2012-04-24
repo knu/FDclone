@@ -164,6 +164,11 @@ typedef struct _wild_t {
 #define	EA_EVALIFS		004000
 #define	EA_INQUOTE		010000
 
+#define	PT_NONE			0
+#define	PT_DOS			1
+#define	PT_DSLASH		2
+#define	PT_URL			3
+
 #ifdef	SIGARGINT
 typedef int			sigarg_t;
 #else
@@ -201,10 +206,11 @@ typedef struct _gidtable {
 	char ismem;
 } gidtable;
 
+extern int getpathtop __P_((CONST char *, int *, int *));
 #ifdef	DEP_DOSPATH
 extern char *gendospath __P_((char *, int, int));
 #endif
-#if	defined (DEP_DOSPATH) || defined (DEP_URLPATH)
+#if	defined (DEP_PATHTOP) || defined (BSPATHDELIM)
 extern char *strdelim __P_((CONST char *, int));
 extern char *strrdelim __P_((CONST char *, int));
 #else
@@ -212,13 +218,14 @@ extern char *strrdelim __P_((CONST char *, int));
 #define	strrdelim(s, d)		Xstrrchr(s, _SC_)
 #endif
 #ifdef	FD
-extern char *strrdelim2 __P_((CONST char *, CONST char *));
+extern char *strrdelim2 __P_((CONST char *, int, CONST char *));
 #endif
 #ifndef	MINIMUMSHELL
 extern int isdelim __P_((CONST char *, int));
 #endif
 extern char *strcatdelim __P_((char *));
 extern char *strcatdelim2 __P_((char *, CONST char *, CONST char *));
+extern int strcatpath __P_((char *, char *, CONST char *));
 #ifdef	PATHNOCASE
 #define	strpathcmp		Xstrcasecmp
 #define	strnpathcmp		Xstrncasecmp

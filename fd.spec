@@ -3,7 +3,7 @@
 
 Summary: a file & directory maintenance tool.
 Name: FDclone
-Version: 3.00j
+Version: 3.00k
 Release: 1
 Group: System Environment/Shells
 URL: http://hp.vector.co.jp/authors/VA012337/soft/fd/index.html
@@ -73,6 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.eng HISTORY.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
 
 %changelog
+* Sat Apr 21 2012 Takashi SHIRAI <shirai@unixusers.net>
+- for 3.00k
+
 * Sat Sep 25 2010 Takashi SHIRAI <shirai@unixusers.net>
 - for 3.00j
 

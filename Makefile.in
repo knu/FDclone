@@ -192,8 +192,8 @@ ALLOC	=
 DEBUG	=
 
 LDFLAGS	= __TERMLIBS__ __REGLIBS__ __SOCKETLIBS__ __OTHERLIBS__ $(ALLOC)
-CFLAGS	= -D__OSTYPE__=1 __CCOPTIONS__ $(DEBUG)
-HOSTCFLAGS = -D__OSTYPE__=1 __HOSTCCOPTIONS__
+CFLAGS	= -D__OSTYPE__ __CCOPTIONS__ $(DEBUG)
+HOSTCFLAGS = -D__OSTYPE__ __HOSTCCOPTIONS__
 SLDFLAGS = __REGLIBS__ __OTHERLIBS__ $(ALLOC)
 NLDFLAGS = __REGLIBS__ __SOCKETLIBS__ __OTHERLIBS__ $(ALLOC)
 FDCFLAGS = $(CFLAGS) $(CPPFLAGS) __MEM__ -DFD=$(VERMAJ)
@@ -670,7 +670,7 @@ sprintf$(OBJ): printf.c
 	$(CC) $(SHCFLAGS) -c __OUT__ printf.c
 
 stermio$(OBJ): termio.c
-	$(CC) $(SHCFLAGS) -c __OUT__ termio.c
+	$(CC) $(SHCFLAGS) __FDSETSIZE__ -c __OUT__ termio.c
 
 sstream$(OBJ): stream.c
 	$(CC) $(SHCFLAGS) -c __OUT__ stream.c
@@ -716,7 +716,7 @@ bprintf$(OBJ): printf.c
 	$(CC) $(BSHCFLAGS) -c __OUT__ printf.c
 
 btermio$(OBJ): termio.c
-	$(CC) $(BSHCFLAGS) -c __OUT__ termio.c
+	$(CC) $(BSHCFLAGS) __FDSETSIZE__ -c __OUT__ termio.c
 
 bstream$(OBJ): stream.c
 	$(CC) $(BSHCFLAGS) -c __OUT__ stream.c
@@ -763,7 +763,7 @@ nprintf$(OBJ): printf.c
 	$(CC) $(NSHCFLAGS) -c __OUT__ printf.c
 
 ntermio$(OBJ): termio.c
-	$(CC) $(NSHCFLAGS) -c __OUT__ termio.c
+	$(CC) $(NSHCFLAGS) __FDSETSIZE__ -c __OUT__ termio.c
 
 nstream$(OBJ): stream.c
 	$(CC) $(NSHCFLAGS) -c __OUT__ stream.c

@@ -630,7 +630,7 @@ int xmax, ymax;
 	for (i = 0;; i++) {
 		if (!(cp = getwsize(xmax, ymax))) {
 			if (n_line >= row) break;
-			cp = NOROW_K;
+			cp = "Line size is too small for operation.";
 		}
 		if (!i) {
 			Xputterms(T_CLEAR);
@@ -638,18 +638,15 @@ int xmax, ymax;
 			keyflush();
 		}
 
-		if (i & 1) XXcputs(SCRSZ_K);
-		else {
-			Xputterm(T_STANDOUT);
-			XXcputs(cp);
-			Xputterm(END_STANDOUT);
-		}
+		if (i & 1)
+			cp = "Terminate with the ESC key, or widen a screen.";
+		Xattrputs(cp, !(i & 1));
 		Xputterm(T_BELL);
 		Xcputnl();
 		Xtflush();
 		if (kbhit2(1000000L) && getkey3(0, inputkcode, 0) == K_ESC) {
 			errno = 0;
-			error(INTR_K);
+			error("Interrupted by the ESC key.");
 		}
 	}
 	dumbterm = dupdumbterm;
@@ -886,7 +883,7 @@ VOID title(VOID_A)
 		VOID_C XXputch('#');
 		n++;
 	}
-	cp = (iswellomit()) ? nullstr : " (c)1995-2010 T.Shirai  ";
+	cp = (iswellomit()) ? nullstr : " (c)1995-2012 T.Shirai  ";
 	XXcputs(cp);
 	n = n_column - len - strlen2(cp) - n;
 	while (n-- > 0) VOID_C XXputch(' ');
@@ -1001,7 +998,7 @@ CONST char *line;
 	else i = execpseudoshell(cp, F_IGNORELIST | F_NOCOMLINE);
 	if (i) {
 		Xputterm(L_CLEAR);
-		VOID_C XXcprintf("%s, line %d: %s", file, n, ILFNC_K);
+		VOID_C XXcprintf("%s, line %d: %k", file, n, ILFNC_K);
 		Xcputnl();
 		Xputterm(L_CLEAR);
 		VOID_C XXcprintf("\t%s", line);
@@ -1368,7 +1365,7 @@ int status;
 # endif
 	chdir2(NULL);
 # if	!defined (_NOUSEHASH) && !defined (DEP_ORIGSHELL)
-	searchhash(NULL, NULL, NULL);
+	VOID_C searchhash(NULL, NULL, NULL);
 # endif
 # ifndef	_NOROCKRIDGE
 	detranspath(NULL, NULL);

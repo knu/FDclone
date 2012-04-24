@@ -40,6 +40,10 @@
 #ifndef	_PATH_DEVPTS
 #define	_PATH_DEVPTS		"/dev/pts"
 #endif
+#if	defined (CYGWIN) && (CYGWIN > 1007009)
+/* for Cygwin buggy ioctl */
+#undef	TIOCSCTTY
+#endif
 
 #ifdef	DEP_PTY
 
