@@ -105,14 +105,16 @@ static VOID NEAR sj2j __P_((char *, CONST u_char *));
 static VOID NEAR j2sj __P_((char *, CONST u_char *));
 #endif
 #ifdef	DEP_UNICODE
+# ifndef	DEP_EMBEDUNITBL
 static int NEAR openunitbl __P_((CONST char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
+# endif
 #define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
 #define	skread(f,o,s,n)		(Xlseek(f, o, L_SET) >= (off_t)0 \
 				&& sureread(f, s, n) == n)
 #endif
 #ifndef	_NOKANJICONV
-# ifdef	DEP_UNICODE
+# if	defined (DEP_UNICODE) && !defined (DEP_EMBEDUNITBL)
 static int NEAR opennftbl __P_((CONST char *, int, u_int *));
 # endif
 static int NEAR toenglish __P_((char *, CONST u_char *, int));
@@ -193,8 +195,13 @@ static CONST langtable langlist[] = {
 #define	LANGLISTSIZ		arraysize(langlist)
 #endif	/* !_NOKANJICONV || (!_NOENGMES && !_NOJPNMES) */
 #ifdef	DEP_UNICODE
+# ifdef	DEP_EMBEDUNITBL
+extern CONST u_char unitblbuf[];
+extern u_int unitblent;
+# else
 static u_char *unitblbuf = NULL;
 static u_int unitblent = 0;
+# endif
 static CONST kconv_t rsjistable[] = {
 	{0x8470, 0x8440, 0x0f},		/* Cyrillic small letters */
 	{0x8480, 0x844f, 0x12},		/* Why they converted ? */
@@ -355,11 +362,18 @@ static CONST u_char j2sjtable3[128] = {
 #endif	/* !_NOKANJICONV || (DEP_DOSEMU && CODEEUC) */
 #ifndef	_NOKANJICONV
 # ifdef	DEP_UNICODE
-static u_int nftblnum = 0;
-static u_int nflen = 0;
+#  ifdef	DEP_EMBEDUNITBL
+extern int nftblnum;
+extern int nflen;
+extern CONST u_char *nftblbuf[];
+extern u_int nftblent[];
+#  else
+static int nftblnum = 0;
+static int nflen = 0;
 static u_char **nftblbuf = NULL;
 static u_int *nftblent = 0;
-# endif
+#  endif
+# endif	/* DEP_UNICODE */
 static CONST u_char hctypetable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x00 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* 0x10 */
@@ -624,6 +638,7 @@ int max;
 #endif	/* !_NOKANJICONV || (DEP_DOSEMU && CODEEUC) */
 
 #ifdef	DEP_UNICODE
+# ifndef	DEP_EMBEDUNITBL
 static int NEAR openunitbl(file)
 CONST char *file;
 {
@@ -642,9 +657,9 @@ CONST char *file;
 	if (!unitblpath || !*unitblpath) Xstrcpy(path, file);
 	else strcatdelim2(path, unitblpath, file);
 
-# ifdef	FD
+#  ifdef	FD
 	noconv++;
-# endif
+#  endif
 	fd = -1;
 	if ((fd = Xopen(path, O_BINARY | O_RDONLY, 0666)) < 0) fd = -1;
 	else if (unitblent) /*EMPTY*/;
@@ -653,9 +668,9 @@ CONST char *file;
 		VOID_C Xclose(fd);
 		fd = -1;
 	}
-# ifdef	FD
+#  ifdef	FD
 	noconv--;
-# endif
+#  endif
 
 	return(fd);
 }
@@ -676,22 +691,21 @@ ALLOC_T size;
 VOID readunitable(nf)
 int nf;
 {
-# ifndef	_NOKANJICONV
+#  ifndef	_NOKANJICONV
 	u_char buf[2], **tblbuf;
 	u_int *tblent;
 	int i;
-# endif
+#  endif
 	u_char *tbl;
 	ALLOC_T size;
 	int fd;
 
-	if (unitblbuf) {
-# ifndef	_NOKANJICONV
-		if (nf && !nftblbuf) /*EMPTY*/;
-		else
-# endif
-		return;
-	}
+	if (!unitblbuf) /*EMPTY*/;
+#  ifndef	_NOKANJICONV
+	else if (nf && !nftblbuf) /*EMPTY*/;
+#  endif
+	else return;
+
 	if ((fd = openunitbl(UNICODETBL)) < 0) return;
 	size = (ALLOC_T)unitblent * 4;
 
@@ -705,7 +719,7 @@ int nf;
 		unitblbuf = tbl;
 	}
 
-# ifndef	_NOKANJICONV
+#  ifndef	_NOKANJICONV
 	if (nf && !nftblbuf) {
 		if (!skread(fd, (off_t)size + 2, buf, 2)) {
 			VOID_C openunitbl(NULL);
@@ -753,31 +767,30 @@ int nf;
 		nftblbuf = tblbuf;
 		nftblent = tblent;
 	}
-# endif	/* !_NOKANJICONV */
+#  endif	/* !_NOKANJICONV */
 
 	VOID_C openunitbl(NULL);
 }
 
 VOID discardunitable(VOID_A)
 {
-# ifndef	_NOKANJICONV
+#  ifndef	_NOKANJICONV
 	int i;
-# endif
+#  endif
 
-	if (unitblbuf) {
-		free(unitblbuf);
-		unitblbuf = NULL;
-	}
-# ifndef	_NOKANJICONV
+	if (unitblbuf) free(unitblbuf);
+	unitblbuf = NULL;
+#  ifndef	_NOKANJICONV
 	if (nftblbuf) {
 		for (i = 0; i < nftblnum; i++) free(nftblbuf[i]);
 		free(nftblbuf);
-		nftblbuf = NULL;
 	}
+	nftblbuf = NULL;
 	if (nftblent) free(nftblent);
 	nftblent = NULL;
-# endif	/* !_NOKANJICONV */
+#  endif	/* !_NOKANJICONV */
 }
+# endif	/* !DEP_EMBEDUNITBL */
 
 u_int unifysjis(wc, russ)
 u_int wc;
@@ -808,14 +821,19 @@ u_int cnvunicode(wc, encode)
 u_int wc;
 int encode;
 {
-	u_char *cp, buf[4];
-	u_int r, w, ofs, min, max;
+# ifndef	DEP_EMBEDUNITBL
 	int fd;
+# endif
+	CONST u_char *cp;
+	u_char buf[4];
+	u_int r, w, ofs, min, max;
 
 	wc &= 0xffff;
 	if (encode < 0) {
+# ifndef	DEP_EMBEDUNITBL
 		VOID_C openunitbl(NULL);
 		if (!unicodebuffer) discardunitable();
+# endif
 		return(0);
 	}
 
@@ -860,10 +878,15 @@ int encode;
 		if (wc == 0x309a) return(0x814b);
 	}
 
+# ifndef	DEP_EMBEDUNITBL
 	if (unicodebuffer && !unitblbuf) readunitable(0);
+# endif
 	cp = buf;
 	ofs = min = max = 0;
-	if (unitblbuf) {
+# ifndef	DEP_EMBEDUNITBL
+	if (unitblbuf)
+# endif
+	{
 		if (encode) {
 			cp = unitblbuf;
 			for (ofs = 0; ofs < unitblent; ofs++) {
@@ -886,11 +909,12 @@ int encode;
 			}
 		}
 	}
+# ifndef	DEP_EMBEDUNITBL
 	else if ((fd = openunitbl(UNICODETBL)) < 0) ofs = unitblent;
 	else if (encode) {
 		if (Xlseek(fd, (off_t)2, L_SET) < (off_t)0) ofs = unitblent;
 		else for (ofs = 0; ofs < unitblent; ofs++) {
-			if (sureread(fd, cp, 4) != 4) {
+			if (sureread(fd, buf, 4) != 4) {
 				ofs = unitblent;
 				break;
 			}
@@ -904,7 +928,7 @@ int encode;
 		for (;;) {
 			ofs = (min + max) / 2;
 			if (ofs <= min || ofs >= max) break;
-			if (!skread(fd, (off_t)(ofs - 1) * 4 + 2, cp, 4)) {
+			if (!skread(fd, (off_t)(ofs - 1) * 4 + 2, buf, 4)) {
 				ofs = min = max = 0;
 				break;
 			}
@@ -914,6 +938,7 @@ int encode;
 			else break;
 		}
 	}
+# endif	/* !DEP_EMBEDUNITBL */
 
 	if (encode) {
 		if (ofs < unitblent) r = getword(cp, 0);
@@ -929,7 +954,7 @@ int encode;
 #endif	/* DEP_UNICODE */
 
 #ifndef	_NOKANJICONV
-# ifdef	DEP_UNICODE
+# if	defined (DEP_UNICODE) && !defined (DEP_EMBEDUNITBL)
 static int NEAR opennftbl(file, nf, entp)
 CONST char *file;
 int nf;
@@ -959,7 +984,7 @@ u_int *entp;
 
 	return(fd);
 }
-# endif	/* DEP_UNICODE */
+# endif	/* DEP_UNICODE && !DEP_EMBEDUNITBL */
 
 static int NEAR toenglish(buf, s, max)
 char *buf;
@@ -1272,16 +1297,27 @@ int *ptrp, max;
 u_int wc;
 int nf;
 {
-	u_char *cp, *new;
+# ifndef	DEP_EMBEDUNITBL
+	int fd;
+# endif
+	CONST u_char *cp;
+	u_char *new;
 	u_int w, ofs, ent;
-	int n, fd;
+	int n;
 
 	cp = new = NULL;
 	ofs = ent = (u_int)0;
+# ifndef	DEP_EMBEDUNITBL
 	if (unicodebuffer && !nftblbuf) readunitable(1);
+# endif
 
 	if (wc < MINUNICODE || wc > MAXUNICODE) /*EMPTY*/;
-	else if (nftblbuf && nf <= nftblnum) {
+# ifdef	DEP_EMBEDUNITBL
+	else if (nf <= nftblnum)
+# else
+	else if (nftblbuf && nf <= nftblnum)
+# endif
+	{
 		n = 2 + nflen * 2;
 		cp = nftblbuf[nf - 1];
 		ent = nftblent[nf - 1];
@@ -1291,13 +1327,14 @@ int nf;
 			cp += n;
 		}
 	}
+# ifndef	DEP_EMBEDUNITBL
 	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0) ent = (u_int)0;
 	else {
 		n = 2 + nflen * 2;
 		cp = new = (u_char *)malloc(n);
 		if (!new) ent = (u_int)0;
 		else for (ofs = 0; ofs < ent; ofs++) {
-			if (sureread(fd, cp, n) != n) {
+			if (sureread(fd, new, n) != n) {
 				ofs = ent;
 				break;
 			}
@@ -1305,6 +1342,7 @@ int nf;
 			if (wc == w) break;
 		}
 	}
+# endif	/* !DEP_EMBEDUNITBL */
 
 	if (ofs >= ent) buf[(*ptrp)++] = wc;
 	else for (n = 0; n < nflen && *ptrp < max; n++) {
@@ -1320,18 +1358,30 @@ u_int ucs2denormalization(buf, ptrp, nf)
 CONST u_short *buf;
 int *ptrp, nf;
 {
-	u_char *cp, *new;
+# ifndef	DEP_EMBEDUNITBL
 	off_t top;
-	u_int w, ofs, min, max, ent;
-	int i, j, n, fd;
+	u_int ent;
+	int fd;
+# endif
+	CONST u_char *cp;
+	u_char *new;
+	u_int w, ofs, min, max;
+	int i, j, n;
 
 	cp = new = NULL;
 	ofs = min = max = (u_int)0;
 	i = 0;
+# ifndef	DEP_EMBEDUNITBL
 	if (unicodebuffer && !nftblbuf) readunitable(1);
+# endif
 
 	if (buf[*ptrp] < MINUNICODE || buf[*ptrp] > MAXUNICODE) /*EMPTY*/;
-	else if (nftblbuf && nf <= nftblnum) {
+# ifdef	DEP_EMBEDUNITBL
+	else if (nf <= nftblnum)
+# else
+	else if (nftblbuf && nf <= nftblnum)
+# endif
+	{
 		n = 2 + nflen * 2;
 		max = nftblent[nf - 1] + 1;
 		for (;;) {
@@ -1349,6 +1399,7 @@ int *ptrp, nf;
 			if (!w) break;
 		}
 	}
+# ifndef	DEP_EMBEDUNITBL
 	else if ((fd = opennftbl(UNICODETBL, nf, &ent)) < 0
 	|| (top = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0)
 		/*EMPTY*/;
@@ -1360,7 +1411,7 @@ int *ptrp, nf;
 		else for (;;) {
 			ofs = (min + max) / 2;
 			if (ofs <= min || ofs >= max) break;
-			if (!skread(fd, (off_t)(ofs - 1) * n + top, cp, n)) {
+			if (!skread(fd, (off_t)(ofs - 1) * n + top, new, n)) {
 				ofs = min = max = (u_int)0;
 				break;
 			}
@@ -1375,6 +1426,7 @@ int *ptrp, nf;
 			if (!w) break;
 		}
 	}
+# endif	/* !DEP_EMBEDUNITBL */
 
 	if (ofs <= min || ofs >= max) w = buf[(*ptrp)++];
 	else {

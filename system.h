@@ -29,8 +29,7 @@
 #if	defined (BASHSTYLE) && !defined (BASHBUG)
 #define	BASHBUG
 #endif
-#if	(MSDOS || defined (MINIX) || defined (MINIMUMSHELL)) \
-&& !defined (NOJOB)
+#if	(defined (NOSETPGRP) || defined (MINIMUMSHELL)) && !defined (NOJOB)
 #define	NOJOB
 #endif
 #if	defined (MINIMUMSHELL) && !defined (NOALIAS)

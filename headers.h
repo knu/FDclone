@@ -4,12 +4,24 @@
  *	include headers
  */
 
+#ifdef	__HOST_CC__
+#include "hmachine.h"
+#else
 #include "machine.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+
+#ifdef	BUGGYSIGNALH
+#define	_SYSTEM			/* TIPS for MINIX 3.2 bug */
+#endif
 #include <signal.h>
+#ifdef	BUGGYSIGNALH
+#undef	_SYSTEM
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -41,10 +53,10 @@
 #include <sys/param.h>
 #include <sys/file.h>
 # ifdef	USEUTIME
-#include <utime.h>
+# include <utime.h>
 # endif
 # ifdef	MINIX
-#include <limits.h>
+# include <limits.h>
 # endif
 # if	!defined (MAXPATHLEN) && defined (PATH_MAX)
 # define	MAXPATHLEN		PATH_MAX

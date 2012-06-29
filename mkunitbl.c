@@ -6,9 +6,12 @@
 
 #include "headers.h"
 #include "typesize.h"
+#include "evalopt.h"
+#include "gentbl.h"
 
 #define	USERDEFINE
 #define	MAXNFLEN		4
+#define	NFTABLES		2
 
 typedef struct _convtable {
 	u_short unicode;
@@ -22,12 +25,21 @@ typedef struct _nftable {
 
 static int cmpuni __P_((CONST VOID_P, CONST VOID_P));
 static int cmpnf __P_((CONST VOID_P, CONST VOID_P));
-static int NEAR fputbyte __P_((int, FILE *));
-static int NEAR fputword __P_((u_int, FILE *));
 static int NEAR fputunilist __P_((convtable [], u_int, FILE *));
-static int NEAR fputnflist __P_((nftable [], u_int, FILE *));
+static int NEAR fputnflist __P_((CONST char *, nftable [], u_int, FILE *));
+static int NEAR fputarray __P_((CONST char *, VOID_P, FILE *, int));
+static int NEAR mkunitbl __P_((FILE *));
 int main __P_((int, char *CONST []));
 
+static CONST char *tblname[NFTABLES];
+static u_int tblent[NFTABLES];
+static int nfent = 0;
+static int nocontent = 0;
+static CONST opt_t optlist[] = {
+	{'t', &textmode, 1, NULL},
+	{'n', &nocontent, 1, NULL},
+	{'\0', NULL, 0, NULL},
+};
 static convtable unilist[] = {
 	{0x00a7, 0x8198},
 	{0x00a8, 0x814e},
@@ -10239,29 +10251,6 @@ CONST VOID_P vp2;
 	return(0);
 }
 
-static int NEAR fputbyte(c, fp)
-int c;
-FILE *fp;
-{
-	if (fputc(c, fp) == EOF && ferror(fp)) {
-		fprintf(stderr, "Cannot write file.\n");
-		return(-1);
-	}
-
-	return(0);
-}
-
-static int NEAR fputword(w, fp)
-u_int w;
-FILE *fp;
-{
-	if (fputbyte((int)(w & 0xff), fp) < 0
-	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0)
-		return(-1);
-
-	return(0);
-}
-
 static int NEAR fputunilist(list, max, fp)
 convtable list[];
 u_int max;
@@ -10270,17 +10259,21 @@ FILE *fp;
 	u_int n;
 
 	qsort(list, max, sizeof(convtable), cmpuni);
-	if (fputword(max, fp) < 0) return(-1);
+	if (fputlength("unitblent", (long)max, fp, 2) < 0) return(-1);
+
+	if (fputbegin("unitblbuf", fp) < 0) return(-1);
 	for (n = 0; n < max; n++) {
 		if (fputword(list[n].unicode, fp) < 0
 		|| fputword(list[n].org, fp) < 0)
 			return(-1);
 	}
+	if (fputend(fp) < 0) return(-1);
 
 	return(0);
 }
 
-static int NEAR fputnflist(list, max, fp)
+static int NEAR fputnflist(name, list, max, fp)
+CONST char *name;
 nftable list[];
 u_int max;
 FILE *fp;
@@ -10288,8 +10281,13 @@ FILE *fp;
 	u_int n;
 	int i;
 
+	tblname[nfent] = name;
+	tblent[nfent] = max;
+	nfent++;
+
 	qsort(list, max, sizeof(nftable), cmpnf);
-	if (fputword(max, fp) < 0) return(-1);
+	if (!textmode && fputword(max, fp) < 0) return(-1);
+	if (fputbegin(name, fp) < 0) return(-1);
 	for (n = 0; n < max; n++) {
 		if (fputword(list[n].unicode, fp) < 0) return(-1);
 		for (i = 0; i < MAXNFLEN; i++) {
@@ -10297,6 +10295,60 @@ FILE *fp;
 				return(-1);
 		}
 	}
+	if (fputend(fp) < 0) return(-1);
+
+	return(0);
+}
+
+static int NEAR fputarray(name, vp, fp, str)
+CONST char *name;
+VOID_P vp;
+FILE *fp;
+int str;
+{
+	CONST char *s;
+	u_int ent;
+	int n;
+
+	if (!textmode) return(0);
+
+	s = (str) ? "CONST u_char *" : "u_int ";
+	if (fprintf(fp, "%s%s[] = {", s, name) < 0 && ferror(fp)) return(-1);
+	for (n = 0; n < nfent; n++) {
+		if (n && fputs(", ", fp) == EOF && ferror(fp)) return(-1);
+		if (str) {
+			s = ((CONST char **)vp)[n];
+			if (fprintf(fp, "%s", s) < 0 && ferror(fp)) return(-1);
+		}
+		else {
+			ent = ((u_int *)vp)[n];
+			if (fprintf(fp, "%d", ent) < 0 && ferror(fp))
+				return(-1);
+		}
+	}
+	if (fputs("};\n", fp) == EOF && ferror(fp)) return(-1);
+
+	return(0);
+}
+
+static int NEAR mkunitbl(fp)
+FILE *fp;
+{
+	if (fputheader("headers", fp) < 0) return(-1);
+	if (nocontent) return(0);
+
+	if (fputunilist(unilist, UNILISTSIZ, fp) < 0) return(-1);
+
+	if (fputlength("nftblnum", NFTABLES, fp, 1) < 0) return(-1);
+	if (fputlength("nflen", MAXNFLEN, fp, 1) < 0) return(-1);
+
+	if (fputnflist("macunilist", macunilist, MACUNILISTSIZ, fp) < 0)
+		return(-1);
+	if (fputnflist("iconvunilist", iconvunilist, ICONVUNILISTSIZ, fp) < 0)
+		return(-1);
+
+	if (fputarray("nftblbuf", tblname, fp, 1) < 0) return(-1);
+	if (fputarray("nftblent", tblent, fp, 0) < 0) return(-1);
 
 	return(0);
 }
@@ -10306,21 +10358,25 @@ int argc;
 char *CONST argv[];
 {
 	FILE *fp;
+	CONST char *path;
+	int n;
 
-	if (argc < 2 || !(fp = fopen(argv[1], "wb"))) {
-		fprintf(stderr, "Cannot open file.\n");
+	initopt(optlist);
+	n = evalopt(argc, argv, optlist);
+	if (n < 0 || n >= argc) {
+		optusage(argv[0], "<outfile>", optlist);
 		return(1);
 	}
 
-	if (fputunilist(unilist, UNILISTSIZ, fp) < 0) return(1);
+	path = argv[n];
+	if (!(fp = opentbl(path))) return(1);
 
-	if (fputbyte(2, fp) < 0) return(1);
-	if (fputbyte(MAXNFLEN, fp) < 0) return(1);
-
-	if (fputnflist(macunilist, MACUNILISTSIZ, fp) < 0) return(1);
-	if (fputnflist(iconvunilist, ICONVUNILISTSIZ, fp) < 0) return(1);
-
+	n = mkunitbl(fp);
 	VOID_C fclose(fp);
+	if (n < 0) {
+		fprintf(stderr, "%s: Cannot write file.\n", path);
+		return(1);
+	}
 
 	return(0);
 }

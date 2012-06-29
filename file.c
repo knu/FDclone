@@ -281,7 +281,7 @@ CONST VOID_P vp2;
 /*ARGSUSED*/
 struct dirent *searchdir(dirp, regexp, arcregstr)
 DIR *dirp;
-CONST reg_t *regexp;
+CONST reg_ex_t *regexp;
 CONST char *arcregstr;
 {
 	struct dirent *dp;
@@ -386,7 +386,7 @@ CONST char *dir;
 		}
 		if (!s_isdir(&st)) return(seterrno(ENOTDIR));
 	}
-	entryhist(Xrealpath(dir, tmp, 0), HST_PATH | HST_UNIQ);
+	VOID_C entryhist(Xrealpath(dir, tmp, 0), HST_PATH | HST_UNIQ);
 
 	return(0);
 }

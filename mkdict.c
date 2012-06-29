@@ -9,6 +9,8 @@
 #include "typesize.h"
 #include "roman.h"
 #include "hinsi.h"
+#include "evalopt.h"
+#include "gentbl.h"
 
 #define	MAXLINESTR		1023
 #define	DICTBUFUNIT		32
@@ -82,13 +84,12 @@ static int NEAR addconlist __P_((int, int, CONST contable *));
 static int NEAR genconlist __P_((VOID_A));
 static int NEAR cmpjisbuf __P_((CONST u_char *, int, CONST u_char *, int));
 static int cmpdict __P_((CONST VOID_P, CONST VOID_P));
-static int NEAR fputbyte __P_((int, FILE *));
-static int NEAR fputword __P_((u_int, FILE *));
-static int NEAR fputdword __P_((long, FILE *));
 static int NEAR writeindex __P_((FILE *));
 static int NEAR writehinsiindex __P_((FILE *));
 static int NEAR writehinsidict __P_((FILE *));
 static int NEAR writedict __P_((FILE *));
+static VOID NEAR readdict __P_((int, int, char *CONST []));
+static int NEAR mkdict __P_((FILE *));
 int main __P_((int, char *CONST []));
 
 static dicttable *dictlist = NULL;
@@ -97,8 +98,16 @@ static long dictlistsize = 0L;
 static u_char *strbuf = NULL;
 static ALLOC_T maxstr = (ALLOC_T)0;
 static ALLOC_T strbufsize = (ALLOC_T)0;
-static int verbose = 0;
 static int needhinsi = 0;
+static int nocontent = 0;
+static int verbose = 0;
+static CONST opt_t optlist[] = {
+	{'h', &needhinsi, 1, NULL},
+	{'t', &textmode, 1, NULL},
+	{'n', &nocontent, 1, NULL},
+	{'v', &verbose, 1, NULL},
+	{'\0', NULL, 0, NULL},
+};
 static CONST biastable biaslist[] = {
 	{HN_KA_IKU, 1, {0x2443}},		/* tsu */
 	{HN_KO_KO, 1, {0x2424}},		/* i */
@@ -3196,6 +3205,9 @@ int *dictp;
 			mask = !mask;
 			*(next++) = '\0';
 		}
+#ifdef	FAKEUNINIT
+		dict = -1;
+#endif
 		hmax = _gethinsi(hmax, idlist, cp, &dict);
 		*dictp |= (dict & mask);
 	}
@@ -3416,6 +3428,7 @@ static int NEAR genconlist(VOID_A)
 	free(strbuf);
 	strbuf = NULL;
 	maxstr = strbufsize = (ALLOC_T)0;
+	if (!needhinsi) return(0);
 
 	for (i = HN_MIN; i < HN_MAX; i++)
 		if (addconlist(i, JIRCONLISTSIZ, jirconlist) < 0) return(-1);
@@ -3483,47 +3496,18 @@ CONST VOID_P vp2;
 	return(0);
 }
 
-static int NEAR fputbyte(c, fp)
-int c;
-FILE *fp;
-{
-	return((fputc(c, fp) == EOF && ferror(fp)) ? -1 : 0);
-}
-
-static int NEAR fputword(w, fp)
-u_int w;
-FILE *fp;
-{
-	if (fputbyte((int)(w & 0xff), fp) < 0
-	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0)
-		return(-1);
-
-	return(0);
-}
-
-static int NEAR fputdword(dw, fp)
-long dw;
-FILE *fp;
-{
-	if (fputword((u_int)(dw & 0xffff), fp) < 0
-	|| fputword((u_int)((dw >> 16) & 0xffff), fp) < 0)
-		return(-1);
-
-	return(0);
-}
-
 static int NEAR writeindex(fp)
 FILE *fp;
 {
 	u_char *buf;
 	char tmp[4 + 1];
 	ALLOC_T ptr;
-	long i, j, n, max;
+	long i, j, n, max, ent;
 	int len;
 
-	for (i = max = 0L; i < maxdict; i++) {
+	for (i = ent = 0L; i < maxdict; i++) {
 		if (!(dictlist[i].size)) continue;
-		max++;
+		ent++;
 		dictlist[i].max = 1;
 		for (j = 1L; i + j < maxdict; j++) {
 			if (!(dictlist[i + j].size)) continue;
@@ -3537,7 +3521,8 @@ FILE *fp;
 		i += j - 1;
 	}
 
-	if (fputdword(max, fp) < 0) return(-1);
+	if (fputlength("dicttblent", ent, fp, 4) < 0) return(-1);
+	if (fputbegin("dictindexbuf", fp) < 0) return(-1);
 
 	ptr = (ALLOC_T)0;
 	for (i = 0L; i < maxdict; i++) {
@@ -3569,7 +3554,8 @@ FILE *fp;
 		}
 		i += dictlist[i].max - 1;
 	}
-	if (fputdword(ptr, fp) < 0) return(-1);
+	if (!textmode && fputdword(ptr, fp) < 0) return(-1);
+	if (fputend(fp) < 0) return(-1);
 
 	return(0);
 }
@@ -3580,10 +3566,11 @@ FILE *fp;
 	u_char *buf;
 	long i, j, max;
 
+	if (fputbegin("dicttblbuf", fp) < 0) return(-1);
 	for (i = 0L; i < maxdict; i++) {
 		if (!(dictlist[i].size)) continue;
 		buf = &(strbuf[dictlist[i].ptr]);
-		if (fwrite(buf, dictlist[i].klen, 1, fp) != 1) return(-1);
+		if (fputbuf(buf, dictlist[i].klen, fp) < 0) return(-1);
 		for (j = max = 0L; j < dictlist[i].max; j++)
 			if (dictlist[i + j].size) max++;
 		if (max > MAXUTYPE(u_char)) max = MAXUTYPE(u_char);
@@ -3594,11 +3581,12 @@ FILE *fp;
 
 			buf = &(strbuf[dictlist[i + j].ptr]);
 			buf += dictlist[i + j].klen;
-			if (fwrite(buf, dictlist[i + j].size, 1, fp) != 1)
+			if (fputbuf(buf, dictlist[i + j].size, fp) < 0)
 				return(-1);
 		}
 		i += dictlist[i].max - 1;
 	}
+	if (fputend(fp) < 0) return(-1);
 
 	return(0);
 }
@@ -3609,14 +3597,16 @@ FILE *fp;
 	ALLOC_T ptr;
 	long i;
 
-	if (fputword(maxdict, fp) < 0) return(-1);
+	if (fputlength("hinsitblent", maxdict, fp, 2) < 0) return(-1);
+	if (fputbegin("hinsiindexbuf", fp) < 0) return(-1);
 
 	ptr = (ALLOC_T)0;
 	for (i = 0L; i < maxdict; i++) {
 		if (fputword(ptr, fp) < 0) return(-1);
 		ptr += dictlist[i].size;
 	}
-	if (fputword(ptr, fp) < 0) return(-1);
+	if (!textmode && fputword(ptr, fp) < 0) return(-1);
+	if (fputend(fp) < 0) return(-1);
 
 	return(0);
 }
@@ -3627,57 +3617,40 @@ FILE *fp;
 	u_char *buf;
 	long i;
 
+	if (fputbegin("hinsitblbuf", fp) < 0) return(-1);
 	for (i = 0L; i < maxdict; i++) {
 		buf = &(strbuf[dictlist[i].ptr]);
-		if (fwrite(buf, dictlist[i].size, 1, fp) != 1) return(-1);
+		if (fputbuf(buf, dictlist[i].size, fp) < 0) return(-1);
 	}
+	if (fputend(fp) < 0) return(-1);
 
 	return(0);
 }
 
-int main(argc, argv)
-int argc;
+static VOID NEAR readdict(n, argc, argv)
+int n, argc;
 char *CONST argv[];
 {
-	FILE *fpin, *fpout;
+	FILE *fp;
 	struct stat st;
 	off_t size;
-	int i, c, n, max;
+	int c, max;
 
-	n = 1;
-	if (n < argc && !strcmp(argv[n], "-h")) {
-		needhinsi++;
-		n++;
-	}
-	if (n < argc && !strcmp(argv[n], "-v")) {
-		verbose++;
-		n++;
-	}
-
-	if (n >= argc) {
-		fprintf(stderr,
-			"Usage: %s [-h] [-v] outfile [infile...]\n", argv[0]);
-		return(1);
-	}
-
-	if (!(fpout = fopen(argv[n], "wb"))) {
-		fprintf(stderr, "Cannot open file.\n");
-		return(1);
-	}
+	if (nocontent) return;
 
 	qsort(hinsilist, HINSILISTSIZ, sizeof(hinsitable), cmphinsi);
-	for (i = n + 1; i < argc; i++) {
+	for (; n < argc; n++) {
 		size = (off_t)0;
 		if (verbose) {
-			fprintf(stdout, "%s:\n", argv[i]);
-			if (stat(argv[i], &st) >= 0) size = st.st_size;
+			fprintf(stdout, "%s:\n", argv[n]);
+			if (stat(argv[n], &st) >= 0) size = st.st_size;
 		}
-		if (!(fpin = fopen(argv[i], "r"))) {
-			fprintf(stderr, "%s: Cannot open file.\n", argv[i]);
+		if (!(fp = fopen(argv[n], "r"))) {
+			fprintf(stderr, "%s: Cannot open file.\n", argv[n]);
 			continue;
 		}
-		c = convdict(size, fpin);
-		VOID_C fclose(fpin);
+		c = convdict(size, fp);
+		VOID_C fclose(fp);
 		if (c < 0) break;
 	}
 
@@ -3692,30 +3665,57 @@ char *CONST argv[];
 		fflush(stdout);
 	}
 	qsort(dictlist, maxdict, sizeof(dicttable), cmpdict);
+	if (verbose) fputs("  done.\n", stdout);
+}
+
+static int NEAR mkdict(fp)
+FILE *fp;
+{
+	if (fputheader("headers", fp) < 0) return(-1);
+	if (nocontent) return(0);
+
 	if (verbose) {
-		fputs("  done.\n", stdout);
 		fprintf(stdout, "writing...");
 		fflush(stdout);
 	}
 
-	if (writeindex(fpout) < 0 || writedict(fpout) < 0) {
-		fprintf(stderr, "%s: Cannot write file.\n", argv[n]);
+	if (writeindex(fp) < 0) return(-1);
+	if (writedict(fp) < 0) return(-1);
+
+	if (genconlist() < 0) return(-1);
+	if (writehinsiindex(fp) < 0) return(-1);
+	if (writehinsidict(fp) < 0) return(-1);
+
+	if (verbose) fputs("  done.\n", stdout);
+
+	return(0);
+}
+
+int main(argc, argv)
+int argc;
+char *CONST argv[];
+{
+	FILE *fp;
+	CONST char *path;
+	int n;
+
+	initopt(optlist);
+	n = evalopt(argc, argv, optlist);
+	if (n < 0 || n >= argc) {
+		optusage(argv[0], "<outfile> [<infile> ...]", optlist);
 		return(1);
 	}
 
-	if (!needhinsi) {
-		if (fputword(0, fpout) < 0) return(-1);
-	}
-	else {
-		if (genconlist() < 0) return(1);
-		if (writehinsiindex(fpout) < 0 || writehinsidict(fpout) < 0) {
-			fprintf(stderr, "%s: Cannot write file.\n", argv[n]);
-			return(1);
-		}
-	}
+	path = argv[n];
+	if (!(fp = opentbl(path))) return(1);
 
-	VOID_C fclose(fpout);
-	if (verbose) fputs("  done.\n", stdout);
+	readdict(n + 1, argc, argv);
+	n = mkdict(fp);
+	VOID_C fclose(fp);
+	if (n < 0) {
+		fprintf(stderr, "%s: Cannot write file.\n", path);
+		return(1);
+	}
 
 	return(0);
 }

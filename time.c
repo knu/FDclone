@@ -22,7 +22,7 @@
 #include <sys/timeb.h>
 #endif
 
-#ifdef	MINIX
+#ifdef	GETTODNULL
 #define	timezonep(t)		NULL
 #else
 #define	timezonep(t)		&(t)
@@ -50,7 +50,7 @@ time_t *tp;
 #if	MSDOS
 	struct timeb buffer;
 #else	/* !MSDOS */
-# ifndef	MINIX
+# ifndef	GETTODNULL
 	struct timezone tz;
 # endif
 	struct timeval tv;

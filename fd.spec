@@ -3,7 +3,7 @@
 
 Summary: a file & directory maintenance tool.
 Name: FDclone
-Version: 3.00k
+Version: 3.00l
 Release: 1
 Group: System Environment/Shells
 URL: http://hp.vector.co.jp/authors/VA012337/soft/fd/index.html
@@ -26,6 +26,13 @@ FDclone は、1989年に A.Idei <SDI00544@niftyserve.or.jp> 氏の
 %setup -q -n FD-%{version}
 
 %build
+sed -e '$ {' \
+    -e   'a \' \
+    -e   '#define DEFKCODE "utf8-iconv"' \
+    -e   'a \' \
+    -e   '#define UTF8DOC' \
+    -e '}' \
+config.hin > config.h
 make PREFIX=%{_prefix} CONFDIR=%{_sysconfdir} LANG=%{lang}
 sed -e '/# launcher definition/,/^$/ {' \
     -e  '/^$/ {' \
@@ -73,6 +80,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.eng HISTORY.eng FAQ.eng TECHKNOW.eng Install.eng ToAdmin.eng LICENSES.eng
 
 %changelog
+* Sat Jun 30 2012 Takashi SHIRAI <shirai@unixusers.net>
+- for 3.00l
+- change the default Kanji code from EUC-JP to UTF-8
+
 * Sat Apr 21 2012 Takashi SHIRAI <shirai@unixusers.net>
 - for 3.00k
 

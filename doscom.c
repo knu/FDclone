@@ -242,11 +242,11 @@ static int NEAR _checkline __P_((int));
 static VOID NEAR dosdirheader __P_((VOID_A));
 #ifdef	MINIMUMSHELL
 static VOID NEAR dosdirfooter __P_((off_t *, int, int, off_t *, off_t *));
-static int NEAR dosdir __P_((reg_t *, off_t *, int *, int *, off_t *));
+static int NEAR dosdir __P_((reg_ex_t *, off_t *, int *, int *, off_t *));
 #else
 static VOID NEAR dosdirfooter __P_((off_t *, int, int,
 		off_t *, off_t *, off_t *, off_t *));
-static int NEAR dosdir __P_((reg_t *, off_t *, int *, int *,
+static int NEAR dosdir __P_((reg_ex_t *, off_t *, int *, int *,
 		off_t *, off_t *));
 #endif
 int doscomdir __P_((int, char *CONST []));
@@ -1155,13 +1155,13 @@ off_t *sump, *bsump, *fp, *tp;
 
 #ifdef	MINIMUMSHELL
 static int NEAR dosdir(re, bsizep, nfp, ndp, sump)
-reg_t *re;
+reg_ex_t *re;
 off_t *bsizep;
 int *nfp, *ndp;
 off_t *sump;
 #else
 static int NEAR dosdir(re, bsizep, nfp, ndp, sump, bsump)
-reg_t *re;
+reg_ex_t *re;
 off_t *bsizep;
 int *nfp, *ndp;
 off_t *sump, *bsump;
@@ -1338,7 +1338,7 @@ char *CONST argv[];
 #ifdef	DEP_PSEUDOPATH
 	int drv;
 #endif
-	reg_t *re;
+	reg_ex_t *re;
 	struct stat st;
 	CONST char *cp, *dir, *file;
 	char *tmp, wd[MAXPATHLEN], cwd[MAXPATHLEN], buf[MAXPATHLEN];

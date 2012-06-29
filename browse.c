@@ -79,7 +79,7 @@ static int NEAR searchmove __P_((int, char *));
 #ifndef	_NOPRECEDE
 static int readstatus __P_((VOID_A));
 #endif
-static int NEAR readfilelist __P_((CONST reg_t *, CONST char *));
+static int NEAR readfilelist __P_((CONST reg_ex_t *, CONST char *));
 static int NEAR getfuncno __P_((int));
 static int NEAR browsedir __P_((VOID_A));
 static VOID NEAR initcwd __P_((CONST char *, int));
@@ -375,7 +375,6 @@ static VOID NEAR statusbar(VOID_A)
 
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
-
 		Xlocate(0, TL_STATUS);
 		Xputterm(L_CLEAR);
 
@@ -743,7 +742,7 @@ static VOID NEAR infobar(VOID_A)
 	struct tm *tm;
 	int len;
 
-	if (!filelist || filepos < 0 || maxfile < 0) return;
+	if (!filelist || maxfile < 0) return;
 #ifdef	DEP_PTY
 	if (parentfd >= 0) return;
 #endif
@@ -806,9 +805,9 @@ static VOID NEAR infobar(VOID_A)
 #endif	/* !_NOTRADLAYOUT */
 
 	Xlocate(0, L_INFO);
+	Xputterm(L_CLEAR);
 
 	if (filepos >= maxfile) {
-		Xputterm(L_CLEAR);
 		if (filelist[0].st_nlink < 0 && filelist[0].name)
 			VOID_C Xkanjiputs(filelist[0].name);
 		Xtflush();
@@ -816,7 +815,6 @@ static VOID NEAR infobar(VOID_A)
 	}
 #ifndef	_NOPRECEDE
 	if (!havestat(&(filelist[filepos]))) {
-		Xputterm(L_CLEAR);
 		len = WMODE + WSIZE2 + 1 + WDATE + 1 + WTIME + 1;
 		if (!ishardomit()) {
 			len += 1 + WNLINK + 1;
@@ -1323,7 +1321,7 @@ int all;
 {
 	int x, y;
 
-	if (!filelist || filepos < 0 || maxfile < 0) return;
+	if (!filelist || maxfile < 0) return;
 #ifdef	DEP_PTY
 	if (parentfd >= 0) return;
 #endif
@@ -1345,9 +1343,9 @@ int all;
 	pathbar();
 	if (all >= 0) {
 #ifdef	_NOSPLITWIN
-		listupmyself(filelist[filepos].name);
+		VOID_C listupmyself(filelist[filepos].name);
 #else
-		listupwin(filelist[filepos].name);
+		VOID_C listupwin(filelist[filepos].name);
 #endif
 	}
 
@@ -1468,7 +1466,7 @@ static int readstatus(VOID_A)
 #endif	/* !_NOPRECEDE */
 
 static int NEAR readfilelist(re, arcre)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *arcre;
 {
 #ifndef	_NOPRECEDE
@@ -1531,7 +1529,7 @@ CONST char *arcre;
 
 VOID getfilelist(VOID_A)
 {
-	reg_t *re;
+	reg_ex_t *re;
 	char *arcre;
 
 	re = NULL;
@@ -1705,6 +1703,8 @@ static int NEAR browsedir(VOID_A)
 			marksize += getblock(filelist[i].st_size);
 	}
 
+	Xlocate(0, L_INFO);
+	Xputterm(L_CLEAR);
 	title();
 	helpbar();
 	rewritefile(-1);

@@ -35,20 +35,25 @@ typedef struct _kanjitable {
 
 #ifdef	DEP_IME
 
+static off_t NEAR dictlseek __P_((int, off_t, int));
 static int NEAR fgetbyte __P_((u_char *, int));
 static int NEAR fgetword __P_((u_short *, int));
 static int NEAR fgetdword __P_((long *, int));
 static int NEAR fgetstring __P_((kanjitable *, int));
+# ifndef	DEP_EMBEDDICTTBL
 static off_t NEAR fgetoffset __P_((long, int));
+# endif
 static int NEAR fgetjisbuf __P_((kanjitable *, long, int));
 static int NEAR fgethinsi __P_((u_short [], int));
 static int NEAR fgetfreqbuf __P_((kanjitable *, long, int));
 static int NEAR _fchkhinsi __P_((int, CONST u_short [], int));
 static int NEAR fchkhinsi __P_((u_short [], CONST u_short [],
 		u_short [], CONST u_short [], int));
+# ifndef	DEP_EMBEDDICTTBL
 static int NEAR opendicttbl __P_((CONST char *));
-static u_char *NEAR newhinsitbl __P_((ALLOC_T));
+static u_char *NEAR gendicttbl __P_((int, off_t, ALLOC_T, int));
 static VOID NEAR readdicttable __P_((int));
+# endif
 static int NEAR fputbyte __P_((int, int));
 static int NEAR fputword __P_((u_int, int));
 static int NEAR fputdword __P_((long, int));
@@ -71,19 +76,55 @@ char *dicttblpath = NULL;
 int imebuffer = 0;
 
 static kanjitable *kanjilist = NULL;
+static long freqtblent = 0L;
+static off_t dictofs = (off_t)0;
+# ifdef	DEP_EMBEDDICTTBL
+extern CONST u_char dictindexbuf[];
+extern CONST u_char dicttblbuf[];
+extern CONST u_char hinsiindexbuf[];
+extern CONST u_char hinsitblbuf[];
+extern long dicttblent;
+extern int hinsitblent;
+# else
+static u_char *dictindexbuf = NULL;
+static u_char *dicttblbuf = NULL;
 static u_char *hinsiindexbuf = NULL;
 static u_char *hinsitblbuf = NULL;
 static long dicttblent = 0L;
-static long freqtblent = 0L;
 static int hinsitblent = 0;
 static off_t hinsitblofs = (off_t)0;
+# endif
 
+
+static off_t NEAR dictlseek(fd, ofs, whence)
+int fd;
+off_t ofs;
+int whence;
+{
+	if (fd >= 0) return(Xlseek(fd, ofs, whence));
+
+	switch (whence) {
+		case L_SET:
+			dictofs = ofs;
+			break;
+		case L_INCR:
+			dictofs += ofs;
+			break;
+		default:
+			break;
+	}
+
+	return(dictofs);
+}
 
 static int NEAR fgetbyte(cp, fd)
 u_char *cp;
 int fd;
 {
-	if (sureread(fd, cp, 1) != 1) return(-1);
+	if (fd >= 0) {
+		if ((sureread(fd, cp, 1) != 1)) return(-1);
+	}
+	else *cp = dicttblbuf[dictofs++];
 
 	return(0);
 }
@@ -92,10 +133,18 @@ static int NEAR fgetword(wp, fd)
 u_short *wp;
 int fd;
 {
+	CONST u_char *cp;
 	u_char buf[2];
 
-	if (sureread(fd, buf, sizeof(buf)) != sizeof(buf)) return(-1);
-	*wp = getword(buf, 0);
+	if (fd >= 0) {
+		if (sureread(fd, buf, sizeof(buf)) != sizeof(buf)) return(-1);
+		cp = buf;
+	}
+	else {
+		cp = &(dicttblbuf[dictofs]);
+		dictofs += 2;
+	}
+	*wp = getword(cp, 0);
 
 	return(0);
 }
@@ -128,12 +177,13 @@ int fd;
 		Xfree(kbuf);
 		return(-1);
 	}
-	kbuf[i] = (short)0;
+	kbuf[i] = (u_short)0;
 	kp -> kbuf = kbuf;
 
 	return(0);
 }
 
+# ifndef	DEP_EMBEDDICTTBL
 static off_t NEAR fgetoffset(n, fd)
 long n;
 int fd;
@@ -147,16 +197,36 @@ int fd;
 
 	return(ofs);
 }
+# endif	/* !DEP_EMBEDDICTTBL */
 
 static int NEAR fgetjisbuf(kp, n, fd)
 kanjitable *kp;
 long n;
 int fd;
 {
+# ifndef	DEP_EMBEDDICTTBL
+	u_char buf[4];
+# endif
+	CONST u_char *cp;
 	off_t ofs;
 
-	if ((ofs = fgetoffset(n, fd)) < (off_t)0) return(-1);
-	if (Xlseek(fd, ofs, L_SET) < (off_t)0) return(-1);
+	ofs = (off_t)n * 4;
+# ifndef	DEP_EMBEDDICTTBL
+	if (!dictindexbuf) {
+		ofs += (off_t)4;
+		if (!skread(fd, ofs, buf, sizeof(buf))) return((off_t)-1);
+		cp = buf;
+	}
+	else
+# endif
+	cp = &(dictindexbuf[ofs]);
+
+	ofs = getdword(cp, 0);
+
+# ifndef	DEP_EMBEDDICTTBL
+	if (!dicttblbuf) ofs += (off_t)(dicttblent + 1) * 4 + 4;
+# endif
+	if (dictlseek(fd, ofs, L_SET) < (off_t)0) return(-1);
 
 	return(fgetstring(kp, fd));
 }
@@ -201,7 +271,11 @@ int id;
 CONST u_short hinsi[MAXHINSI];
 int fd;
 {
-	u_char *cp, *hbuf, buf[2];
+# ifndef	DEP_EMBEDDICTTBL
+	u_char buf[2];
+# endif
+	CONST u_char *cp;
+	u_char *hbuf;
 	off_t ofs;
 	u_short w;
 	int i, j, len;
@@ -210,20 +284,18 @@ int fd;
 	if (id >= hinsitblent) return(MAXUTYPE(u_short));
 
 	ofs = (off_t)id * 2;
-	if (hinsiindexbuf) ofs = getword(hinsiindexbuf, ofs);
-	else {
+# ifndef	DEP_EMBEDDICTTBL
+	if (!hinsiindexbuf) {
 		ofs += hinsitblofs + 2;
 		if (!skread(fd, ofs, buf, sizeof(buf))) return(-1);
 		ofs = getword(buf, 0);
 	}
+	else
+# endif
+	ofs = getword(hinsiindexbuf, ofs);
 
-	if (hinsitblbuf) {
-		cp = &(hinsitblbuf[ofs]);
-		len = getword(cp, 0);
-		cp += 2;
-		hbuf = NULL;
-	}
-	else {
+# ifndef	DEP_EMBEDDICTTBL
+	if (!hinsitblbuf) {
 		ofs += hinsitblofs + (off_t)(hinsitblent + 1) * 2 + 2;
 		if (!skread(fd, ofs, buf, 2)) return(-1);
 		if ((len = getword(buf, 0)) <= 0) return(MAXUTYPE(u_short));
@@ -232,6 +304,14 @@ int fd;
 			Xfree(hbuf);
 			return(-1);
 		}
+	}
+	else
+# endif
+	{
+		cp = &(hinsitblbuf[ofs]);
+		len = getword(cp, 0);
+		cp += 2;
+		hbuf = NULL;
 	}
 
 	for (i = 0; i < len; i++, cp += 2) {
@@ -292,6 +372,7 @@ int fd;
 	return(0);
 }
 
+# ifndef	DEP_EMBEDDICTTBL
 static int NEAR opendicttbl(file)
 CONST char *file;
 {
@@ -315,9 +396,11 @@ CONST char *file;
 		VOID_C Xclose(fd);
 		fd = -1;
 	}
+	else if (!hinsitblofs
+	&& (hinsitblofs = fgetoffset(dicttblent, fd)) < (off_t)0)
+		hinsitblent = -1;
 	else if (!hinsitblent) {
-		if ((hinsitblofs = fgetoffset(dicttblent, fd)) < (off_t)0
-		|| !skread(fd, hinsitblofs, buf, sizeof(buf)))
+		if (!skread(fd, hinsitblofs, buf, sizeof(buf)))
 			hinsitblent = -1;
 		else hinsitblent = getword(buf, 0);
 	}
@@ -325,15 +408,26 @@ CONST char *file;
 	return(fd);
 }
 
-static u_char *NEAR newhinsitbl(size)
+static u_char *NEAR gendicttbl(fd, ofs, size, lvl)
+int fd;
+off_t ofs;
 ALLOC_T size;
+int lvl;
 {
 	u_char *tbl;
 
-	if ((tbl = (u_char *)malloc(size))) return(tbl);
-	if (imebuffer) imebuffer = 0;
+	if (ofs != (off_t)-1 && Xlseek(fd, ofs, L_SET) < (off_t)0)
+		return(NULL);
+	if (!(tbl = (u_char *)malloc(size))) {
+		imebuffer = lvl;
+		return(NULL);
+	}
+	if (sureread(fd, tbl, size) != size) {
+		Xfree(tbl);
+		return(NULL);
+	}
 
-	return(NULL);
+	return(tbl);
 }
 
 static VOID NEAR readdicttable(fd)
@@ -343,39 +437,52 @@ int fd;
 	ALLOC_T size;
 	off_t ofs;
 
-	if (hinsitblent <= 0) return;
-
-	if (!hinsiindexbuf) {
+	if (!hinsiindexbuf && hinsitblent > 0) {
+		ofs = (off_t)hinsitblofs + 2;
 		size = (ALLOC_T)hinsitblent * 2;
-		if (!(tbl = newhinsitbl(size))) return;
-		if (!skread(fd, hinsitblofs + 2, tbl, size)) {
-			Xfree(tbl);
-			return;
-		}
+		if (!(tbl = gendicttbl(fd, ofs, size, 0))) return;
 		hinsiindexbuf = tbl;
 	}
 
-	if (!imebuffer) return;
-
-	if (!hinsitblbuf) {
+	if (imebuffer < 1) return;
+	if (!hinsitblbuf && hinsitblent > 0) {
 		ofs = (off_t)hinsitblent * 2 + 2;
 		if (!skread(fd, hinsitblofs + ofs, buf, sizeof(buf))) return;
 		size = getword(buf, 0);
-		if (!(tbl = newhinsitbl(size))) return;
-		if (sureread(fd, tbl, size) != size) {
-			Xfree(tbl);
-			return;
-		}
+		if (!(tbl = gendicttbl(fd, (off_t)-1, size, 0))) return;
 		hinsitblbuf = tbl;
 	}
+
+	if (imebuffer < 2) return;
+	if (!dictindexbuf && dicttblent > 0) {
+		ofs = (off_t)4;
+		size = (ALLOC_T)dicttblent * 4;
+		if (!(tbl = gendicttbl(fd, ofs, size, 1))) return;
+		dictindexbuf = tbl;
+	}
+
+	if (imebuffer < 3) return;
+	if (!dicttblbuf && dicttblent > 0) {
+		ofs = (off_t)(dicttblent + 1) * 4 + 4;
+		size = (ALLOC_T)hinsitblofs - ofs;
+		if (!(tbl = gendicttbl(fd, ofs, size, 2))) return;
+		dicttblbuf = tbl;
+	}
 }
+# endif	/* !DEP_EMBEDDICTTBL */
 
 VOID discarddicttable(VOID_A)
 {
+# ifndef	DEP_EMBEDDICTTBL
 	Xfree(hinsiindexbuf);
 	hinsiindexbuf = NULL;
 	Xfree(hinsitblbuf);
 	hinsitblbuf = NULL;
+	Xfree(dictindexbuf);
+	dictindexbuf = NULL;
+	Xfree(dicttblbuf);
+	dicttblbuf = NULL;
+# endif
 }
 
 static int NEAR fputbyte(c, fd)
@@ -640,33 +747,33 @@ CONST u_short *kana, *kbuf;
 
 	n = copyuserfreq(&tmp1, &tmp2, fdin, fdout);
 	if (fdin < 0) {
-#if	!MSDOS && !defined (CYGWIN)
+# if	!MSDOS && !defined (CYGWIN)
 		if (n < 0) VOID_C Xunlink(path);
 		lockclose(lck);
-#else
+# else
 		lockclose(lck);
 		if (n < 0) VOID_C Xunlink(path);
-#endif
+# endif
 	}
 	else {
-#if	!MSDOS && !defined (CYGWIN)
+# if	!MSDOS && !defined (CYGWIN)
 		if (n >= 0) n = Xrename(path, cp);
 		VOID_C openfreqtbl(NULL, 0);
 		VOID_C Xclose(fdout);
-#else	/* MSDOS || CYGWIN */
+# else	/* MSDOS || CYGWIN */
 		VOID_C openfreqtbl(NULL, 0);
 		VOID_C Xclose(fdout);
 		if (n >= 0) {
-# if	MSDOS
+#  if	MSDOS
 			n = Xrename(path, cp);
-# else
+#  else
 			while ((n = Xrename(path, cp)) < 0) {
 				if (errno != EACCES) break;
 				usleep(100000L);
 			}
-# endif
+#  endif
 		}
-#endif	/* MSDOS || CYGWIN */
+# endif	/* MSDOS || CYGWIN */
 		if (n < 0) VOID_C Xunlink(path);
 	}
 
@@ -869,15 +976,15 @@ int fd;
 {
 	u_char c;
 
-	if (Xlseek(fd, ofs, L_SET) < (off_t)0) return((off_t)-1);
+	if (dictlseek(fd, ofs, L_SET) < (off_t)0) return((off_t)-1);
 	if (fgetbyte(&c, fd) < 0) return((off_t)-1);
 	ofs = (off_t)c * 2 + 2;
-	if ((ofs = Xlseek(fd, ofs, L_INCR)) < (off_t)0) return((off_t)-1);
+	if ((ofs = dictlseek(fd, ofs, L_INCR)) < (off_t)0) return((off_t)-1);
 	if (hinsitblent <= 0) return(ofs);
 	if (fgetbyte(&c, fd) < 0) return((off_t)-1);
 	ofs = (off_t)c * 2;
 
-	return(Xlseek(fd, ofs, L_INCR));
+	return(dictlseek(fd, ofs, L_INCR));
 }
 
 static long NEAR _searchdict(argc, argvp, kp, fd)
@@ -891,6 +998,7 @@ int fd;
 	u_char c;
 	int n;
 
+	dictofs = (off_t)0;
 	min = -1L;
 	max = dicttblent;
 	tmp1.kbuf = kp -> kbuf;
@@ -911,7 +1019,8 @@ int fd;
 	if (fgetbyte(&c, fd) < 0) return(argc);
 	if (c <= 1) return(addkanjilist(argc, argvp, 0, NULL, kp, fd));
 
-	if ((curofs = Xlseek(fd, (off_t)0, L_INCR)) < (off_t)0) return(argc);
+	curofs = dictlseek(fd, (off_t)0, L_INCR);
+	if (curofs < (off_t)0) return(argc);
 	argv2 = NULL;
 	argc2 = 0L;
 	if (hinsitblent > 0 && kp -> len < kp -> klen) {
@@ -923,7 +1032,7 @@ int fd;
 		if (!argv2) return(argc);
 	}
 
-	if (Xlseek(fd, curofs, L_SET) >= (off_t)0) {
+	if (dictlseek(fd, curofs, L_SET) >= (off_t)0) {
 		for (n = 0; n < c; n++, curofs = nextofs(curofs, fd)) {
 			if (curofs < (off_t)0) break;
 			argc = addkanjilist(argc, argvp, argc2, argv2, kp, fd);
@@ -1001,16 +1110,29 @@ int len;
 	freekanjilist(NULL);
 
 	if (!kana) {
+# ifndef	DEP_EMBEDDICTTBL
 		VOID_C opendicttbl(NULL);
+# endif
 		VOID_C openfreqtbl(NULL, 0);
-		if (!imebuffer) discarddicttable();
+		if (imebuffer <= 0) discarddicttable();
 		return(NULL);
 	}
 
 	if (len > MAXUTYPE(u_char)) len = MAXUTYPE(u_char);
 	argc = 0L;
-	if ((fd = opendicttbl(DICTTBL)) < 0) return(NULL);
-	readdicttable(fd);
+# ifdef	DEP_EMBEDDICTTBL
+	fd = -1;
+# else
+	if (dicttblbuf) fd = -1;
+	else if ((fd = opendicttbl(DICTTBL)) < 0) return(NULL);
+	else {
+		readdicttable(fd);
+		if (dicttblbuf) {
+			VOID_C opendicttbl(NULL);
+			fd = -1;
+		}
+	}
+# endif
 	tmp.kbuf = kana;
 	tmp.klen = len;
 	tmp.hinsi[0] = (u_short)HN_SENTOU;

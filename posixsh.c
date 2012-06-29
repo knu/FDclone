@@ -430,7 +430,7 @@ char *ident, *comm;
 int deletealias(ident)
 CONST char *ident;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	int i, n, max;
 
 	n = 0;

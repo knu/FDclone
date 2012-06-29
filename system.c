@@ -3925,6 +3925,10 @@ redirectlist *rp;
 	}
 	else {
 #ifdef	WITHSOCKREDIR
+# ifdef	FAKEUNINIT
+		addr = NULL;
+		port = -1;
+# endif
 		if ((scheme = parsesocket(tmp, &addr, &port))) {
 			if (scheme < 0) return(rp);
 			opt = SCK_LOWDELAY;
@@ -7677,7 +7681,7 @@ syntaxtree *trp;
 {
 	syntaxtree *var, *body;
 	command_t *comm;
-	reg_t *re;
+	reg_ex_t *re;
 	char *tmp, *key;
 	int i, n, ret;
 

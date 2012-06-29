@@ -1281,7 +1281,7 @@ char *CONST *argv;
 		}
 #endif	/* !MSDOS */
 		for (i = 0; i < 2; i++) loadhistory(i);
-		entryhist(origpath, HST_PATH | HST_UNIQ);
+		VOID_C entryhist(origpath, HST_PATH | HST_UNIQ);
 	}
 #ifdef	DEP_LOGGING
 	startlog(argv);
@@ -1458,6 +1458,7 @@ char *CONST argv[], *CONST envp[];
 #endif
 	sigvecset(0);
 
+	VOID_C entryhist(NULL, -1);
 #ifdef	DEP_DYNAMICLIST
 	helpindex = copystrarray(NULL, orighelpindex, NULL, MAXHELPINDEX);
 	for (i = 0; origbindlist[i].key >= 0; i++) /*EMPTY*/;
@@ -1533,7 +1534,7 @@ char *CONST argv[], *CONST envp[];
 	}
 	interactive = fdmode = 1;
 	setshellvar(envp);
-	prepareterm();
+	if (prepareterm() < 0) error(NULL);
 	argc = initoption(argc, argv);
 	if (dumbterm > 1) {
 		errno = 0;

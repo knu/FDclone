@@ -2059,10 +2059,10 @@ statfs_t *buf;
 # ifndef	_NODOSDRIVE
 	if (i == -2) {
 		if (dosstatfs(drive, tmp) < 0) return(-1);
-		buf -> f_bsize = *((u_long *)&(tmp[0 * sizeof(long)]));
-		buf -> f_blocks = *((u_long *)&(tmp[1 * sizeof(long)]));
-		buf -> f_bfree =
-		buf -> f_bavail = *((u_long *)&(tmp[2 * sizeof(long)]));
+		buf -> Xf_bsize = *((u_long *)&(tmp[0 * sizeof(long)]));
+		buf -> Xf_blocks = *((u_long *)&(tmp[1 * sizeof(long)]));
+		buf -> Xf_bfree =
+		buf -> Xf_bavail = *((u_long *)&(tmp[2 * sizeof(long)]));
 	}
 	else
 # endif
@@ -2081,11 +2081,11 @@ statfs_t *buf;
 # ifdef	DJGPP
 		dosmemget(__tb, sizeof(fsbuf), &fsbuf);
 # endif
-		buf -> f_bsize = (u_long)fsbuf.f_clustsize
+		buf -> Xf_bsize = (u_long)fsbuf.f_clustsize
 			* (long)fsbuf.f_sectsize;
-		buf -> f_blocks = (u_long)fsbuf.f_blocks;
-		buf -> f_bfree =
-		buf -> f_bavail = (u_long)fsbuf.f_bavail;
+		buf -> Xf_blocks = (u_long)fsbuf.f_blocks;
+		buf -> Xf_bfree =
+		buf -> Xf_bavail = (u_long)fsbuf.f_bavail;
 	}
 	else
 #endif	/* !_NOUSELFN */
@@ -2095,16 +2095,16 @@ statfs_t *buf;
 		int21call(&reg, &sreg);
 		if (reg.x.ax == 0xffff) return(seterrno(ENOENT));
 
-		buf -> f_bsize = (u_long)(reg.x.ax) * (u_long)(reg.x.cx);
-		buf -> f_blocks = (u_long)(reg.x.dx);
-		buf -> f_bfree =
-		buf -> f_bavail = (u_long)(reg.x.bx);
+		buf -> Xf_bsize = (u_long)(reg.x.ax) * (u_long)(reg.x.cx);
+		buf -> Xf_blocks = (u_long)(reg.x.dx);
+		buf -> Xf_bfree =
+		buf -> Xf_bavail = (u_long)(reg.x.bx);
 	}
 
-	if (!(buf -> f_blocks) || !(buf -> f_bsize)
-	|| buf -> f_blocks < buf -> f_bavail)
+	if (!(buf -> Xf_blocks) || !(buf -> Xf_bsize)
+	|| buf -> Xf_blocks < buf -> Xf_bavail)
 		return(seterrno(EIO));
-	buf -> f_files = -1L;
+	buf -> Xf_files = -1L;
 
 	return(0);
 }

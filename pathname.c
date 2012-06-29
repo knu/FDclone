@@ -81,7 +81,7 @@ static int NEAR isescape __P_((CONST char *, int, int, int, int));
 #ifdef	_NOORIGGLOB
 static char *NEAR cnvregexp __P_((CONST char *, int));
 #else
-static int NEAR _regexp_exec __P_((CONST reg_t *, CONST char *));
+static int NEAR _regexp_exec __P_((CONST reg_ex_t *, CONST char *));
 #endif
 static VOID NEAR addstrbuf __P_((strbuf_t *, CONST char *, int));
 static VOID NEAR duplwild __P_((wild_t *, CONST wild_t *));
@@ -211,7 +211,7 @@ int *drvp, *typep;
 	else if ((n = _urlpath(s, NULL, NULL))) type = PT_URL;
 #endif
 
-	if (drv) *drvp = drv;
+	if (drvp) *drvp = drv;
 	if (typep) *typep = type;
 
 	return(n);
@@ -747,7 +747,7 @@ extern int re_exec __P_((CONST char *));
 extern int re_ignore_case;
 # endif
 
-reg_t *regexp_init(s, len)
+reg_ex_t *regexp_init(s, len)
 CONST char *s;
 int len;
 {
@@ -771,12 +771,12 @@ int len;
 # endif
 	Xfree(new);
 
-	return((reg_t *)1);
+	return((reg_ex_t *)1);
 }
 
 /*ARGSUSED*/
 int regexp_exec(re, s, fname)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *s;
 int fname;
 {
@@ -787,7 +787,7 @@ int fname;
 
 /*ARGSUSED*/
 VOID regexp_free(re)
-reg_t *re;
+reg_ex_t *re;
 {
 	return;
 }
@@ -795,17 +795,17 @@ reg_t *re;
 #else	/* !USERE_COMP */
 # ifdef	USEREGCOMP
 
-reg_t *regexp_init(s, len)
+reg_ex_t *regexp_init(s, len)
 CONST char *s;
 int len;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	char *new;
 	int n;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
 	s = new = cnvregexp(s, len);
-	re = (reg_t *)Xmalloc(sizeof(reg_t));
+	re = (reg_ex_t *)Xmalloc(sizeof(reg_ex_t));
 # ifdef	PATHNOCASE
 	n = regcomp(re, s, REG_EXTENDED | REG_ICASE);
 # else
@@ -821,7 +821,7 @@ int len;
 }
 
 int regexp_exec(re, s, fname)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *s;
 int fname;
 {
@@ -831,7 +831,7 @@ int fname;
 }
 
 VOID regexp_free(re)
-reg_t *re;
+reg_ex_t *re;
 {
 	if (re) {
 		regfree(re);
@@ -844,11 +844,11 @@ reg_t *re;
 extern char *regcmp __P_((CONST char *, int));
 extern char *regex __P_((CONST char *, CONST char *, ...));
 
-reg_t *regexp_init(s, len)
+reg_ex_t *regexp_init(s, len)
 CONST char *s;
 int len;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	char *new;
 
 	skipdotfile = (*s == '*' || *s == '?' || *s == '[');
@@ -860,7 +860,7 @@ int len;
 }
 
 int regexp_exec(re, s, fname)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *s;
 int fname;
 {
@@ -870,17 +870,17 @@ int fname;
 }
 
 VOID regexp_free(re)
-reg_t *re;
+reg_ex_t *re;
 {
 	Xfree(re);
 }
 #  else	/* !USEREGCMP */
 
-reg_t *regexp_init(s, len)
+reg_ex_t *regexp_init(s, len)
 CONST char *s;
 int len;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	char *cp, *paren;
 	ALLOC_T size;
 	int i, j, n, pc, plen, metachar, quote;
@@ -891,7 +891,7 @@ int len;
 	paren = NULL;
 	n = plen = size = 0;
 	quote = '\0';
-	re = b_realloc(re, n, reg_t);
+	re = b_realloc(re, n, reg_ex_t);
 	re[n] = NULL;
 	for (i = 0; i < len; i++) {
 		cp = NULL;
@@ -1018,7 +1018,7 @@ int len;
 			cp[j] = '\0';
 		}
 		re[n++] = cp;
-		re = b_realloc(re, n, reg_t);
+		re = b_realloc(re, n, reg_ex_t);
 		re[n] = NULL;
 	}
 	if (paren) {
@@ -1029,15 +1029,15 @@ int len;
 		}
 		cp = Xstrdup("[");
 		re[n++] = cp;
-		re = b_realloc(re, n, reg_t);
+		re = b_realloc(re, n, reg_ex_t);
 		re[n] = NULL;
 	}
 
-	return((reg_t *)Xrealloc(re, (n + 1) * sizeof(reg_t)));
+	return((reg_ex_t *)Xrealloc(re, (n + 1) * sizeof(reg_ex_t)));
 }
 
 static int NEAR _regexp_exec(re, s)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *s;
 {
 	int i, n1, n2, c1, c2, beg, rev;
@@ -1100,7 +1100,7 @@ CONST char *s;
 }
 
 int regexp_exec(re, s, fname)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *s;
 int fname;
 {
@@ -1110,7 +1110,7 @@ int fname;
 }
 
 VOID regexp_free(re)
-reg_t *re;
+reg_ex_t *re;
 {
 	int i;
 
@@ -1177,7 +1177,7 @@ wild_t *wp;
 	DIR *dirp;
 	struct dirent *dp;
 	struct stat st;
-	reg_t *re;
+	reg_ex_t *re;
 	wild_t dupl;
 	ALLOC_T flen, plen;
 	CONST char *cp;
@@ -1765,6 +1765,7 @@ char ***argvp;
 }
 
 # ifndef	NOUID
+#  ifndef	NOGETPWENT
 int completeuser(name, len, argc, argvp, home)
 CONST char *name;
 int len, argc;
@@ -1776,7 +1777,7 @@ int home;
 	ALLOC_T size;
 
 	len = strlen(name);
-#  ifdef	DEBUG
+#   ifdef	DEBUG
 	_mtrace_file = "setpwent(start)";
 	setpwent();
 	if (_mtrace_file) _mtrace_file = NULL;
@@ -1810,7 +1811,7 @@ int home;
 		_mtrace_file = "endpwent(end)";
 		malloc(0);	/* dummy alloc */
 	}
-#  else	/* !DEBUG */
+#   else	/* !DEBUG */
 	setpwent();
 	while ((pwd = getpwent())) {
 		if (strnpathcmp(name, pwd -> pw_name, len)) continue;
@@ -1824,11 +1825,13 @@ int home;
 		argc = addcompletion(NULL, new, argc, argvp);
 	}
 	endpwent();
-#  endif	/* !DEBUG */
+#   endif	/* !DEBUG */
 
 	return(argc);
 }
+#  endif	/* !NOGETPWENT */
 
+#  ifndef	NOGETGRENT
 int completegroup(name, len, argc, argvp)
 CONST char *name;
 int len, argc;
@@ -1837,7 +1840,7 @@ char ***argvp;
 	struct group *grp;
 
 	len = strlen(name);
-#  ifdef	DEBUG
+#   ifdef	DEBUG
 	_mtrace_file = "setgrent(start)";
 	setgrent();
 	if (_mtrace_file) _mtrace_file = NULL;
@@ -1864,17 +1867,18 @@ char ***argvp;
 		_mtrace_file = "endgrent(end)";
 		malloc(0);	/* dummy alloc */
 	}
-#  else	/* !DEBUG */
+#   else	/* !DEBUG */
 	setgrent();
 	while ((grp = getgrent())) {
 		if (strnpathcmp(name, grp -> gr_name, len)) continue;
 		argc = addcompletion(grp -> gr_name, NULL, argc, argvp);
 	}
 	endgrent();
-#  endif	/* !DEBUG */
+#   endif	/* !DEBUG */
 
 	return(argc);
 }
+#  endif	/* !NOGETGRENT */
 # endif	/* !NOUID */
 
 static int NEAR completefile(file, len, argc, argvp, dir, dlen, exe)
@@ -1986,7 +1990,7 @@ int exe;
 		return(completefile(file, strlen(file), argc, argvp,
 			path, dlen, exe));
 	}
-# ifndef	NOUID
+# if	!defined (NOUID) && !defined (NOGETPWENT)
 	else if (*path == '~')
 		return(completeuser(&(path[1]), len - 1, argc, argvp, 1));
 # endif
@@ -2339,7 +2343,7 @@ static char *NEAR removeword(s, pattern, plen, mode)
 CONST char *s, *pattern;
 int plen, mode;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	CONST char *cp;
 	char *ret, *tmp, *new;
 	int c, n, len;

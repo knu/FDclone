@@ -74,7 +74,7 @@ static int mark_file2 __P_((CONST char *));
 static int mark_file3 __P_((CONST char *));
 static int mark_all __P_((CONST char *));
 static int mark_reverse __P_((CONST char *));
-static reg_t *NEAR prepareregexp __P_((CONST char *, CONST char *));
+static reg_ex_t *NEAR prepareregexp __P_((CONST char *, CONST char *));
 static int mark_find __P_((CONST char *));
 static int in_dir __P_((CONST char *));
 static int out_dir __P_((CONST char *));
@@ -161,7 +161,7 @@ static int no_operation __P_((CONST char *));
 
 #include "functabl.h"
 
-reg_t *findregexp = NULL;
+reg_ex_t *findregexp = NULL;
 #ifndef	_NOWRITEFS
 int writefs = 0;
 #endif
@@ -499,7 +499,7 @@ CONST char *arg;
 static int cur_top(arg)
 CONST char *arg;
 {
-	if (filepos == 0) return(FNC_NONE);
+	if (filepos <= 0) return(FNC_NONE);
 	filepos = 0;
 
 	return(FNC_UPDATE);
@@ -509,7 +509,7 @@ CONST char *arg;
 static int cur_bottom(arg)
 CONST char *arg;
 {
-	if (filepos == maxfile - 1) return(FNC_NONE);
+	if (filepos >= maxfile - 1) return(FNC_NONE);
 	filepos = maxfile - 1;
 
 	return(FNC_UPDATE);
@@ -714,10 +714,10 @@ CONST char *arg;
 	return(FNC_UPDATE);
 }
 
-static reg_t *NEAR prepareregexp(mes, arg)
+static reg_ex_t *NEAR prepareregexp(mes, arg)
 CONST char *mes, *arg;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	char *wild;
 
 	if (arg && *arg) wild = Xstrdup(arg);
@@ -737,7 +737,7 @@ CONST char *mes, *arg;
 static int mark_find(arg)
 CONST char *arg;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	int i;
 
 	if (!(re = prepareregexp(FINDF_K, arg))) return(FNC_CANCEL);
@@ -758,8 +758,11 @@ CONST char *arg;
 static int in_dir(arg)
 CONST char *arg;
 {
-	if (!isdir(&(filelist[filepos]))
-	|| isdotdir(filelist[filepos].name) == 2)
+	if (!isdir(&(filelist[filepos]))) return(warning_bell(arg));
+#ifndef	_NOARCHIVE
+	else if (archivefile) /*EMPTY*/;
+#endif
+	else if (isdotdir(filelist[filepos].name) == 2)
 		return(warning_bell(arg));
 
 	return(dochdir4(filelist[filepos].name, 1));
@@ -1533,7 +1536,9 @@ CONST char *arg;
 		if (!com) return(FNC_CANCEL);
 	}
 	if (*com) {
-		ret = ptyusercomm(com, filelist[filepos].name, F_ARGSET);
+		ret = ptyusercomm(com,
+			(filepos < maxfile) ? filelist[filepos].name : NULL,
+			F_ARGSET);
 		ret = evalstatus(ret);
 	}
 	else {

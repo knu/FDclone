@@ -20,7 +20,7 @@
 #include <sys/timeb.h>
 #endif
 #ifdef	LINUX
-#include <mntent.h>
+#include "mntinfo.h"
 #include <sys/mount.h>
 #include <linux/unistd.h>
 # ifndef	BLKFLSBUF
@@ -66,13 +66,15 @@
 #define	D_SECSIZE(dl)		(dl).d_secsize
 #endif
 
-#ifndef	MOUNTED
-#define	MOUNTED			"/etc/mtab"
-#endif
-
 #if	defined (USELLSEEK) && !defined (_syscall5)
-#define	_llseek(f,h,l,r,w)	syscall(SYS__llseek, f, h, l, r, w)
-#endif
+# if	defined (__NR__llseek) && !defined (SYS__llseek)
+# define	SYS__llseek	__NR__llseek
+# endif
+# ifdef	SYS__llseek
+# define	_llseek(f,h,l,r,w) \
+				syscall(SYS__llseek, f, h, l, r, w)
+# endif
+#endif	/* USELLSEEK && !_syscall5 */
 
 #define	KC_SJIS1		0001
 #define	KC_SJIS2		0002
@@ -1418,7 +1420,7 @@ CONST bpb_t *bpbcache;
 #endif
 #ifdef	LINUX
 	struct stat st1, st2;
-	struct mntent *mntp;
+	mnt_t *mntp, mnt;
 	FILE *fp;
 #endif
 	CONST bpb_t *bpb;
@@ -1467,28 +1469,29 @@ CONST bpb_t *bpbcache;
 		}
 # endif
 # ifdef	LINUX
-		if (i == (O_BINARY | O_RDWR)) {
-			if (stat(devp -> ch_name, &st1)) {
-				doserrno = errno;
-				errno = duperrno;
-				return(-1);
-			}
-			if ((fp = setmntent(MOUNTED, "r"))) {
-				while ((mntp = getmntent(fp))) {
-#  if	1
-					if (strstr(mntp -> mnt_opts, "ro"))
-						continue;
+		if (i != (O_BINARY | O_RDWR)) /*EMPTY*/;
+		else if (stat(devp -> ch_name, &st1) < 0) {
+			doserrno = errno;
+			errno = duperrno;
+			return(-1);
+		}
+		else if ((fp = Xsetmntent(MOUNTED, "r"))) {
+#  ifdef	FAKEUNINIT
+			mntp = &mnt;
 #  endif
-					if (stat(mntp -> mnt_fsname, &st2))
-						continue;
-					if (st1.st_ino == st2.st_ino) {
-						i = (O_BINARY | O_RDONLY);
-						devp -> flags |= F_RONLY;
-						break;
-					}
+			while ((mntp = Xgetmntent(fp, &mnt))) {
+#  if	1
+				if (Xhasmntopt(mntp, "ro")) continue;
+#  endif
+				if (stat(mntp -> Xmnt_fsname, &st2) < 0)
+					continue;
+				if (st1.st_ino == st2.st_ino) {
+					i = (O_BINARY | O_RDONLY);
+					devp -> flags |= F_RONLY;
+					break;
 				}
-				endmntent(fp);
 			}
+			Xendmntent(fp);
 		}
 # endif	/* LINUX */
 		if ((fd = open(devp -> ch_name, i, 0666)) < 0) {

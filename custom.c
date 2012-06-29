@@ -656,6 +656,14 @@ VOID initenv(VOID_A)
 				&& (*(char **)(envlist[i].var)))
 					*((char **)(envlist[i].var)) = NULL;
 				break;
+#ifdef	DEFKCODE
+			case T_KIN:
+			case T_KOUT:
+			case T_KNAM:
+			case T_KTERM:
+				setenv2(env_str(i), DEFKCODE, 0);
+/*FALLTHRU*/
+#endif
 			default:
 #if	!MSDOS && defined (FORCEDSTDC)
 				if (w > 0) {

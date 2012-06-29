@@ -128,15 +128,15 @@ va_list args;
 	return(n);
 }
 
-#ifdef	USESTDARGH
+# ifdef	USESTDARGH
 /*VARARGS1*/
 char *asprintf2(CONST char *fmt, ...)
-#else
+# else
 /*VARARGS1*/
 char *asprintf2(fmt, va_alist)
 CONST char *fmt;
 va_dcl
-#endif
+# endif
 {
 	va_list args;
 	char *cp;

@@ -20,7 +20,7 @@
 #include "auth.h"
 #include "urldisk.h"
 
-#if	!MSDOS && !defined (MINIX)
+#ifndef	NOFTPH
 #include <arpa/ftp.h>
 #endif
 

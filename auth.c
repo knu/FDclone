@@ -97,10 +97,16 @@ char *authgetpass(VOID_A)
 
 #ifdef	FD
 	cp = inputpass();
-#else
+#else	/* !FD */
+# ifdef	NOGETPASS
+	VOID_C Xfputs("Password:", Xstderr);
+	VOID_C Xfflush(Xstderr);
+	if (!(cp = Xfgets(Xstdin))) cp = Xstrdup(nullstr);
+# else
 	if (!(cp = getpass("Password:"))) cp = vnullstr;
 	cp = Xstrdup(cp);
-#endif
+# endif
+#endif	/* !FD */
 
 	return(cp);
 }

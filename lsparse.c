@@ -1237,7 +1237,7 @@ char *CONST *argv;
 # ifndef	PATHNOCASE
 	int duppathignorecase;
 # endif
-	reg_t *re;
+	reg_ex_t *re;
 	CONST char *s1, *s2;
 	char *new;
 	int i, len, ret;

@@ -7,11 +7,15 @@
    Then you will move the "/*" on beginning of the line to the
    place before ';' after it, referring to an attached comment
    content.
-   Especially, in the following two configurations,
+   Especially, in the following four configurations,
    the administrator sometimes setups differently from the
    OS default setups. Then you must be careful to select.
 	CODEEUC		This OS uses the EUC-JP Kanji code.
 			(If undefined, it means Shift JIS is used.)
+	DEFKCODE	The string which specifies the Kanji
+			code used as OS standard.
+	UTF8DOC		This OS uses UTF-8 as the Kanji code
+			for documents.
 	TARUSESPACE	tar(1) with t option will output the
 			list in which each file mode string
 			is always followed by spaces.
@@ -23,6 +27,7 @@
 	(free)	Linux		(2.x)
 	(free)	FreeBSD		(2.x, 3.x, 4.x, 5.x, 6.x)
 	(free)	MINIX		(3.x)
+	Google	Android		(1.x, 2.x, 3.x, 4.x)
 	Apple	Mac OS X	(10.x)
 
    In the following OS, while it is not confirmed whether Ver.
@@ -96,6 +101,10 @@
    is used for local executable files generated in build
    process. In this example, 'lcc80' is used as a compiler
    and 'cc' is used as a local compiler.
+   In this case, the identifiers of 'CFLAGS'/'HOSTCFLAGS,
+   'CPPFLAGS'/'HOSTCPPFLAGS' and 'LDFLAGS'/'HOSTLDFLAGS' can
+   be also specified, to specify compiling options individually
+   for cross-compiling and local compiling.
    It is supposed that files are installed under '/usr/local'
    by default. You can specify the installation path as
    "make PREFIX=/usr". In this example, it is supposed that

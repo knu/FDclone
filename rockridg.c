@@ -118,6 +118,9 @@ int len;
 	int l1, l2, flags;
 
 	norockridge++;
+#ifdef	FAKEUNINIT
+	flags = 0;
+#endif
 	fp = opentranstbl(path, len, &flags);
 	norockridge--;
 	if (!fp) return(NULL);
@@ -180,7 +183,7 @@ int len;
 		new -> alias = Xstrndup(cp, l1);
 		new -> slink = (l2 > 0) ? Xstrndup(eol, l2 - 1) : NULL;
 		new -> type = *line;
-		new -> rdev = (maj >= (r_dev_t)0)
+		new -> rdev = (maj != (r_dev_t)-1)
 			? makedev(maj, min) : (r_dev_t)-1;
 
 		*bottom = new;

@@ -20,7 +20,7 @@
 #if	!MSDOS
 #include <netinet/in.h>
 # ifndef	MINIX
-#include <netinet/ip.h>
+# include <netinet/ip.h>
 # endif
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -35,9 +35,9 @@ static int NEAR getaddr __P_((CONST char *, struct in_addr **));
 static int NEAR setsockopt2 __P_((int, int, int, int));
 static int NEAR preconnect __P_((int, int));
 static int NEAR preaccept __P_((int, struct sockaddr_in *, sock_len_t, int));
-#ifdef	SO_ERROR
+# ifdef	SO_ERROR
 static int NEAR checkprogress __P_((int, long));
-#endif
+# endif
 static int NEAR sureconnect __P_((int, struct sockaddr_in *, int));
 
 
@@ -63,16 +63,16 @@ struct in_addr **listp;
 
 	if (!s || !*s) return(seterrno(EINVAL));
 
-#ifdef	USEINETATON
+# ifdef	USEINETATON
 	n = (inet_aton(s, &(sin.sin_addr))) ? 0 : -1;
-#else	/* !USEINETATON */
-# ifdef	USEINETPTON
+# else	/* !USEINETATON */
+#  ifdef	USEINETPTON
 	n = (inet_pton(AF_INET, s, &(sin.sin_addr)) > 0) ? 0: -1;
-# else
+#  else
 	sin.sin_addr.s_addr = inet_addr(s);
 	n = (sin.sin_addr.s_addr != INADDR_NONE) ? 0 : -1;
-# endif
-#endif	/* !USEINETATON */
+#  endif
+# endif	/* !USEINETATON */
 
 	if (n >= 0) {
 		naddr = 1;
@@ -82,14 +82,14 @@ struct in_addr **listp;
 	else if (!(hp = gethostbyname(s)) || hp -> h_addrtype != AF_INET)
 		return(seterrno(ENOENT));
 	else {
-#ifdef	NOHADDRLIST
+# ifdef	NOHADDRLIST
 		naddr = 1;
 		addr = &(hp -> h_addr);
-#else
+# else
 		for (n = 0; hp -> h_addr_list[n]; n++) /*EMPTY*/;
 		naddr = n;
 		addr = hp -> h_addr_list;
-#endif
+# endif
 	}
 
 	new = (struct in_addr *)Xmalloc(naddr * sizeof(struct in_addr));
@@ -128,15 +128,15 @@ CONST char *s1, *s2;
 int issocket(s)
 int s;
 {
-#if	defined (SOL_SOCKET) && defined (SO_TYPE)
+# if	defined (SOL_SOCKET) && defined (SO_TYPE)
 	sock_len_t len;
 	int n;
 
 	len = sizeof(n);
 	return(getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len));
-#else
+# else
 	return(-1);
-#endif
+# endif
 }
 
 int getsockinfo(s, buf, size, portp, peer)
@@ -172,34 +172,34 @@ int s, level, name, val;
 int chgsockopt(s, opt)
 int s, opt;
 {
-#if	defined (IPPROTO_IP) && defined (IP_TOS)
+# if	defined (IPPROTO_IP) && defined (IP_TOS)
 	int tos;
-#endif
+# endif
 	int n;
 
 	n = 0;
-#if	defined (IPPROTO_IP) && defined (IP_TOS)
+# if	defined (IPPROTO_IP) && defined (IP_TOS)
 	switch (opt & SCK_TOSTYPE) {
-# ifdef	IPTOS_LOWDELAY
+#  ifdef	IPTOS_LOWDELAY
 		case SCK_LOWDELAY:
 			tos = IPTOS_LOWDELAY;
 			break;
-# endif
-# ifdef	IPTOS_THROUGHPUT
+#  endif
+#  ifdef	IPTOS_THROUGHPUT
 		case SCK_THROUGHPUT:
 			tos = IPTOS_THROUGHPUT;
 			break;
-# endif
-# ifdef	IPTOS_RELIABILITY
+#  endif
+#  ifdef	IPTOS_RELIABILITY
 		case SCK_RELIABILITY:
 			tos = IPTOS_RELIABILITY;
 			break;
-# endif
-# ifdef	IPTOS_MINCOST
+#  endif
+#  ifdef	IPTOS_MINCOST
 		case SCK_MINCOST:
 			tos = IPTOS_MINCOST;
 			break;
-# endif
+#  endif
 		case SCK_NORMAL:
 			tos = 0;
 			break;
@@ -210,22 +210,22 @@ int s, opt;
 	if (tos >= 0) {
 		if (setsockopt2(s, IPPROTO_IP, IP_TOS, tos) < 0) n = -1;
 	}
-#endif	/* IPPROTO_IP && IP_TOS */
-#ifdef	SOL_SOCKET
-# ifdef	SO_KEEPALIVE
+# endif	/* IPPROTO_IP && IP_TOS */
+# ifdef	SOL_SOCKET
+#  ifdef	SO_KEEPALIVE
 	if (opt & SCK_KEEPALIVE) {
 		if (setsockopt2(s, SOL_SOCKET, SO_KEEPALIVE, 1) < 0) n = -1;
 	}
-# endif
+#  endif
 	if (opt & SCK_REUSEADDR) {
-# ifdef	SO_REUSEADDR
+#  ifdef	SO_REUSEADDR
 		if (setsockopt2(s, SOL_SOCKET, SO_REUSEADDR, 1) < 0) n = -1;
-# endif
-# ifdef	SO_REUSEPORT
+#  endif
+#  ifdef	SO_REUSEPORT
 		if (setsockopt2(s, SOL_SOCKET, SO_REUSEPORT, 1) < 0) n = -1;
-# endif
+#  endif
 	}
-#endif	/* SOL_SOCKET */
+# endif	/* SOL_SOCKET */
 
 	return(n);
 }
@@ -256,7 +256,7 @@ int opt;
 	return(0);
 }
 
-#ifdef	SO_ERROR
+# ifdef	SO_ERROR
 static int NEAR checkprogress(s, usec)
 int s;
 long usec;
@@ -285,7 +285,7 @@ long usec;
 
 	return(1);
 }
-#endif	/* SO_ERROR */
+# endif	/* SO_ERROR */
 
 static int NEAR sureconnect(s, sinp, timeout)
 int s;
@@ -299,22 +299,22 @@ int timeout;
 		n = connect(s,
 			(struct sockaddr *)sinp, sizeof(struct sockaddr_in));
 		if (n >= 0) break;
-#ifdef	EAGAIN
+# ifdef	EAGAIN
 		else if (errno == EAGAIN) continue;
-#endif
-#ifdef	EALREADY
+# endif
+# ifdef	EALREADY
 		else if (errno == EALREADY) /*EMPTY*/;
-#endif
-#ifdef	EINPROGRESS
+# endif
+# ifdef	EINPROGRESS
 		else if (errno == EINPROGRESS) /*EMPTY*/;
-#endif	/* EINPROGRESS */
+# endif
 		else return(-1);
 
-#ifdef	SO_ERROR
+# ifdef	SO_ERROR
 		n = checkprogress(s, 1000000L / 10);
 		if (n < 0) return(-1);
 		if (n) break;
-#endif
+# endif
 	}
 	if (timeout > 0 && i >= timeout * 10) return(seterrno(ETIMEDOUT));
 
@@ -414,12 +414,12 @@ ALLOC_T size;
 {
 	int n;
 
-#ifdef	MINIX
+# ifdef	NOSENDFLAGS
 	n = seterrno(EIO);
-#else
+# else
 	n = send(s, buf, size, MSG_OOB);
 	if (n >= 0 && (ALLOC_T)n < size) n = seterrno(EIO);
-#endif
+# endif
 
 	return(n);
 }

@@ -1087,12 +1087,11 @@ int fd;
 static int NEAR getchunk(uh, fd)
 int uh, fd;
 {
-	int n, c, last, ext, chunk;
+	int n, c, ext, chunk;
 
 	if ((urlhostlist[uh].http) -> chunk) return(0);
 
 	n = ext = chunk = 0;
-	last = '\0';
 	for (;;) {
 		if ((c = chunkgetc(fd)) < 0) return(-1);
 		if (c == '\r') {
@@ -1109,7 +1108,6 @@ int uh, fd;
 			chunk = (chunk << 4) + c;
 			n++;
 		}
-		last = c;
 	}
 	(urlhostlist[uh].http) -> chunk = chunk;
 
@@ -1119,10 +1117,9 @@ int uh, fd;
 static int NEAR gettrailer(fd)
 int fd;
 {
-	int n, c, last;
+	int n, c;
 
 	n = 0;
-	last = '\0';
 	for (;;) {
 		if ((c = chunkgetc(fd)) < 0) return(-1);
 		if (c == '\r') {
@@ -1131,7 +1128,6 @@ int fd;
 			break;
 		}
 		n++;
-		last = c;
 	}
 
 	return(n);

@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00k
+VERSION	= 3.00l
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -31,14 +31,14 @@ DICTTXT	= fd-dict.txt
 DICTSRC	=
 CATTBL	= fd-cat.ja
 ECATTBL	= fd-cat.C
-TABLES	= $(UNITBL)  $(CATTBL) $(ECATTBL)
+TABLES	= $(UNITBL) $(CATTBL) $(ECATTBL)
 
 SRC	= main.c printf.c termio.c term.c stream.c \
 	string.c malloc.c time.c \
 	pathname.c system.c posixsh.c doscom.c \
 	log.c sysemu.c dosdisk.c unixdisk.c \
 	realpath.c encode.c \
-	libc.c file.c apply.c \
+	libc.c file.c mntinfo.c statfs.c apply.c \
 	pty.c termemu.c frontend.c backend.c \
 	parse.c builtin.c shell.c \
 	socket.c url.c auth.c \
@@ -47,11 +47,13 @@ SRC	= main.c printf.c termio.c term.c stream.c \
 	kconv.c input.c ime.c dict.c roman.c \
 	info.c rockridg.c tree.c \
 	lsparse.c archive.c \
-	custom.c command.c browse.c \
+	custom.c command.c browse.c
+HSRC	= evalopt.c gentbl.c \
 	mkunitbl.c mkdict.c mktankan.c \
 	mkkanji.c mkcat.c mkdir_p.c \
-	kanjicnv.c expfunc.c mkmfsed.c \
+	kanjicnv.c expfunc.c \
 	mkfuncno.c
+DSRC	= $(DEPDIR)\unitbl.c $(DEPDIR)\dicttbl.c
 HEADER	= fd.h \
 	headers.h machine.h \
 	depend.h \
@@ -63,9 +65,10 @@ HEADER	= fd.h \
 	types.h namelist.h \
 	dosdisk.h unixdisk.h unixemu.h \
 	realpath.h encode.h termemu.h \
-	device.h parse.h lsparse.h \
+	mntinfo.h fsinfo.h device.h parse.h lsparse.h \
 	socket.h url.h auth.h html.h urldisk.h \
 	catalog.h \
+	evalopt.h gentbl.h \
 	kconv.h roman.h hinsi.h \
 	func.h functabl.h
 SSRC	= printf.c termio.c stream.c \
@@ -85,7 +88,7 @@ NSRC	= printf.c termio.c stream.c \
 	socket.c url.c auth.c \
 	ftp.c html.c http.c urldisk.c \
 	lsparse.c
-TSRC	= string.c roman.c kconv.c
+TSRC	= string.c roman.c kconv.c evalopt.c gentbl.c unitbl.c
 
 DOC	= README.eng HISTORY.eng FAQ.eng TECHKNOW.eng \
 	Install.eng ToAdmin.eng LICENSES.eng
@@ -101,12 +104,13 @@ SARGS	= sobject.arg
 NARGS	= nobject.arg
 
 SRCS	= $(DOC) $(MANSRC) $(MANCAT) \
-	Configur Makefile Makefile.in $(SRC) $(HEADER) \
+	Configur Makefile Makefile.in $(SRC) $(HSRC) $(HEADER) \
 	makefile.gpc makefile.g98 \
 	makefile.dpc makefile.d98 \
 	makefile.lpc makefile.l98 \
 	makefile.bpc makefile.b98 \
 	mkmfdosg.sed mkmfdosd.sed mkmfdosl.sed mkmfdosb.sed \
+	mkmfsed.c \
 	config.hin version.h \
 	_fdrc _fdrc.dif fd.spec
 JSRCS	= $(JDOC) $(JMANSRC) $(JMANCAT) \
@@ -144,6 +148,7 @@ ECHO	= command /c echo
 CP	= copy /y
 RM	= del
 LN	= copy /y
+MV	= mv
 CHMOD	= chmod
 TAR	= tar
 LHA	= lha
@@ -161,10 +166,9 @@ OBJ1	= main$(OBJ) printf$(OBJ) termio$(OBJ) term$(OBJ) stream$(OBJ) \
 OBJ2	= pathname$(OBJ) system$(OBJ) posixsh$(OBJ) doscom$(OBJ) \
 	log$(OBJ) sysemu$(OBJ) dosdisk$(OBJ) $(DOSOBJS)
 OBJ3	= realpath$(OBJ) encode$(OBJ) \
-	libc$(OBJ) file$(OBJ) apply$(OBJ) \
+	libc$(OBJ) file$(OBJ) mntinfo$(OBJ) statfs$(OBJ) apply$(OBJ) \
 	pty$(OBJ) termemu$(OBJ) frontend$(OBJ) backend$(OBJ)
-OBJ4	= parse$(OBJ) builtin$(OBJ) shell$(OBJ) \
-
+OBJ4	= parse$(OBJ) builtin$(OBJ) shell$(OBJ)
 OBJ5	= catalog$(OBJ) \
 	kconv$(OBJ) input$(OBJ)
 OBJ6	= info$(OBJ) rockridg$(OBJ) tree$(OBJ) \
@@ -187,19 +191,30 @@ NOBJ3	= nparse$(OBJ) \
 	nsocket$(OBJ) nurl$(OBJ) nauth$(OBJ) \
 	nftp$(OBJ) nhtml$(OBJ) nhttp$(OBJ) nurldisk$(OBJ) \
 	nlsparse$(OBJ)
-TOBJ	= tstring$(OBJ) troman$(OBJ) tkconv$(OBJ)
+KOBJ	= tevalopt$(OBJ)
+COBJ	= tevalopt$(OBJ) tgentbl$(OBJ)
+UOBJ	= tevalopt$(OBJ) tgentbl$(OBJ)
+TOBJ	= tstring$(OBJ) troman$(OBJ) tkconv$(OBJ) tevalopt$(OBJ) tgentbl$(OBJ)
 ALLOC	=
 DEBUG	=
 
-LDFLAGS	=     $(ALLOC)
-CFLAGS	= -DDOSV -O $(DEBUG)
-HOSTCFLAGS = -DDOSV -O
-SLDFLAGS =   $(ALLOC)
-NLDFLAGS =    $(ALLOC)
-FDCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFD=$(VERMAJ)
-SHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERMAJ)
-BSHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERMAJ) -DMINIMUMSHELL
-NSHCFLAGS = $(CFLAGS) $(CPPFLAGS)  -DFDSH=$(VERMAJ) -DWITHNETWORK
+CFLAGS	= -O
+HOSTCFLAGS = $(CFLAGS)
+CPPFLAGS =
+HOSTCPPFLAGS = $(CPPFLAGS)
+LDFLAGS	=
+HOSTLDFLAGS = $(LDFLAGS)
+OSOPTS	= -DDOSV
+COPTS	= $(OSOPTS) $(DEBUG) $(CFLAGS)
+HOSTCOPTS = $(COPTS)
+FLDFLAGS = $(ALLOC) $(LDFLAGS)
+SLDFLAGS = $(ALLOC) $(LDFLAGS)
+NLDFLAGS = $(ALLOC) $(LDFLAGS)
+BUILDFLAGS = $(COPTS) $(CPPFLAGS)
+FDCFLAGS = $(BUILDFLAGS)  -DFD=$(VERMAJ)
+SHCFLAGS = $(BUILDFLAGS)  -DFDSH=$(VERMAJ)
+BSHCFLAGS = $(BUILDFLAGS)  -DFDSH=$(VERMAJ) -DMINIMUMSHELL
+NSHCFLAGS = $(BUILDFLAGS)  -DFDSH=$(VERMAJ) -DWITHNETWORK
 DEFCFLAGS = -DDEFRC='"'$(DOSRC)'"'
 
 .SUFFIXES: .h .c .o .exe
@@ -212,7 +227,7 @@ all: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES)
 
 $(PROGRAM)$(EXE): $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6) $(ARGS)
 #	@sleep 1
-	$(CC)  -o $@ @$(ARGS) $(LDFLAGS)
+	$(CC)  -o $@ @$(ARGS) $(FLDFLAGS)
 	@ren $@ $(PROGRAM)
 	@aout2exe $(PROGRAM)
 	@del $(PROGRAM)
@@ -244,39 +259,39 @@ system$(OBJ): system.c
 # kanji using module
 
 $(PROGRAM).$(MANSEC): kanjicnv$(EXE) $(JMANSRC)
-	.\kanjicnv$(EXE) -s  $(JMANSRC) $@
+	.\kanjicnv$(EXE) -e  $(JMANSRC) $@
 
 $(PROGRAM).$(MANSEC)c: kanjicnv$(EXE) $(JMANCAT)
-	.\kanjicnv$(EXE) -s $(JMANCAT) $@
+	.\kanjicnv$(EXE) -e $(JMANCAT) $@
 
 $(PROGRAM).eng: kanjicnv$(EXE) $(MANCAT)
 	.\kanjicnv$(EXE) -b $(MANCAT) $@
 
 $(PROGRAM).doc: kanjicnv$(EXE) $(JMANCAT)
-	.\kanjicnv$(EXE) -s -b $(JMANCAT) $@
+	.\kanjicnv$(EXE) -e -b $(JMANCAT) $@
 
 README.doc: kanjicnv$(EXE) README
-	.\kanjicnv$(EXE) -s README $@
+	.\kanjicnv$(EXE) -e README $@
 
 HISTORY.doc: kanjicnv$(EXE) HISTORY
-	.\kanjicnv$(EXE) -s HISTORY $@
+	.\kanjicnv$(EXE) -e HISTORY $@
 
 FAQ.doc: kanjicnv$(EXE) FAQ
-	.\kanjicnv$(EXE) -s FAQ $@
+	.\kanjicnv$(EXE) -e FAQ $@
 
 LICENSES.doc: kanjicnv$(EXE) LICENSES
-	.\kanjicnv$(EXE) -s LICENSES $@
+	.\kanjicnv$(EXE) -e LICENSES $@
 
-kanjicnv$(EXE): kanjicnv$(OBJ)
+kanjicnv$(EXE): kanjicnv$(OBJ) $(KOBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ kanjicnv$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ kanjicnv$(OBJ) $(KOBJ)
 	@ren $@ kanjicnv
 	@aout2exe kanjicnv
 	@del kanjicnv
 #	@sleep 1
 
 kanjicnv$(OBJ): kanjicnv.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -289,14 +304,14 @@ kanji.h: mkkanji$(EXE) kanjicnv$(EXE) kanji.hin
 
 mkkanji$(EXE): mkkanji$(OBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkkanji$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkkanji$(OBJ)
 	@ren $@ mkkanji
 	@aout2exe mkkanji
 	@del mkkanji
 #	@sleep 1
 
 mkkanji$(OBJ): mkkanji.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 _fd-cat.ja: mkcat$(EXE) kanji.h
 	.\mkcat$(EXE) -c 1 kanji.h $@
@@ -312,16 +327,16 @@ fd-cat.ja: mkcat$(EXE) _fd-cat.ja
 fd-cat.C: mkcat$(EXE) _fd-cat.C
 	.\mkcat$(EXE) _fd-cat.C $@
 
-mkcat$(EXE): mkcat$(OBJ)
+mkcat$(EXE): mkcat$(OBJ) $(COBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkcat$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkcat$(OBJ) $(COBJ)
 	@ren $@ mkcat
 	@aout2exe mkcat
 	@del mkcat
 #	@sleep 1
 
 mkcat$(OBJ): mkcat.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -333,14 +348,14 @@ funcno.h: mkfuncno$(EXE)
 
 mkfuncno$(EXE): mkfuncno$(OBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkfuncno$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkfuncno$(OBJ)
 	@ren $@ mkfuncno
 	@aout2exe mkfuncno
 	@del mkfuncno
 #	@sleep 1
 
 mkfuncno$(OBJ): mkfuncno.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -DFD=$(VERMAJ) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -DFD=$(VERMAJ) -c -o $@ $*.c
 
 
 ############################################################
@@ -349,16 +364,26 @@ mkfuncno$(OBJ): mkfuncno.c
 $(UNITBL): mkunitbl$(EXE)
 	.\mkunitbl$(EXE) $@
 
-mkunitbl$(EXE): mkunitbl$(OBJ)
+unitbl.c: mkunitbl$(EXE)
+	.\mkunitbl$(EXE) -t $@
+
+$(DEPDIR)\unitbl.c: mkunitbl$(EXE)
+	[ -d $(DEPDIR) ] || mkdir $(DEPDIR)
+	.\mkunitbl$(EXE) -t -n $@
+
+mkunitbl$(EXE): mkunitbl$(OBJ) $(UOBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkunitbl$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkunitbl$(OBJ) $(UOBJ)
 	@ren $@ mkunitbl
 	@aout2exe mkunitbl
 	@del mkunitbl
 #	@sleep 1
 
 mkunitbl$(OBJ): mkunitbl.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
+
+tunitbl$(OBJ): unitbl.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ unitbl.c
 
 
 ############################################################
@@ -367,9 +392,16 @@ mkunitbl$(OBJ): mkunitbl.c
 $(DICTTBL): mkdict$(EXE) $(DICTSRC)
 	.\mkdict$(EXE)  $@ $(DICTSRC)
 
+dicttbl.c: mkdict$(EXE) $(DICTSRC)
+	.\mkdict$(EXE)  -t $@ $(DICTSRC)
+
+$(DEPDIR)\dicttbl.c: mkdict$(EXE) $(DICTSRC)
+	[ -d $(DEPDIR) ] || mkdir $(DEPDIR)
+	.\mkdict$(EXE)  -t -n $@ $(DICTSRC)
+
 mkdict$(EXE): mkdict$(OBJ) $(TOBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdict$(OBJ) $(TOBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkdict$(OBJ) $(TOBJ)
 	@ren $@ mkdict
 	@aout2exe mkdict
 	@del mkdict
@@ -377,26 +409,32 @@ mkdict$(EXE): mkdict$(OBJ) $(TOBJ)
 
 mktankan$(EXE): mktankan$(OBJ) $(TOBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mktankan$(OBJ) $(TOBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mktankan$(OBJ) $(TOBJ)
 	@ren $@ mktankan
 	@aout2exe mktankan
 	@del mktankan
 #	@sleep 1
 
 mkdict$(OBJ): mkdict.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 mktankan$(OBJ): mktankan.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 tstring$(OBJ): string.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ string.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ string.c
 
 troman$(OBJ): roman.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ roman.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ roman.c
 
 tkconv$(OBJ): kconv.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ kconv.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ kconv.c
+
+tevalopt$(OBJ): evalopt.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ evalopt.c
+
+tgentbl$(OBJ): gentbl.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ gentbl.c
 
 rmdict:
 	-$(RM) $(DICTTBL)
@@ -411,30 +449,41 @@ $(DICTTXT): mktankan$(EXE)
 
 mkdir_p$(EXE): mkdir_p$(OBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ mkdir_p$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ mkdir_p$(OBJ)
 	@ren $@ mkdir_p
 	@aout2exe mkdir_p
 	@del mkdir_p
 #	@sleep 1
 
 mkdir_p$(OBJ): mkdir_p.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
 # to install all
 
-install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES) mkdir_p$(EXE)
+install: $(PROGRAM)$(EXE) mkdir_p$(EXE) install-table install-man install-jman
 	[ -d $(BINDIR) ] || .\mkdir_p$(EXE) $(BINDIR)
 	$(INSTALL)  $(PROGRAM)$(EXE) $(BINDIR)
 	$(CHMOD) a+rx $(BINDIR)\$(PROGRAM)$(EXE)
 	-$(RM) $(BINDIR)\$(ALIAS)$(EXE)
 	$(LN) $(BINDIR)\$(PROGRAM)$(EXE) $(BINDIR)\$(ALIAS)$(EXE)
 	$(CHMOD) a+rx $(BINDIR)\$(ALIAS)$(EXE)
-	[ -d $(BINDIR) ] || .\mkdir_p$(EXE) $(BINDIR)
+	-if [ -f $(RUNCOM) ]; then \
+		$(INSTALL) $(RUNCOM) $(BLDRC); \
+		$(CHMOD) a+r-x $(BLDRC); \
+	fi
+
+install-table: $(TABLE) mkdir_p$(EXE)
 	-if [ -f $(UNITBL) ]; then \
+		[ -d $(BINDIR) ] || .\mkdir_p$(EXE) $(BINDIR); \
 		$(INSTALL) $(UNITBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(UNITBL); \
+	fi
+	-if [ -f $(DICTTBL) ]; then \
+		[ -d $(BINDIR) ] || .\mkdir_p$(EXE) $(BINDIR); \
+		$(INSTALL) $(DICTTBL) $(BINDIR); \
+		$(CHMOD) a+r-x $(BINDIR)\$(DICTTBL); \
 	fi
 	-if [ -f $(CATTBL) ]; then \
 		[ -d $(BINDIR) ] || .\mkdir_p$(EXE) $(BINDIR); \
@@ -446,26 +495,23 @@ install: $(PROGRAM)$(EXE) $(PROGRAM).$(MANSEC) $(TABLES) mkdir_p$(EXE)
 		$(INSTALL) $(ECATTBL) $(BINDIR); \
 		$(CHMOD) a+r-x $(BINDIR)\$(ECATTBL); \
 	fi
-	-if [ -f $(DICTTBL) ]; then \
-		$(INSTALL) $(DICTTBL) $(BINDIR); \
-		$(CHMOD) a+r-x $(BINDIR)\$(DICTTBL); \
-	fi
-	[ -d $(JMANDIR) ] || .\mkdir_p$(EXE) $(JMANDIR)
-	$(INSTALL) $(PROGRAM).$(MANSEC) $(JMANDIR)\$(PROGRAM).$(MANSEC)
-	$(CHMOD) a+r-x $(JMANDIR)\$(PROGRAM).$(MANSEC)
-	-$(RM) $(JMANDIR)\$(ALIAS).$(MANSEC)
-	$(LN) $(JMANDIR)\$(PROGRAM).$(MANSEC) $(JMANDIR)\$(ALIAS).$(MANSEC)
-	$(CHMOD) a+r-x $(JMANDIR)\$(ALIAS).$(MANSEC)
+
+install-man: $(MANSRC) mkdir_p$(EXE)
 	[ -d $(MANDIR) ] || .\mkdir_p$(EXE) $(MANDIR)
 	$(INSTALL) $(MANSRC) $(MANDIR)\$(PROGRAM).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)\$(PROGRAM).$(MANSEC)
 	-$(RM) $(MANDIR)\$(ALIAS).$(MANSEC)
 	$(LN) $(MANDIR)\$(PROGRAM).$(MANSEC) $(MANDIR)\$(ALIAS).$(MANSEC)
 	$(CHMOD) a+r-x $(MANDIR)\$(ALIAS).$(MANSEC)
-	-if [ -f $(RUNCOM) ]; then \
-		$(INSTALL) $(RUNCOM) $(BLDRC); \
-		$(CHMOD) a+r-x $(BLDRC); \
-	fi
+
+install-jman: $(PROGRAM).$(MANSEC) mkdir_p$(EXE)
+	[ -d $(JMANDIR) ] || .\mkdir_p$(EXE) $(JMANDIR)
+	[ "$(JMANDIR)" = "$(MANDIR)" ] || \
+	$(INSTALL) $(PROGRAM).$(MANSEC) $(JMANDIR)\$(PROGRAM).$(MANSEC)
+	$(CHMOD) a+r-x $(JMANDIR)\$(PROGRAM).$(MANSEC)
+	-$(RM) $(JMANDIR)\$(ALIAS).$(MANSEC)
+	$(LN) $(JMANDIR)\$(PROGRAM).$(MANSEC) $(JMANDIR)\$(ALIAS).$(MANSEC)
+	$(CHMOD) a+r-x $(JMANDIR)\$(ALIAS).$(MANSEC)
 
 catman: $(MANCAT) mkdir_p$(EXE)
 	[ -d $(CATDIR) ] || .\mkdir_p$(EXE) $(CATDIR)
@@ -527,11 +573,16 @@ jcompman-b: compman-b jcatman-b
 ############################################################
 # to make dependency
 
-depend: $(SRC) config.h kanji.h funcno.h
+depend: $(SRC) $(HSRC) $(DSRC) config.h kanji.h funcno.h
 	[ -d $(DEPDIR) ] || mkdir $(DEPDIR)
-	for f in $(SRC); do \
-		$(SED) -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+	for f in $(SRC) $(HSRC); do \
+		$(SED) -e 's:^\(# *\)include "\(.*\).h":\1include "_\2.h":' \
 		$${f} > $(DEPDIR)\$${f}; \
+	done
+	for f in $(DSRC); do \
+		$(SED) -e 's:^\(# *\)include "\(.*\).h":\1include "_\2.h":' \
+		$${f} > $${f}o; \
+		$(MV) $${f}o $${f}; \
 	done
 	for f in $(SSRC); do \
 		$(RM) $(DEPDIR)\s$${f}; \
@@ -550,7 +601,7 @@ depend: $(SRC) config.h kanji.h funcno.h
 		$(LN) $(DEPDIR)\$${f} $(DEPDIR)\t$${f}; \
 	done
 	for f in $(HEADER) config.h kanji.h funcno.h version.h; do \
-		$(SED) -e 's\^\(# *\)include "\(.*\).h"\\1include "_\2.h"\' \
+		$(SED) -e 's:^\(# *\)include "\(.*\).h":\1include "_\2.h":' \
 		$${f} > $(DEPDIR)\_$${f}; \
 	done
 	$(CP) Makefile.in Makefile.tmp $(DEPDIR)
@@ -560,61 +611,64 @@ depend: $(SRC) config.h kanji.h funcno.h
 	$(CP) Makefile.tmp $(DEPDIR)\Makefile.tr
 	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
-		-f Makefile.tmp -- $(FDCFLAGS) -- $(SRC)
+		-f Makefile.tmp -- $(FDCFLAGS) -- \
+		$(SRC) \
+		`for f in $(DSRC); do $(ECHO) $${f}|$(SED) -e 's:^.*\::'; done`
 	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.sh -- $(SHCFLAGS) -- \
-		`for f in $(SSRC); do echo s$${f}; done`
+		`for f in $(SSRC); do $(ECHO) s$${f}; done`
 	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.bsh -- $(BSHCFLAGS) -- \
-		`for f in $(BSRC); do echo b$${f}; done`
+		`for f in $(BSRC); do $(ECHO) b$${f}; done`
 	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		-f Makefile.nsh -- $(NSHCFLAGS) -- \
-		`for f in $(NSRC); do echo n$${f}; done`
+		`for f in $(NSRC); do $(ECHO) n$${f}; done`
 	cd $(DEPDIR); makedepend \
 		-s "# DO NOT DELETE THIS LINE -- make depend depends on it." \
-		-f Makefile.tr -- $(HOSTCFLAGS) -- \
-		`for f in $(TSRC); do echo t$${f}; done`
+		-f Makefile.tr -- $(HOSTCOPTS) -- \
+		$(HSRC) \
+		`for f in $(TSRC); do $(ECHO) t$${f}; done`
 	$(SED) -e '\^# DO NOT DELETE THIS LINE\,$$d' $(DEPDIR)\Makefile.in \
 		> Makefile.in
 	$(ECHO) "# DO NOT DELETE THIS LINE -- make depend depends on it." \
 		>> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
-		-e 's\^\(........\).*\.o\\1.o\' \
-		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\$$(OBJ)\g' \
-		-e 's\_\([^ ]*.h\)\\1\g' \
-		-e 's\ *$$\\' \
+		-e 's:^\(........\).*\.o:\1.o:' \
+		-e 's:\\[^ ]* *::g' \
+		-e 's:\.o:\$$(OBJ):g' \
+		-e 's:_\([^ ]*.h\):\1:g' \
+		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.tmp >> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
-		-e 's\^\(........\).*\.o\\1.o\' \
-		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\$$(OBJ)\g' \
-		-e 's\_\([^ ]*.h\)\\1\g' \
-		-e 's\ *$$\\' \
+		-e 's:^\(........\).*\.o:\1.o:' \
+		-e 's:\\[^ ]* *::g' \
+		-e 's:\.o:\$$(OBJ):g' \
+		-e 's:_\([^ ]*.h\):\1:g' \
+		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.sh >> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
-		-e 's\^\(........\).*\.o\\1.o\' \
-		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\$$(OBJ)\g' \
-		-e 's\_\([^ ]*.h\)\\1\g' \
-		-e 's\ *$$\\' \
+		-e 's:^\(........\).*\.o:\1.o:' \
+		-e 's:\\[^ ]* *::g' \
+		-e 's:\.o:\$$(OBJ):g' \
+		-e 's:_\([^ ]*.h\):\1:g' \
+		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.bsh >> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
-		-e 's\^\(........\).*\.o\\1.o\' \
-		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\$$(OBJ)\g' \
-		-e 's\_\([^ ]*.h\)\\1\g' \
-		-e 's\ *$$\\' \
+		-e 's:^\(........\).*\.o:\1.o:' \
+		-e 's:\\[^ ]* *::g' \
+		-e 's:\.o:\$$(OBJ):g' \
+		-e 's:_\([^ ]*.h\):\1:g' \
+		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.nsh >> Makefile.in
 	$(SED) -e '1,\^# DO NOT DELETE THIS LINE\d' \
-		-e 's\^\(........\).*\.o\\1.o\' \
-		-e 's\\\[^ ]* *\\g' \
-		-e 's\\.o\\$$(OBJ)\g' \
-		-e 's\_\([^ ]*.h\)\\1\g' \
-		-e 's\ *$$\\' \
+		-e 's:^\(........\).*\.o:\1.o:' \
+		-e 's:\\[^ ]* *::g' \
+		-e 's:\.o:\$$(OBJ):g' \
+		-e 's:_\([^ ]*.h\):\1:g' \
+		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.tr >> Makefile.in
 	-rm -rf $(DEPDIR)
 
@@ -638,14 +692,14 @@ config.h: config.hin
 
 expfunc$(EXE): expfunc$(OBJ)
 #	@sleep 1
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -o $@ expfunc$(OBJ)
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTLDFLAGS) -o $@ expfunc$(OBJ)
 	@ren $@ expfunc
 	@aout2exe expfunc
 	@del expfunc
 #	@sleep 1
 
 expfunc$(OBJ): expfunc.c
-	$(HOSTCC) $(HOSTCFLAGS) $(CPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
 
 
 ############################################################
@@ -839,8 +893,8 @@ gtar: $(SOURCES)
 
 shtar: $(SHSOURCES)
 	(VER=`date '+%y%m%d'`; \
-	$(TAR) cvf $(TITLE)sh-$$VER.tar $(SHSOURCES); \
-	gzip -f $(TITLE)sh-$$VER.tar)
+	$(TAR) cvf $(TITLE)sh-$${VER}.tar $(SHSOURCES); \
+	gzip -f $(TITLE)sh-$${VER}.tar)
 
 lzh: $(SOURCES)
 	-$(RM) $(TITLE)$(VERSION).lzh
@@ -945,14 +999,14 @@ ipk: $(PROGRAM)$(EXE) $(TABLES) mkdir_p$(EXE)
 	(cd $(IPKWDIR); tar cf ..\data.tar --exclude=CONTROL .)
 	(cd $(IPKWDIR)\CONTROL; tar cf ..\..\control.tar .)
 	gzip .\data.tar
-	mv .\data.tar.gz $(IPKTDIR)
+	$(MV) .\data.tar.gz $(IPKTDIR)
 	gzip .\control.tar
-	mv .\control.tar.gz $(IPKTDIR)
+	$(MV) .\control.tar.gz $(IPKTDIR)
 	$(ECHO) "2.0" > $(IPKTDIR)\debian-binary
 	(cd $(IPKTDIR); \
 	tar cf ..\ipk.tar .\debian-binary .\data.tar.gz .\control.tar.gz)
 	gzip .\ipk.tar
-	mv .\ipk.tar.gz .\fd_$(VERSION)-1_arm.ipk
+	$(MV) .\ipk.tar.gz .\fd_$(VERSION)-1_arm.ipk
 	-$(RM) -r $(IPKWDIR) $(IPKTDIR)
 
 clean:
@@ -984,6 +1038,8 @@ clean:
 	-$(RM) $(SARGS)
 	-$(RM) $(NARGS)
 	-$(RM) $(UNITBL)
+	-$(RM) unitbl.c
+	-$(RM) dicttbl.c
 	-$(RM) $(DICTTXT)
 	-$(RM) $(DICTTBL)
 
@@ -1110,6 +1166,12 @@ file$(OBJ): kconv.h func.h sysemu.h dirent.h unixemu.h
 file$(OBJ): pathname.h typesize.h term.h types.h
 file$(OBJ): lsparse.h namelist.h dosdisk.h kanji.h catalog.h urldisk.h
 file$(OBJ): url.h auth.h
+mntinfo$(OBJ): headers.h machine.h config.h
+mntinfo$(OBJ): kctype.h depend.h
+mntinfo$(OBJ): string.h malloc.h pathname.h
+mntinfo$(OBJ): typesize.h mntinfo.h fsinfo.h
+statfs$(OBJ): headers.h machine.h config.h
+statfs$(OBJ): fsinfo.h
 apply$(OBJ): fd.h headers.h machine.h config.h
 apply$(OBJ): depend.h printf.h stream.h kctype.h
 apply$(OBJ): string.h malloc.h
@@ -1275,6 +1337,7 @@ info$(OBJ): stream.h kctype.h
 info$(OBJ): string.h malloc.h dirent.h unixemu.h
 info$(OBJ): sysemu.h pathname.h typesize.h term.h
 info$(OBJ): types.h lsparse.h namelist.h funcno.h kanji.h catalog.h
+info$(OBJ): unixdisk.h mntinfo.h fsinfo.h
 rockridg$(OBJ): fd.h headers.h machine.h config.h
 rockridg$(OBJ): depend.h printf.h stream.h kctype.h
 rockridg$(OBJ): string.h malloc.h
@@ -1328,32 +1391,8 @@ browse$(OBJ): device.h parse.h kconv.h func.h sysemu.h dirent.h unixemu.h
 browse$(OBJ): pathname.h
 browse$(OBJ): typesize.h term.h types.h lsparse.h namelist.h dosdisk.h
 browse$(OBJ): funcno.h kanji.h catalog.h termemu.h
-mkunitbl$(OBJ): headers.h machine.h config.h
-mkunitbl$(OBJ): typesize.h
-mkdict$(OBJ): headers.h machine.h config.h
-mkdict$(OBJ): kctype.h depend.h
-mkdict$(OBJ): typesize.h roman.h hinsi.h
-mktankan$(OBJ): headers.h machine.h config.h
-mktankan$(OBJ): kctype.h depend.h
-mktankan$(OBJ): typesize.h roman.h
-mkkanji$(OBJ): headers.h machine.h config.h
-mkkanji$(OBJ): typesize.h
-mkcat$(OBJ): headers.h machine.h config.h
-mkcat$(OBJ): kctype.h depend.h
-mkcat$(OBJ): typesize.h version.h
-mkdir_p$(OBJ): headers.h machine.h config.h
-mkdir_p$(OBJ): kctype.h depend.h
-mkdir_p$(OBJ): typesize.h
-kanjicnv$(OBJ): headers.h machine.h config.h
-expfunc$(OBJ): headers.h machine.h config.h
-mkmfsed$(OBJ): fd.h headers.h machine.h config.h
-mkmfsed$(OBJ): depend.h printf.h stream.h kctype.h
-mkmfsed$(OBJ): string.h malloc.h
-mkmfsed$(OBJ): version.h
-mkfuncno$(OBJ): fd.h headers.h machine.h config.h
-mkfuncno$(OBJ): depend.h printf.h stream.h kctype.h
-mkfuncno$(OBJ): string.h malloc.h
-mkfuncno$(OBJ): types.h typesize.h lsparse.h namelist.h functabl.h
+unitbl$(OBJ): headers.h machine.h config.h
+dicttbl$(OBJ): headers.h machine.h config.h
 
 sprintf$(OBJ): headers.h machine.h config.h
 sprintf$(OBJ): depend.h printf.h stream.h kctype.h
@@ -1587,6 +1626,33 @@ nlsparse$(OBJ): string.h malloc.h time.h dirent.h
 nlsparse$(OBJ): unixemu.h
 nlsparse$(OBJ): pathname.h typesize.h device.h parse.h lsparse.h namelist.h
 
+evalopt$(OBJ): headers.h machine.h config.h
+evalopt$(OBJ): evalopt.h
+gentbl$(OBJ): headers.h machine.h config.h
+gentbl$(OBJ): gentbl.h
+mkunitbl$(OBJ): headers.h machine.h config.h
+mkunitbl$(OBJ): typesize.h evalopt.h gentbl.h
+mkdict$(OBJ): headers.h machine.h config.h
+mkdict$(OBJ): kctype.h depend.h
+mkdict$(OBJ): typesize.h roman.h hinsi.h evalopt.h
+mkdict$(OBJ): gentbl.h
+mktankan$(OBJ): headers.h machine.h config.h
+mktankan$(OBJ): kctype.h depend.h
+mktankan$(OBJ): typesize.h roman.h
+mkkanji$(OBJ): headers.h machine.h config.h
+mkkanji$(OBJ): typesize.h
+mkcat$(OBJ): headers.h machine.h config.h
+mkcat$(OBJ): kctype.h depend.h
+mkcat$(OBJ): typesize.h version.h evalopt.h gentbl.h
+mkdir_p$(OBJ): headers.h machine.h config.h
+mkdir_p$(OBJ): kctype.h depend.h
+mkdir_p$(OBJ): typesize.h
+kanjicnv$(OBJ): headers.h machine.h config.h
+kanjicnv$(OBJ): evalopt.h
+expfunc$(OBJ): headers.h machine.h config.h
+mkfuncno$(OBJ): fd.h headers.h machine.h config.h
+mkfuncno$(OBJ): depend.h types.h typesize.h stream.h
+mkfuncno$(OBJ): lsparse.h namelist.h functabl.h
 tstring$(OBJ): headers.h machine.h config.h
 tstring$(OBJ): kctype.h depend.h
 tstring$(OBJ): string.h
@@ -1596,3 +1662,8 @@ troman$(OBJ): typesize.h string.h kconv.h roman.h
 tkconv$(OBJ): headers.h machine.h config.h
 tkconv$(OBJ): depend.h kctype.h
 tkconv$(OBJ): typesize.h string.h unixemu.h kconv.h
+tevalopt$(OBJ): headers.h machine.h config.h
+tevalopt$(OBJ): evalopt.h
+tgentbl$(OBJ): headers.h machine.h config.h
+tgentbl$(OBJ): gentbl.h
+tunitbl$(OBJ): headers.h machine.h config.h

@@ -1,3 +1,15 @@
+Ver. 3.00l	Support Android 4.0.
+ (06/30/12)	Support MINIX 3.2.
+		Add the identifier DEFKCODE, UTF8DOC, LANGWIDTH for compile.
+		Add the identifier _NOUNICDTBL, _NODICTTBL for compile.
+		The cross-compiling is supported more carefully.
+		Strange attribute-changing screen in narrow terminal is fixed.
+		Some abortion when open archive browser is fixed.
+		Some abortion when access MS-DOS formed path is fixed.
+		Persistence of "Wait a minute" when TRADLAYOUT=1 is fixed.
+		Ineffective sequence to save cursor when PTYMODE=1 is fixed.
+		Unreadable file starting with "./" in archive browser is fixed.
+
 Ver. 3.00k	Support Cygwin 1.7.13.
  (04/21/12)	The cursor position after changing directory upward is changed.
 		Failure by PageUp/PageDown key on the tree screen is fixed.

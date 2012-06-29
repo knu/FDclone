@@ -5,10 +5,8 @@ s:__EXE__:.exe:g
 s:__OBJ__:.obj:g
 s:__DOSOBJS__:$(DOSOBJS):
 s:__IMEOBJS__::
-s:__DICTTBL__::
 s:__DICTSRC__::
 s:__MKDICTOPTION__::
-s:__CATTBL__:$(CATTBL) $(ECATTBL):
 s:__SOCKETOBJS__::
 s:__SOCKETLIBS__::
 s:__OBJLIST__:@$(ARGS):
@@ -28,9 +26,15 @@ s:__INSTALL__:copy /y:
 s:__INSTSTRIP__::
 s:__LN__:copy /y:
 s:__CC__:lcc86:
-s:__CCOPTIONS__:-O:
+s:__CFLAGS__:-O:
+s:__CPPFLAGS__::
+s:__LDFLAGS__::
 s:__HOSTCC__:$(CC):
-s:__HOSTCCOPTIONS__:-O:
+s:__HOSTCFLAGS__:$(CFLAGS):
+s:__HOSTCPPFLAGS__:$(CPPFLAGS):
+s:__HOSTLDFLAGS__:$(LDFLAGS):
+s:__COPTS__:$(OSOPTS) $(DEBUG) $(CFLAGS):
+s:__HOSTCOPTS__:$(COPTS):
 s:__FDSETSIZE__::
 s:__MEM__:-ml -h -k"-s 3000":
 s:__SHMEM__:-mp -h -k"-s 8000":
@@ -38,12 +42,13 @@ s:__BSHMEM__:-ms -k"-s 8000":
 s:__NSHMEM__:-mp -h -k"-s 8000":
 s:__OUT__:-o $@:
 s:__LNK__:-o $@:
-s:__TERMLIBS__::
-s:__REGLIBS__::
-s:__OTHERLIBS__:-lintlib -ltinymain.obj:
+s:__FLDFLAGS__:-lintlib -ltinymain.obj $(ALLOC) $(LDFLAGS):
+s:__SLDFLAGS__:-lintlib -ltinymain.obj $(ALLOC) $(LDFLAGS):
+s:__NLDFLAGS__:-lintlib -ltinymain.obj $(ALLOC) $(LDFLAGS):
 s:__KCODEOPTION__:-s:
 s:__MSBOPTION__::
-s:__UNITBL__:$(UNITBL):
+s:__TABLES__:$(UNITBL) $(CATTBL) $(ECATTBL):
+s:__UNITBLOBJ__::
 s:__PREFIXOPTION__::
 s:[	 ]*$::
 /^[	 ][	 ]*-*\$(RM)$/d

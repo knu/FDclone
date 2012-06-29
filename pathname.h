@@ -84,12 +84,12 @@
 #ifdef	_NOORIGGLOB
 # ifdef	USEREGCOMP
 # include <regex.h>
-typedef regex_t			reg_t;
+typedef regex_t			reg_ex_t;
 # else
-typedef char			reg_t;
+typedef char			reg_ex_t;
 # endif
 #else	/* !_NOORIGGLOB */
-typedef char *			reg_t;
+typedef char *			reg_ex_t;
 # undef	USEREGCMP
 # undef	USEREGCOMP
 # undef	USERE_COMP
@@ -268,9 +268,9 @@ extern int isdslash __P_((CONST char *));
 #endif
 extern char *getbasename __P_((CONST char *));
 extern char *getshellname __P_((CONST char *, int *, int *));
-extern reg_t *regexp_init __P_((CONST char *, int));
-extern int regexp_exec __P_((CONST reg_t *, CONST char *, int));
-extern VOID regexp_free __P_((reg_t *));
+extern reg_ex_t *regexp_init __P_((CONST char *, int));
+extern int regexp_exec __P_((CONST reg_ex_t *, CONST char *, int));
+extern VOID regexp_free __P_((reg_ex_t *));
 extern int cmppath __P_((CONST VOID_P, CONST VOID_P));
 extern char **evalwild __P_((CONST char *, int));
 #ifndef	_NOUSEHASH
@@ -283,9 +283,13 @@ extern char *searchexecpath __P_((CONST char *, CONST char *));
 #if	!defined (FDSH) && !defined (_NOCOMPLETE)
 extern int addcompletion __P_((CONST char *, char *, int, char ***));
 # ifndef	NOUID
+#  ifndef	NOGETPWENT
 extern int completeuser __P_((CONST char *, int, int, char ***, int));
+#  endif
+#  ifndef	NOGETGRENT
 extern int completegroup __P_((CONST char *, int, int, char ***));
-# endif
+#  endif
+# endif	/* !NOUID */
 extern int completepath __P_((CONST char *, int, int, char ***, int));
 extern char *findcommon __P_((int, char *CONST *));
 #endif	/* !FDSH && !_NOCOMPLETE */

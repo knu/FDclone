@@ -1852,17 +1852,21 @@ int comline, cont, h;
 		argc = 1;
 	}
 # ifndef	NOUID
+#  ifndef	NOGETPWENT
 	else if (h == HST_USER) {
 		argv = NULL;
 		n = strlen(cp);
 		argc = completeuser(cp, n, 0, &argv, 0);
 	}
+#  endif
+#  ifndef	NOGETGRENT
 	else if (h == HST_GROUP) {
 		argv = NULL;
 		n = strlen(cp);
 		argc = completegroup(cp, n, 0, &argv);
 	}
-# endif
+#  endif
+# endif	/* !NOUID */
 # ifdef	DEP_ORIGSHELL
 	else if (vartop) {
 		argv = NULL;
@@ -3166,7 +3170,7 @@ int h;
 #ifndef	_NOSPLITWIN
 	if (h == HST_PATH && windows > 1) {
 		if ((i = win - 1) < 0) i = windows - 1;
-		entryhist(winvar[i].v_fullpath, HST_PATH | HST_UNIQ);
+		VOID_C entryhist(winvar[i].v_fullpath, HST_PATH | HST_UNIQ);
 	}
 #endif
 

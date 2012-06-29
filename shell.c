@@ -24,6 +24,7 @@ typedef struct _localetable {
 	char *org;
 } localetable;
 
+#define	HISTTYPES		2
 #if	0
 #define	MACROMETA		((char)-1)
 #endif
@@ -81,6 +82,7 @@ static char *NEAR evalalias __P_((CONST char *));
 #else
 #define	system3			system2
 #endif
+static int NEAR newhistory __P_((int));
 
 #ifdef	DEP_ORIGSHELL
 CONST char *promptstr2 = NULL;
@@ -91,14 +93,14 @@ userfunctable userfunclist[MAXFUNCTABLE];
 int maxuserfunc = 0;
 #endif
 CONST char *promptstr = NULL;
-char **history[2] = {NULL, NULL};
-char *histfile[2] = {NULL, NULL};
-short histsize[2] = {0, 0};
-short histno[2] = {0, 0};
-short savehist[2] = {0, 0};
+char **history[HISTTYPES];
+char *histfile[HISTTYPES];
+short histno[HISTTYPES];
+short histsize[HISTTYPES];
+short savehist[HISTTYPES];
 int n_args = 0;
 
-static short histbufsize[2] = {0, 0};
+static short histbufsize[HISTTYPES];
 static localetable localelist[] = {
 	{"LC_COLLATE", "C", NULL},
 	{"LC_CTYPE", "", NULL},
@@ -1160,7 +1162,7 @@ CONST char *def;
 		Xfree(cp);
 		return(NULL);
 	}
-	entryhist(tmp, HST_COMM);
+	VOID_C entryhist(tmp, HST_COMM);
 
 	return(tmp);
 }
@@ -1586,6 +1588,24 @@ CONST char *command;
 }
 #endif	/* !DEP_ORIGSHELL */
 
+static int NEAR newhistory(n)
+int n;
+{
+	int i, size;
+
+	if (n < 0 || n >= HISTTYPES) return(-1);
+	size = (int)histsize[n];
+	if (size > histbufsize[n]) {
+		i = (history[n]) ? histbufsize[n] + 1 : 0;
+		history[n] = (char **)Xrealloc(history[n],
+			(size + 1) * sizeof(char *));
+		while (i <= size) history[n][i++] = NULL;
+		histbufsize[n] = size;
+	}
+
+	return(size);
+}
+
 int entryhist(s, flags)
 CONST char *s;
 int flags;
@@ -1593,24 +1613,21 @@ int flags;
 	char *new;
 	int i, n, size;
 
-	n = (flags & HST_TYPE);
-	size = (int)histsize[n];
-	if (!history[n]) {
-		history[n] = (char **)Xmalloc((size + 1) * sizeof(char *));
-		for (i = 0; i <= size; i++) history[n][i] = NULL;
-		histbufsize[n] = size;
-		histno[n] = (short)0;
-	}
-	else if (size > histbufsize[n]) {
-		history[n] = (char **)Xrealloc(history[n],
-			(size + 1) * sizeof(char *));
-		for (i = histbufsize[n] + 1; i <= size; i++)
-			history[n][i] = NULL;
-		histbufsize[n] = size;
+	if (flags < 0) {
+		for (n = 0; n < HISTTYPES; n++) {
+			history[n] = NULL;
+			histfile[n] = NULL;
+			histno[n] =
+			histsize[n] = savehist[n] = histbufsize[n] = (short)0;
+		}
+		return(0);
 	}
 
+	n = (flags & HST_TYPE);
+	if ((size = newhistory(n)) < 0) return(0);
+
 	if (!s || !*s) return(0);
-	new = (n == 1) ? killmeta(s) : Xstrdup(s);
+	new = (n == HST_PATH) ? killmeta(s) : Xstrdup(s);
 
 	if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 
@@ -1618,7 +1635,9 @@ int flags;
 		for (i = 0; i <= size; i++) {
 			if (!history[n][i]) continue;
 #if	defined (PATHNOCASE) && defined (DEP_DOSPATH)
-			if (n == 1 && *new != *(history[n][i])) continue;
+			if (n != HST_PATH) /*EMPTY*/;
+			else if (_dospath(new) != _dospath(history[n][i]))
+				continue;
 #endif
 			if (!strpathcmp(new, history[n][i])) break;
 		}
@@ -1626,8 +1645,9 @@ int flags;
 	}
 
 	Xfree(history[n][size]);
-	for (i = size; i > 0; i--) history[n][i] = history[n][i - 1];
-	*(history[n]) = new;
+	memmove((char *)&(history[n][1]), (char *)&(history[n][0]),
+		size * sizeof(char *));
+	history[n][0] = new;
 #ifdef	DEP_PTY
 	sendparent(TE_SETHISTORY, s, flags);
 #endif
@@ -1639,14 +1659,16 @@ char *removehist(n)
 int n;
 {
 	char *tmp;
-	int i, size;
+	int size;
 
+	if (n < 0 || n >= HISTTYPES) return(NULL);
 	size = (int)histsize[n];
 	if (!history[n] || size > histbufsize[n] || size <= 0) return(NULL);
 	if (--histno[n] < (short)0) histno[n] = MAXHISTNO;
-	tmp = *(history[n]);
-	for (i = 0; i < size; i++) history[n][i] = history[n][i + 1];
-	history[n][size--] = NULL;
+	tmp = history[n][0];
+	memmove((char *)&(history[n][0]), (char *)&(history[n][1]),
+		size * sizeof(char *));
+	history[n][size] = NULL;
 
 	return(tmp);
 }
@@ -1656,8 +1678,9 @@ int n;
 {
 	lockbuf_t *lck;
 	char *line;
-	int i, j, size;
+	int i, size;
 
+	if (n < 0 || n >= HISTTYPES) return(0);
 	if (!histfile[n] || !*(histfile[n])) return(0);
 	lck = lockfopen(histfile[n], "r", O_BINARY | O_RDONLY);
 	if (!lck || !(lck -> fp)) {
@@ -1665,9 +1688,7 @@ int n;
 		return(-1);
 	}
 
-	size = (int)histsize[n];
-	history[n] = (char **)Xmalloc((size + 1) * sizeof(char *));
-	histbufsize[n] = size;
+	if ((size = newhistory(n)) < 0) return(0);
 	histno[n] = (short)0;
 
 	i = -1;
@@ -1676,31 +1697,13 @@ int n;
 		if (histno[n]++ >= MAXHISTNO) histno[n] = (short)0;
 		if (i < size) i++;
 		else Xfree(history[n][i]);
-		for (j = i; j > 0; j--) history[n][j] = history[n][j - 1];
-		*(history[n]) = line;
+		memmove((char *)&(history[n][1]), (char *)&(history[n][0]),
+			i * sizeof(char *));
+		history[n][0] = line;
 	}
 	lockclose(lck);
 
-	for (i++; i <= size; i++) history[n][i] = NULL;
-
 	return(0);
-}
-
-VOID convhistory(s, fp)
-CONST char *s;
-XFILE *fp;
-{
-	char *eol;
-
-	if (!s || !*s) return;
-
-	while ((eol = Xstrchr(s, '\n'))) {
-		VOID_C Xfwrite(s, eol++ - s, fp);
-		VOID_C Xfputc('\0', fp);
-		s = eol;
-	}
-	VOID_C Xfputs(s, fp);
-	VOID_C Xfputc('\n', fp);
 }
 
 int savehistory(n)
@@ -1709,8 +1712,9 @@ int n;
 	lockbuf_t *lck;
 	int i, size;
 
+	if (n < 0 || n >= HISTTYPES) return(0);
 	if (!histfile[n] || !*(histfile[n]) || savehist[n] <= 0) return(0);
-	if (!history[n] || !*(history[n])) return(-1);
+	if (!history[n] || !history[n][0]) return(-1);
 	lck = lockfopen(histfile[n], "w",
 		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
 	if (!lck || !(lck -> fp)) {
@@ -1718,12 +1722,17 @@ int n;
 		return(-1);
 	}
 
+	Xsetflags(lck -> fp, XF_NULLCONV);
 	size = (savehist[n] > histsize[n])
 		? (int)histsize[n] : (int)savehist[n];
-	for (i = size - 1; i >= 0; i--) convhistory(history[n][i], lck -> fp);
+	for (i = size - 1; i >= 0; i--) {
+		if (!history[n][i] || !*(history[n][i])) continue;
+		if (Xfputs(history[n][i], lck -> fp) == EOF) break;
+		if (Xfputc('\n', lck -> fp) == EOF) break;
+	}
 	lockclose(lck);
 
-	return(0);
+	return((i < 0) ? 0 : -1);
 }
 
 int parsehist(str, ptrp, quote)
@@ -1832,9 +1841,11 @@ int n;
 {
 	int i;
 
-	if (!history[n] || !*(history[n])) return;
+	if (n < 0 || n >= HISTTYPES) return;
+	if (!history[n] || !history[n][0]) return;
 	for (i = 0; i <= histbufsize[n]; i++) Xfree(history[n][i]);
 	Xfree(history[n]);
+	history[n] = NULL;
 }
 #endif
 
