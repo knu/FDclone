@@ -193,7 +193,7 @@ char *CONST argv[];
 # if	__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
 	strappend(buf3, "-Wno-attributes");
 # endif
-# if	__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2)
+# if	__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)
 	strappend(buf3, "-Wno-empty-body");
 # endif
 #endif	/* __GNUC__ && __GNUC_MINOR__ */
