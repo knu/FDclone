@@ -2769,7 +2769,7 @@ syntaxtree *trp;
 	if (trapok >= 0) trapok = 0;
 
 # ifndef	NOJOB
-	if (mypid == orgpgrp) {
+	if (mypid == orgpgrp && (childpgrp < (p_id_t)0 || pid == childpgrp)) {
 		VOID_C gettermio(orgpgrp, jobok);
 #  ifdef	FD
 		checkscreen(-1, -1);

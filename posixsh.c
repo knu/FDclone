@@ -112,8 +112,7 @@ int job;
 	int ret;
 	sigmask_t mask, omask;
 
-	if (ttypgrp < (p_id_t)0 || pgrp < (p_id_t)0 || pgrp == ttypgrp)
-		return(0);
+	if (ttypgrp < (p_id_t)0 || pgrp < (p_id_t)0) return(0);
 	else if (!job) {
 		ttypgrp = pgrp;
 		return(0);
