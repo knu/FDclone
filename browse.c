@@ -485,16 +485,24 @@ static VOID NEAR cputbytes(size, bsize, width)
 off_t size, bsize;
 int width;
 {
-	off_t kb;
+	off_t n;
+	int len;
 
-	if (size < (off_t)0) VOID_C XXcprintf("%*s", width, "?");
-	else if (size < (off_t)10000000 / bsize)
-		VOID_C XXcprintf("%<'*qd%s",
-			width - W_BYTES, size * bsize, S_BYTES);
-	else if ((kb = calcKB(size, bsize)) < (off_t)1000000000)
-		VOID_C XXcprintf("%<'*qd%s", width - W_KBYTES, kb, S_KBYTES);
-	else VOID_C XXcprintf("%<'*qd%s",
-		width - W_MBYTES, kb / (off_t)1024, S_MBYTES);
+	if (size < (off_t)0) {
+		VOID_C XXcprintf("%*s", width, "?");
+		return;
+	}
+
+	n = size * bsize;
+	len = (size > MAXTYPE(off_t) / bsize)
+		? width : Xfprintf(NULL, "%'qd", n);
+
+	if (len + W_BYTES <= width)
+		VOID_C XXcprintf("%<'*qd%s", width - W_BYTES, n, S_BYTES);
+	else {
+		n = calcKB(size, bsize);
+		VOID_C XXcprintf("%<>'*qd", width, n);
+	}
 }
 
 static VOID NEAR sizebar(VOID_A)

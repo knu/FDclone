@@ -279,8 +279,6 @@ int n;
 			n = 0;
 			break;
 		case PRELIM:
-			n = seterrno(EACCES);
-			break;
 		case CONTINUE:
 			n = seterrno(EACCES);
 			break;

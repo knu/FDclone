@@ -7,7 +7,7 @@
 #include "headers.h"
 #include "evalopt.h"
 
-#if	defined (UTF8DOC) && defined (DEFKCODE)
+#ifdef	WITHUTF8
 #define	K_EXTERN
 #include "kctype.h"
 #endif
@@ -21,8 +21,6 @@
 #define	K_EUC			020
 #define	K_UTF8			040
 
-#define	UTF8_MAC		1
-#define	UTF8_ICONV		2
 #define	U2_UDEF			0x3013	/* GETA */
 #define	MINUNICODE		0x00a7
 #define	MAXUNICODE		0xffe5
@@ -30,7 +28,7 @@
 #define	MAXKANJI		0xfc4b
 #define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
 
-#ifdef	UTF8DOC
+#ifdef	WITHUTF8
 extern CONST u_char unitblbuf[];
 extern u_int unitblent;
 extern int nftblnum;
@@ -40,15 +38,12 @@ extern u_int nftblent[];
 #endif
 
 static VOID NEAR Xfputc __P_((int, FILE *));
-#ifdef	UTF8DOC
-# ifdef	DEFKCODE
-static CONST char *NEAR Xstrstr __P_((CONST char *, CONST char *));
-# endif
+#ifdef	WITHUTF8
 static u_int NEAR cnvunicode __P_((u_int));
 static VOID NEAR fputucs2 __P_((u_int, FILE *));
 static VOID NEAR ucs2normalization __P_((u_int, int, FILE *));
 static VOID NEAR convertutf8 __P_((u_int, FILE *));
-#endif	/* UTF8DOC */
+#endif
 static VOID NEAR convert __P_((int, int, FILE *));
 static VOID NEAR output __P_((FILE *, int, int));
 int main __P_((int, char *CONST []));
@@ -63,7 +58,7 @@ static CONST opt_t optlist[] = {
 	{'c', &prefix, 1, NULL},
 	{'e', &kanjicode, K_EUC, NULL},
 	{'s', &kanjicode, K_SJIS, NULL},
-#ifdef	UTF8DOC
+#ifdef	WITHUTF8
 	{'u', &kanjicode, K_UTF8, NULL},
 #endif
 	{'\0', NULL, 0, NULL},
@@ -78,37 +73,7 @@ FILE *fp;
 	else fputc(c, fp);
 }
 
-#ifdef	UTF8DOC
-# ifdef	DEFKCODE
-static CONST char *NEAR Xstrstr(s1, s2)
-CONST char *s1, *s2;
-{
-	int i, c1, c2;
-
-	while (*s1) {
-		for (i = 0;; i++) {
-			if (!s2[i]) return(s1);
-			c1 = s1[i];
-			c2 = s2[i];
-			if (Xislower(c2)) {
-				c1 = Xtoupper(c1);
-				c2 = Xtoupper(c2);
-			}
-			if (c1 != c2) break;
-			if (iswchar(s1, 0)) {
-				if (!s2[++i]) return(s1);
-				if (s1[i] != s2[i]) break;
-			}
-			if (!s1[i]) break;
-		}
-		if (iswchar(s1, 0)) s1++;
-		s1++;
-	}
-
-	return(NULL);
-}
-# endif	/* DEFKCODE */
-
+#ifdef	WITHUTF8
 static u_int NEAR cnvunicode(wc)
 u_int wc;
 {
@@ -192,18 +157,9 @@ static VOID NEAR convertutf8(wc, fp)
 u_int wc;
 FILE *fp;
 {
-	int nf;
-
-# ifdef	DEFKCODE
-	if (Xstrstr(DEFKCODE, "utf8-mac")) nf = UTF8_MAC;
-	else if (Xstrstr(DEFKCODE, "utf8-iconv")) nf = UTF8_ICONV;
-	else
-# endif
-	nf = 0;
-
-	ucs2normalization(cnvunicode(wc), nf, fp);
+	ucs2normalization(cnvunicode(wc), WITHUTF8, fp);
 }
-#endif	/* UTF8DOC */
+#endif	/* WITHUTF8 */
 
 static VOID NEAR convert(j1, j2, fp)
 int j1, j2;
@@ -231,7 +187,7 @@ FILE *fp;
 		}
 		else if (j2 <= 0x20 || j2 >= 0x60) c2 = j2;
 		else c2 = (j2 | 0x80);
-#ifdef	UTF8DOC
+#ifdef	WITHUTF8
 		if (kanjicode == K_UTF8) {
 			convertutf8(((u_int)c1 << 8) | c2, fp);
 			c1 = c2 = '\0';

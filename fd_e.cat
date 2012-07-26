@@ -1761,12 +1761,12 @@ DDEESSCCRRIIPPTTIIOONN
                    command.  It cannot be used out of a function.
 
      ssaavveettttyy [--nn]  Save the current terminal settings.  The saved
-                   settings will be restored when EEXXEECCUUTTEE__SSHH is
+                   settings will be restored when EEXXEECCUUTTEE_SSHH is
                    executed later.  In case that you change termi-
                    nal settings with ssttttyy(1) and so on, you
                    should save the settings with this command not
                    to reset settings with the next execution of
-                   EEXXEECCUUTTEE__SSHH.  If you change terminal settings
+                   EEXXEECCUUTTEE_SSHH.  If you change terminal settings
                    and execute this command not in the same com-
                    mand line, you should notice that this command
                    will save the reset settings.  If --nn is speci-
@@ -2047,8 +2047,8 @@ DDEESSCCRRIIPPTTIIOONN
      wwaaiitt [_p_i_d | _j_o_b]
                    Wait for the process indicated by _p_i_d or for
                    the job indicated by _j_o_b, and return its exit
-                   status.  If both _p_i_d and _j_o_b are omitted, the
-                   current job is waited.  ((UUNNIIXX))
+                   status.  If both _p_i_d and _j_o_b are omitted, all
+                   running jobs are waited.  ((UUNNIIXX))
 
      yyeessnnoo [_p_r_o_m_p_t]
                    Wait for a input of yy or nn from the terminal,
@@ -2066,32 +2066,32 @@ DDEESSCCRRIIPPTTIIOONN
                    You can describe each command identifier in
                    _C_O_M_M_A_N_D.  The following internal commands can
                    take a parameter argument _a_r_g.
-                   CCUURR__UUPP
-                   CCUURR__DDOOWWNN
-                   CCUURR__RRIIGGHHTT
-                   CCUURR__LLEEFFTT
-                   RROOLLLL__UUPP
-                   RROOLLLL__DDOOWWNN
-                   WWIIDDEENN__WWIINNDDOOWW
-                   NNAARRRROOWW__WWIINNDDOOWW  The number of lines, columns,
+                   CCUURR_UUPP
+                   CCUURR_DDOOWWNN
+                   CCUURR_RRIIGGHHTT
+                   CCUURR_LLEEFFTT
+                   RROOLLLL_UUPP
+                   RROOLLLL_DDOOWWNN
+                   WWIIDDEENN_WWIINNDDOOWW
+                   NNAARRRROOWW_WWIINNDDOOWW  The number of lines, columns,
                                   or pages.
-                   RREENNAAMMEE__FFIILLEE
-                   PPAACCKK__FFIILLEE
-                   BBAACCKKUUPP__TTAAPPEE    The filename.
-                   LLOOGG__DDIIRR
-                   MMAAKKEE__DDIIRR
-                   IINNFFOO__FFIILLEESSYYSS
-                   UUNNPPAACCKK__FFIILLEE    The directory name.
-                   EEXXEECCUUTTEE__SSHH     The command string.
-                   MMAARRKK__FFIINNDD
-                   FFIINNDD__FFIILLEE
-                   FFIINNDD__DDIIRR       The wildcard string.
-                   MMAARRKK__AALLLL       00 will reset the mark of all
+                   RREENNAAMMEE_FFIILLEE
+                   PPAACCKK_FFIILLEE
+                   BBAACCKKUUPP_TTAAPPEE    The filename.
+                   LLOOGG_DDIIRR
+                   MMAAKKEE_DDIIRR
+                   IINNFFOO_FFIILLEESSYYSS
+                   UUNNPPAACCKK_FFIILLEE    The directory name.
+                   EEXXEECCUUTTEE_SSHH     The command string.
+                   MMAARRKK_FFIINNDD
+                   FFIINNDD_FFIILLEE
+                   FFIINNDD_DDIIRR       The wildcard string.
+                   MMAARRKK_AALLLL       00 will reset the mark of all
                                   files, the other will mark all
                                   files.
-                   SSOORRTT__DDIIRR       The number substituted for
+                   SSOORRTT_DDIIRR       The number substituted for
                                   SSOORRTTTTYYPPEE the internal variable.
-                   EEDDIITT__CCOONNFFIIGG    The name of internal variable
+                   EEDDIITT_CCOONNFFIIGG    The name of internal variable
                                   to be edited.
 
      ~~ and $$ in the previous registration string are expanded.
@@ -3210,12 +3210,6 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    compared.  Any value except 00 and null effects
                    valid.  ((UUNNIIXX))
 
-     IIMMEEKKEEYY        Specify the key to toggle the direct input
-                   mode and the Kana-Kanji IME mode when you in-
-                   put some strings.  You can describe the same
-                   key name as bbiinndd command.  The default value
-                   is not specified.  ((UUNNIIXX))
-
      IIMMEEBBUUFFFFEERR     Hold the Kana-Kanji translation table on mem-
                    ory.  It will be fast to translate strings
                    from Kana to Kanji.  You should set this if
@@ -3224,6 +3218,12 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    you will have no effect when you use the dic-
                    tionary file with no Hinsi information.  Any
                    value except 00 and null effects valid.  ((UUNNIIXX))
+
+     IIMMEEKKEEYY        Specify the key to toggle the direct input
+                   mode and the Kana-Kanji IME mode when you in-
+                   put some strings.  You can describe the same
+                   key name as bbiinndd command.  The default value
+                   is not specified.  ((UUNNIIXX))
 
      IINNHHEERRIITTCCOOPPYY   Inherit the destination timestamp from the
                    source timestamp when CCOOPPYY_FFIILLEE command is
@@ -3307,7 +3307,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      LLOOGGSSIIZZEE       Specify the maximum kilobyte size for the log
                    file specified by LLOOGGFFIILLEE.  If the size ex-
                    ceeds this value, the last log file will be re-
-                   named as the file name followed by the exten-
+                   named as the filename followed by the exten-
                    sion ..oolldd to create another new log file.  The
                    default value is 11002244(1MB).  If this value is
                    00, the log file will not be renamed.
@@ -3820,7 +3820,7 @@ FFIILLEESS
      ~~//..ffddsshhrrcc The individual initial configuration file for ffddsshh
      ~~//..ffdd_hhiissttoorryy
                The command history file by default
-     ~~//..ffdd__ffrreeqq
+     ~~//..ffdd_ffrreeqq
                The translation frequency file for the users Kana-
                Kanji translation learning
      //bbiinn//sshh   The user shell when SSHHEELLLL the environment variable

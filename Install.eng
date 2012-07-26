@@ -16,6 +16,10 @@
 			code used as OS standard.
 	UTF8DOC		This OS uses UTF-8 as the Kanji code
 			for documents.
+	UTF8LANG	The string which specifies the Kanji
+			code used as OS standard, if the
+			environment variable LANG includes
+			"UTF".
 	TARUSESPACE	tar(1) with t option will output the
 			list in which each file mode string
 			is always followed by spaces.
@@ -30,9 +34,9 @@
 	Google	Android		(1.x, 2.x, 3.x, 4.x)
 	Apple	Mac OS X	(10.x)
 
-   In the following OS, while it is not confirmed whether Ver.
-   3.00 will be running normally, the codes for these OS are
-   described. Then you seem to need no change.
+   In the following OS, the codes for these OS are described
+   while it is not confirmed whether if Ver. 3.00 will be
+   running normally. Then you seem to need no change.
    At least, if you can compile it with no change, it seems
    that any changes are not necessary.
 	Sun	SunOS		(4.1.x)
@@ -101,7 +105,7 @@
    is used for local executable files generated in build
    process. In this example, 'lcc80' is used as a compiler
    and 'cc' is used as a local compiler.
-   In this case, the identifiers of 'CFLAGS'/'HOSTCFLAGS,
+   In this case, the identifiers of 'CFLAGS'/'HOSTCFLAGS',
    'CPPFLAGS'/'HOSTCPPFLAGS' and 'LDFLAGS'/'HOSTLDFLAGS' can
    be also specified, to specify compiling options individually
    for cross-compiling and local compiling.

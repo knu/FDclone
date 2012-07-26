@@ -94,13 +94,13 @@
 #define	ENVREPLY		"REPLY"
 
 #if	defined (TIOCGPGRP) && !defined (USETCGETPGRP)
-#define	gettcpgrp(f,gp)		((ioctl(f, TIOCGPGRP, gp) < 0) \
+#define	gettcpgrp(f, gp)	((ioctl(f, TIOCGPGRP, gp) < 0) \
 				? (*(gp) = (p_id_t)-1) : *(gp))
 #else
-#define	gettcpgrp(f,gp)		(*(gp) = tcgetpgrp(f))
+#define	gettcpgrp(f, gp)	(*(gp) = tcgetpgrp(f))
 #endif
 #if	defined (TIOCSPGRP) && !defined (USETCGETPGRP)
-#define	settcpgrp(f,g)		ioctl(f, TIOCSPGRP, &(g))
+#define	settcpgrp(f, g)		ioctl(f, TIOCSPGRP, &(g))
 #else
 #define	settcpgrp		tcsetpgrp
 #endif
@@ -332,12 +332,10 @@ typedef struct _pipelist {
 typedef struct _jobtable {
 	p_id_t *pids;
 	int *stats;
+	int *fds;
 	int npipe;
 	syntaxtree *trp;
-	termioctl_t *tty;
-# ifdef	USESGTTY
-	int *ttyflag;
-# endif
+	char *tty;
 } jobtable;
 #endif	/* !NOJOB */
 
@@ -446,6 +444,9 @@ extern int noruncom;
 extern CONST statementtable statementlist[];
 extern CONST signaltable signallist[];
 
+#ifndef	MINIMUMSHELL
+extern int catchsignal __P_((int));
+#endif
 extern VOID prepareexit __P_((int));
 extern VOID Xexit2 __P_((int));
 extern VOID execerror __P_((char *CONST *, CONST char *, int, int));
@@ -474,8 +475,10 @@ extern int putshellvar __P_((char *, int));
 extern int unset __P_((CONST char *, int));
 #ifdef	MINIMUMSHELL
 extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *));
+#define	duplstree2(tr, p, t)	duplstree(tr, p)
 #else
 extern syntaxtree * duplstree __P_((syntaxtree *, syntaxtree *, long));
+#define	duplstree2		duplstree
 #endif
 extern int getstatid __P_((syntaxtree *trp));
 #if	defined (BASHSTYLE) || !defined (MINIMUMSHELL)
@@ -483,11 +486,20 @@ extern syntaxtree *startvar __P_((syntaxtree *, redirectlist *,
 		CONST char *, int *, int *, int));
 #endif
 extern syntaxtree *analyze __P_((CONST char *, syntaxtree *, int));
+#ifdef	DJGPP
+extern int closepipe __P_((int, int));
+#define	closepipe2		closepipe
+#else
+extern int closepipe __P_((int));
+#define	closepipe2(f, d)	closepipe(f)
+#endif
 extern char *evalbackquote __P_((CONST char *));
 #ifdef	NOALIAS
 extern int checktype __P_((CONST char *, int *, int));
+#define	checktype2(s, i, a, f)	checktype(s, i, f)
 #else
 extern int checktype __P_((CONST char *, int *, int, int));
+#define	checktype2		checktype
 #endif
 #if	defined (FD) && !defined (_NOCOMPLETE)
 extern int completeshellvar __P_((CONST char *, int, int, char ***));
@@ -506,8 +518,11 @@ extern VOID setshfunc __P_((char *, syntaxtree *));
 extern int unsetshfunc __P_((CONST char *, int));
 #if	MSDOS
 extern int exec_simplecom __P_((syntaxtree *, int, int));
+#define	exec_simplecom2(tr, t, i, b) \
+				exec_simplecom(tr, t, i)
 #else
 extern int exec_simplecom __P_((syntaxtree *, int, int, int));
+#define	exec_simplecom2		exec_simplecom
 #endif
 extern int execruncom __P_((CONST char *, int));
 extern VOID setshellvar __P_((char *CONST *));

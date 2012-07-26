@@ -530,6 +530,7 @@ typedef long	off_t;
 #if	defined (linux)
 #define	POSIX
 #define	OSTYPE			"LINUX"
+#define	UTF8LANG		"utf8-iconv"
 #define	CODEEUC
 # if	defined (alpha) || defined (__alpha) || defined (__alpha__)
 /* Linux/Alpha need not support LFS and cannot use statfs(2) with LFS */
@@ -889,7 +890,7 @@ typedef long	off_t;
 #define	SIGARGINT
 #endif
 
-#if	defined (__llvm__)
+#if	defined (__GNUC__) && defined (__clang__)
 #define	OSTYPE2			"LLVM"
 #define	NOUINT
 #endif
@@ -925,8 +926,9 @@ typedef long	off_t;
 /*	AUX		;A/UX (Apple) */
 /*	DGUX		;DG/UX AViiON (DG) */
 /*	UXPM		;UXP/M (Fujitsu) */
-/*	MIPS		;RISC/os (MIPS) */
+/*	UXPDS		;UXP/DS (Fujitsu) */
 /*	NEXTSTEP	;NEXTSTEP (NeXT) */
+/*	CYGWIN		;Cygwin */
 /*	LINUX		;Linux */
 /*	JCCBSD		;4.4BSD-Lite (JCC) */
 /*	FREEBSD		;FreeBSD */
@@ -938,11 +940,13 @@ typedef long	off_t;
 /*	MINIX		;MINIX */
 /*	ANDROID		;Android (aka Linux) */
 /*	ORG_386BSD	;386BSD */
+/*	MIPS		;RISC/os (MIPS) */
 /*	LLVM		;Low Level Virtual Machine */
 
 /* #define CODEEUC	;kanji code type is EUC */
 /* #define DEFKCODE	;default string for kanji code type */
 /* #define UTF8DOC	;kanji code type for documents is UTF-8 */
+/* #define UTF8LANG	;kanji code type if LANG environment value is UTF-8 */
 /* #define NOMULTIKANJI	;no need to support multiple kanji codes */
 /* #define PATHNOCASE	;pathname is case insensitive */
 /* #define COMMNOCASE	;shell command name is case insensitive */
@@ -1206,9 +1210,23 @@ typedef long	off_t;
 #define	USEGETGROUPS
 #endif
 
-#if	(!defined (__GNUC__) || defined (__llvm__)) && !defined (__attribute__)
+#if	(!defined (__GNUC__) || defined (__clang__)) \
+&& !defined (__attribute__)
 #define	__attribute__(x)
 #endif
+
+#ifdef	__HOST_LANG__
+#undef	CODEEUC
+# if	!MSDOS \
+&& !defined (NEWS_OS6) && !defined (NEWS_OS4) && !defined (NEWS_OS3) \
+&& !defined (HPUX) && !defined (UNIOSB) \
+&& !defined (AIX) && !defined (AUX) \
+&& !defined (CYGWIN) && !defined (BOW) && !defined (DARWIN) \
+&& !defined (ANDROID) && !defined (ORG_386BSD)
+# define	CODEEUC
+# endif
+#endif
+
 
 /*                                 */
 /* Eval configurations by Configur */

@@ -71,7 +71,7 @@
 # define	SYS__llseek	__NR__llseek
 # endif
 # ifdef	SYS__llseek
-# define	_llseek(f,h,l,r,w) \
+# define	_llseek(f, h, l, r, w) \
 				syscall(SYS__llseek, f, h, l, r, w)
 # endif
 #endif	/* USELLSEEK && !_syscall5 */
@@ -149,7 +149,7 @@ static int NEAR clustfree __P_((devstat *, long));
 static int NEAR _readbpb __P_((devstat *, CONST bpb_t *));
 #endif
 static int NEAR readbpb __P_((devstat *, int));
-#ifdef	HDDMOUNT
+#if	defined (HDDMOUNT) && defined (DIOCGDINFO)
 static l_off_t *NEAR _readpt __P_((l_off_t, l_off_t, int, int, int, int));
 #endif
 static int NEAR _dosopendev __P_((int));
@@ -1655,6 +1655,7 @@ int drv;
 #endif	/* !MSDOS */
 
 #ifdef	HDDMOUNT
+# ifdef	DIOCGDINFO
 static l_off_t *NEAR _readpt(offset, extoffset, fd, head, sect, secsiz)
 l_off_t offset, extoffset;
 int fd, head, sect, secsiz;
@@ -1771,6 +1772,7 @@ int fd, head, sect, secsiz;
 
 	return(slice);
 }
+# endif	/* DIOCGDINFO */
 
 l_off_t *readpt(devfile, pc98)
 CONST char *devfile;

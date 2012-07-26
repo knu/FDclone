@@ -1,7 +1,16 @@
+Ver. 3.00m	Add the identifier UTF8LANG for compile.
+ (07/27/12)	Abortion when save file on customizer with some OS is fixed.
+		Wrong priority with IME translation candidates is fixed.
+		Unavailable dictionary in DICTSRC with ShiftJIS OS is fixed.
+		Failure to compile with gcc-4.2 is fixed.
+		Bug that some pipes cause infinite loop is fixed.
+		Ineffective suspend key in any pipes is fixed.
+		Wrong manual page for 'wait' builtin with no argument is fixed.
+
 Ver. 3.00l	Support Android 4.0.
  (06/30/12)	Support MINIX 3.2.
-		Add the identifier DEFKCODE, UTF8DOC, LANGWIDTH for compile.
-		Add the identifier _NOUNICDTBL, _NODICTTBL for compile.
+		Add the identifiers DEFKCODE, UTF8DOC, LANGWIDTH for compile.
+		Add the identifiers _NOUNICDTBL, _NODICTTBL for compile.
 		The cross-compiling is supported more carefully.
 		Strange attribute-changing screen in narrow terminal is fixed.
 		Some abortion when open archive browser is fixed.

@@ -108,7 +108,7 @@ extern struct dirent *searchdir __P_((DIR *, CONST reg_ex_t *, CONST char *));
 extern int underhome __P_((char *));
 extern int preparedir __P_((CONST char *));
 extern lockbuf_t *lockopen __P_((CONST char *, int, int));
-extern lockbuf_t *lockfopen __P_((CONST char *, CONST char *, int));
+extern lockbuf_t *lockfopen __P_((CONST char *, CONST char *, int, int));
 extern VOID lockclose __P_((lockbuf_t *));
 extern int touchfile __P_((CONST char *, struct stat *));
 #ifdef	DEP_PSEUDOPATH
@@ -146,7 +146,7 @@ extern VOID arrangedir __P_((int));
 
 /* apply.c */
 #ifndef	_NOEXTRACOPY
-extern VOID showprogress __P_((off_t));
+extern VOID showprogress __P_((off_t *));
 extern VOID fshowprogress __P_((CONST char *));
 #endif
 extern int prepareremove __P_((int, int));
@@ -175,7 +175,7 @@ extern p_id_t Xforkpty __P_((int *, CONST char *, CONST char *));
 # ifdef	DEP_ORIGSHELL
 # define	ptyusercomm	ptymacro
 # else
-# define	ptyusercomm(c,a,f) \
+# define	ptyusercomm(c, a, f) \
 				ptymacro(c, a, f | F_EVALMACRO)
 # endif
 #define	ptysystem(c)		ptymacro(c, NULL, F_DOSYSTEM)

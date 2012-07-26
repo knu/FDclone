@@ -22,6 +22,8 @@ s:__ECHO__:command /c echo:
 s:__COPY__:copy /y:
 s:__RM__:del:
 s:__LANGDIR__::
+s:__WITHUTF8__::
+s:__PRESETKCODE__::
 s:__INSTALL__:copy /y:
 s:__INSTSTRIP__::
 s:__LN__:copy /y:

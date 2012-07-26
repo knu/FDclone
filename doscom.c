@@ -459,7 +459,7 @@ int on;
 		tty.sg_flags |= ECHO;
 	}
 #  endif	/* !USETERMIOS && !USETERMIO */
-	tioctl(ttyio, REQSETP, &tty);
+	VOID_C tioctl(ttyio, REQSETP, &tty);
 }
 
 /*ARGSUSED*/

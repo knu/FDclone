@@ -7,6 +7,8 @@
 #include "headers.h"
 #include "kctype.h"
 #include "typesize.h"
+#include "string.h"
+#include "kconv.h"
 #include "roman.h"
 #include "hinsi.h"
 #include "evalopt.h"
@@ -3317,7 +3319,7 @@ static int NEAR convdict(size, fp)
 off_t size;
 FILE *fp;
 {
-	char *str, *kstr, *hstr, buf[MAXLINESTR + 1];
+	char *cp, *str, *kstr, *hstr, buf[MAXLINESTR + 1];
 	long ofs;
 	int n, ptr, tmp;
 
@@ -3333,6 +3335,11 @@ FILE *fp;
 		ptr = 0;
 		while (buf[ptr] && Xisspace(buf[ptr])) ptr++;
 		if (!buf[ptr]) continue;
+		cp = newkanjiconv(buf, EUC, DEFCODE, L_INPUT);
+		if (cp != buf) {
+			Xstrncpy(buf, cp, sizeof(buf) - 1);
+			free(cp);
+		}
 
 		str = &(buf[ptr]);
 		for (; buf[ptr]; ptr++) {

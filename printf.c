@@ -17,6 +17,7 @@
 
 #define	PRINTBUFUNIT		16
 #define	THDIGIT			3
+#define	MINUNITWIDTH		(3 + strsize(" KB"))
 #define	NULLSTR			"(null)"
 
 #ifdef	FD
@@ -29,20 +30,23 @@ static int NEAR setcntrl __P_((int, int, printbuf_t *));
 #endif
 static int NEAR checkchar __P_((int, printbuf_t *));
 static int NEAR setint __P_((u_long_t, int, printbuf_t *, int, int));
+#ifndef	MINIMUMSHELL
+static int NEAR unitint __P_((u_long_t, int, printbuf_t *, int, int));
+#endif
 static int NEAR setstr __P_((CONST char *, printbuf_t *, int, int));
 static int NEAR commonprintf __P_((printbuf_t *, CONST char *, va_list));
 
 CONST char printfflagchar[] = {
 	'-', '0', '\'',
 #ifndef	MINIMUMSHELL
-	'+', ' ', '<', '^',
+	'+', ' ', '<', '^', '>',
 #endif
 	'\0',
 };
 CONST int printfflag[] = {
 	VF_MINUS, VF_ZERO, VF_THOUSAND,
 #ifndef	MINIMUMSHELL
-	VF_PLUS, VF_SPACE, VF_STRICTWIDTH, VF_PRINTABLE,
+	VF_PLUS, VF_SPACE, VF_STRICTWIDTH, VF_PRINTABLE, VF_SIZEUNIT,
 #endif
 };
 CONST char printfsizechar[] = {
@@ -61,6 +65,10 @@ CONST int printfsize[] = {
 int printf_urgent = 0;
 #ifdef	DEP_FILECONV
 int printf_defkanji = 0;
+#endif
+
+#ifndef	MINIMUMSHELL
+static CONST char printfsizeunit[] = "KMGTPEZY";
 #endif
 
 
@@ -323,34 +331,30 @@ int width, prec;
 #endif
 	if (c && setchar(c, pbufp) < 0) return(-1);
 
-	if (prec >= 0 && len < prec) {
-		for (i = 0; i < prec - len; i++) {
+	if (prec < 0 || len >= prec) /*EMPTY*/;
+	else for (i = 0; i < prec - len; i++) {
 #ifndef	MINIMUMSHELL
-			if ((pbufp -> flags & VF_STRICTWIDTH) && width == 1)
-				break;
+		if ((pbufp -> flags & VF_STRICTWIDTH) && width == 1) break;
 #endif
-			width--;
-			c = '0';
-			if ((pbufp -> flags & VF_THOUSAND)
-			&& !((prec - i) % (THDIGIT + 1)))
-				c = (i) ? ',' : ' ';
-			if (setchar(c, pbufp) < 0) return(-1);
-		}
-	}
-#ifndef	MINIMUMSHELL
-	if ((pbufp -> flags & VF_STRICTWIDTH) && width >= 0 && width < len)
-	for (i = 0; i < width; i++) {
-		c = '9';
+		width--;
+		c = '0';
 		if ((pbufp -> flags & VF_THOUSAND)
-		&& !((width - i) % (THDIGIT + 1)))
+		&& !((prec - i) % (THDIGIT + 1)))
 			c = (i) ? ',' : ' ';
 		if (setchar(c, pbufp) < 0) return(-1);
 	}
-	else
-#endif	/* !MINIMUMSHELL */
-	for (i = 0; i < len; i++) {
-		if (setchar(num[len - i - 1], pbufp) < 0) return(-1);
-	}
+
+	i = 0;
+#ifndef	MINIMUMSHELL
+	if (width < 0 || width >= len) /*EMPTY*/;
+	else if (pbufp -> flags & VF_SIZEUNIT) return(len);
+	else if (pbufp -> flags & VF_ASPOSSIBLE) i = len - width;
+	else if (pbufp -> flags & VF_STRICTWIDTH)
+		for (len = 0; len < width; len++)
+			if (Xisdigit(num[len])) num[len] = '9';
+#endif
+
+	while (i++ < len) if (setchar(num[len - i], pbufp) < 0) return(-1);
 
 	if (width >= 0) for (; i < width; i++) {
 		if (setchar(' ', pbufp) < 0) return(-1);
@@ -358,6 +362,65 @@ int width, prec;
 
 	return(pbufp -> ptr - ptr);
 }
+
+#ifndef	MINIMUMSHELL
+static int NEAR unitint(u, base, pbufp, width, prec)
+u_long_t u;
+int base;
+printbuf_t *pbufp;
+int width, prec;
+{
+	printbuf_t pbuf;
+	int len, unit, uwidth, frac;
+
+	memcpy((char *)&pbuf, (char *)pbufp, sizeof(pbuf));
+	pbufp -> buf = NULL;
+	pbufp -> flags |= VF_FILE;
+	len = unit = uwidth = 0;
+	frac = -1;
+	if (pbufp -> flags & VF_STRICTWIDTH) unit++;
+	if (width >= MINUNITWIDTH) for (;;) {
+		if (unit) uwidth = 3;
+		pbufp -> ptr = pbuf.ptr;
+		len = setint(u, base, pbufp, -1, prec);
+		if (len < 0) {
+			len = width;
+			break;
+		}
+		if (len + uwidth <= width) break;
+		if (!(printfsizeunit[unit])) break;
+		unit++;
+		frac = (int)(u & (u_long_t)0x3ff);
+		u >>= 10;
+	}
+
+	memcpy((char *)pbufp, (char *)&pbuf, sizeof(pbuf));
+	if ((pbufp -> flags & VF_STRICTWIDTH) || len + 2 + uwidth > width)
+		frac = -1;
+	if (frac < 0) len = width - uwidth;
+	pbufp -> flags &= ~VF_SIZEUNIT;
+	pbufp -> flags |= VF_STRICTWIDTH;
+	len = setint(u, base, pbufp, len, prec);
+	if (len < 0) return(-1);
+	if (frac >= 0) {
+		width -= len + 1 + uwidth;
+		u = (u_long_t)frac;
+		u *= (u_long_t)1000;
+		u >>= 10;
+		if (setchar('.', pbufp) < 0) return(-1);
+		pbufp -> flags &= (VF_NEW | VF_FILE);
+		pbufp -> flags |= (VF_ZERO | VF_ASPOSSIBLE);
+		if (setint(u, base, pbufp, width, prec) < 0) return(-1);
+	}
+	if (unit > 0) {
+		if (setchar(' ', pbufp) < 0) return(-1);
+		if (setchar(printfsizeunit[unit - 1], pbufp) < 0) return(-1);
+		if (setchar('B', pbufp) < 0) return(-1);
+	}
+
+	return(pbufp -> ptr - pbuf.ptr);
+}
+#endif	/* !MINIMUMSHELL */
 
 static int NEAR setstr(s, pbufp, width, prec)
 CONST char *s;
@@ -690,6 +753,12 @@ va_list args;
 				mask >>= 1;
 				if (u & ~mask) u |= ~mask;
 			}
+
+#ifndef	MINIMUMSHELL
+			if (pbufp -> flags & VF_SIZEUNIT)
+				len = unitint(u, base, pbufp, width, prec);
+			else
+#endif
 			len = setint(u, base, pbufp, width, prec);
 		}
 
@@ -814,10 +883,10 @@ va_dcl
 }
 
 #ifdef	USESTDARGH
-/*VARARGS2*/
+/*VARARGS1*/
 int Xprintf(CONST char *fmt, ...)
 #else
-/*VARARGS2*/
+/*VARARGS1*/
 int Xprintf(fmt, va_alist)
 CONST char *fmt;
 va_dcl

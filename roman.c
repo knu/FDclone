@@ -13,9 +13,9 @@
 #include "roman.h"
 
 #define	R_MAXVOWEL		5
-#define	DEFRM(s,c)		{s, strsize(s), \
+#define	DEFRM(s, c)		{s, strsize(s), \
 				{((c) >> 8) & 0xff, (c) & 0xff}}
-#define	DEFRM2(s,c1,c2)		{s, strsize(s), {(c1), (c2)}}
+#define	DEFRM2(s, c1, c2)	{s, strsize(s), {(c1), (c2)}}
 
 typedef struct _voweltable {
 	int key;

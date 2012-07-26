@@ -78,7 +78,7 @@ static int NEAR checkdupl __P_((CONST char *, char *,
 static int NEAR checkrmv __P_((CONST char *, int));
 #ifndef	_NOEXTRACOPY
 static int NEAR isxdev __P_((CONST char *, struct stat *));
-static VOID NEAR addcopysize __P_((off_t));
+static VOID NEAR addcopysize __P_((off_t *));
 static VOID NEAR _showprogress __P_((int));
 static int countcopysize __P_((CONST char *));
 static int countmovesize __P_((CONST char *));
@@ -601,12 +601,12 @@ struct stat *stp;
 	return(0);
 }
 
-static VOID NEAR addcopysize(size)
-off_t size;
+static VOID NEAR addcopysize(sizep)
+off_t *sizep;
 {
-	if (size <= MAXTYPE(off_t) - maxcopysize) maxcopysize += size;
+	if (*sizep <= MAXTYPE(off_t) - maxcopysize) maxcopysize += *sizep;
 	else {
-		maxcopysize -= MAXTYPE(off_t) - size;
+		maxcopysize -= MAXTYPE(off_t) - *sizep;
 		maxcopyunit++;
 	}
 }
@@ -626,14 +626,16 @@ int n;
 	errno = duperrno;
 }
 
-VOID showprogress(size)
-off_t size;
+VOID showprogress(sizep)
+off_t *sizep;
 {
+	off_t size;
 	long unit;
 	int n, max;
 
 	if (!maxcopysize && !maxcopyunit) return;
 
+	size = *sizep;
 	max = n_column - 1;
 	for (n = 0; n < max; n++) {
 		if (size <= MAXTYPE(off_t) - copysize) copysize += size;
@@ -663,9 +665,11 @@ VOID fshowprogress(path)
 CONST char *path;
 {
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	showprogress(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	showprogress(&size);
 }
 
 static int countcopysize(path)
@@ -673,11 +677,14 @@ CONST char *path;
 {
 	struct stat st;
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 	if (Xlstat(path, &st) < 0) return(APL_ERROR);
-	addcopysize(st.st_size);
+	size = (off_t)(st.st_size);
+	addcopysize(&size);
 
 	return(APL_OK);
 }
@@ -686,13 +693,18 @@ static int countmovesize(path)
 CONST char *path;
 {
 	struct stat st;
-	int n;
 	CONST char *cp;
+	off_t size;
+	int n;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 	if ((n = isxdev(path, &st)) < 0) return(APL_ERROR);
-	else if (n && !s_isdir(&st)) addcopysize(st.st_size);
+	else if (n && !s_isdir(&st)) {
+		size = (off_t)(st.st_size);
+		addcopysize(&size);
+	}
 
 	return(APL_OK);
 }
@@ -911,9 +923,11 @@ static int countremovesize(path)
 CONST char *path;
 {
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 
 	return(APL_OK);
 }

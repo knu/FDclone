@@ -1821,9 +1821,9 @@ CONST char *from, *to;
 	for (i = 0; from[i]; i++) if (from[i] != to[i]) break;
 	if (!strdelim(&(from[i]), 0) && !strdelim(&(to[i]), 0)) return(-1);
 
-	if (unixmkdir(to, 0666) < 0) return(-1);
+	if (unixmkdir(to, 0777) < 0) return(-1);
 	if (!(dirp = unixopendir(from))) {
-		unixrmdir(to);
+		VOID_C unixrmdir(to);
 		return(-1);
 	}
 	i = strlen(from);

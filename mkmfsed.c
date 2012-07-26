@@ -31,6 +31,8 @@
 #endif	/* !USESYSCONF || !_SC_OPEN_MAX */
 
 #define	MAXLINEBUF		255
+#define	UTF8_MAC		1
+#define	UTF8_ICONV		2
 #ifndef	PREFIX
 #define	PREFIX			"/usr/local"
 #endif
@@ -40,13 +42,48 @@
 #ifndef	CCCOMMAND
 #define	CCCOMMAND		"cc"
 #endif
+#ifndef	CFLAGS
+#define	CFLAGS			""
+#endif
+#ifndef	CPPFLAGS
+#define	CPPFLAGS		""
+#endif
+#ifndef	LDFLAGS
+#define	LDFLAGS			""
+#endif
 #ifndef	DICTSRC
 #define	DICTSRC			""
 #endif
 
+#define	ver_newer(a, i, j, n)	((a) > (j) || ((a) == (j) && (i) >= (n)))
+#define	gcc_newer(ma, mi)	ver_newer(__GNUC__, __GNUC_MINOR__, ma, mi)
+#define	h_gcc_newer(ma, mi)	ver_newer(H___GNUC__, H___GNUC_MINOR__, ma, mi)
+
+static CONST char *NEAR Xstrstr __P_((CONST char *, CONST char *));
 static VOID NEAR strappend __P_((char *, CONST char *));
 int main __P_((int, char *CONST []));
 
+
+static CONST char *NEAR Xstrstr(s1, s2)
+CONST char *s1, *s2;
+{
+	int i, c1, c2;
+
+	while (*s1) {
+		for (i = 0;; i++) {
+			if (!s2[i]) return(s1);
+			c1 = s1[i];
+			c2 = s2[i];
+			if (c1 >= 'A' && c1 <= 'Z') c1 += 'a' - 'A';
+			if (c2 >= 'A' && c2 <= 'Z') c2 += 'a' - 'A';
+			if (c1 != c2) break;
+			if (!s1[i]) break;
+		}
+		s1++;
+	}
+
+	return(NULL);
+}
 
 static VOID NEAR strappend(buf, s)
 char *buf;
@@ -70,6 +107,7 @@ int main(argc, argv)
 int argc;
 char *CONST argv[];
 {
+	CONST char *utf;
 	char buf1[MAXLINEBUF + 1], buf2[MAXLINEBUF + 1], buf3[MAXLINEBUF + 1];
 	CONST char *cp;
 	int n;
@@ -156,8 +194,9 @@ char *CONST argv[];
 	printf("s:__OSTYPE__:%s=%d:\n", OSTYPE, n);
 #endif
 
+	cp = (char *)getenv("LANG");
 #ifdef	USEMANLANG
-	if ((cp = (char *)getenv("LANG")) && *cp) {
+	if (cp && *cp) {
 		n = strlen(cp);
 # ifdef	LANGWIDTH
 		if (n > LANGWIDTH) n = LANGWIDTH;
@@ -167,6 +206,29 @@ char *CONST argv[];
 	else
 #endif	/* USEMANLANG */
 	printf("s:__LANGDIR__::\n");
+
+#ifndef	UTF8DOC
+	utf = NULL;
+#else	/* UTF8DOC */
+# ifdef	DEFKCODE
+	utf = DEFKCODE;
+# else
+	utf = "";
+# endif
+#endif	/* UTF8DOC */
+#ifdef	UTF8LANG
+	if (cp && Xstrstr(cp, "UTF")) utf = UTF8LANG;
+#endif
+	if (utf) {
+		n = 0;
+		if (Xstrstr(utf, "utf8-mac")) n = UTF8_MAC;
+		else if (Xstrstr(utf, "utf8-iconv")) n = UTF8_ICONV;
+		printf("s:__WITHUTF8__:-DWITHUTF8=%d:\n", n);
+	}
+	else printf("s:__WITHUTF8__::\n");
+	if (utf && *utf)
+		printf("s:__PRESETKCODE__:-DPRESETKCODE='\"'%s'\"':\n", utf);
+	else printf("s:__PRESETKCODE__::\n");
 
 #ifdef	BSDINSTALL
 # ifdef	BSDINSTCMD
@@ -190,10 +252,10 @@ char *CONST argv[];
 	strappend(buf1, EXTENDCCOPT);
 	strappend(buf1, "$(DEBUG)");
 #if	defined (__GNUC__) && defined (__GNUC_MINOR__)
-# if	__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+# if	gcc_newer(4, 1)
 	strappend(buf3, "-Wno-attributes");
 # endif
-# if	__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)
+# if	gcc_newer(4, 3) || defined (__clang__)
 	strappend(buf3, "-Wno-empty-body");
 # endif
 #endif	/* __GNUC__ && __GNUC_MINOR__ */
@@ -203,19 +265,21 @@ char *CONST argv[];
 		printf("s:__HOSTCFLAGS__:%s:\n", HOSTCFLAGS);
 		printf("s:__HOSTCPPFLAGS__:%s:\n", HOSTCPPFLAGS);
 		printf("s:__HOSTLDFLAGS__:%s:\n", HOSTLDFLAGS);
+		strappend(buf1, "$(CFLAGS)");
 # if	defined (H___GNUC__) && defined (H___GNUC_MINOR__)
-#  if	H___GNUC__ > 4 || (H___GNUC__ == 4 && H___GNUC_MINOR__ >= 1)
+#  if	h_gcc_newer(4, 1)
 		strappend(buf1, "-Wno-attributes");
 #  endif
-#  if	H___GNUC__ > 4 || (H___GNUC__ == 4 && H___GNUC_MINOR__ >= 3)
+#  if	h_gcc_newer(4, 3) || defined (H___clang__)
 		strappend(buf1, "-Wno-empty-body");
 #  endif
 # endif	/* H___GNUC__ && H___GNUC_MINOR__ */
-		strappend(buf1, "$(CFLAGS)");
 		strappend(buf2, "$(OSOPTS)");
-		strappend(buf2, "-D__HOST_CC__");
-		strappend(buf2, buf3);
+		strappend(buf2, "-D__HOST_LANG__");
 		strappend(buf2, "$(HOSTCFLAGS)");
+# if	defined (__GNUC__) && defined (__GNUC_MINOR__)
+		strappend(buf2, buf3);
+# endif
 	}
 	else
 #endif	/* HOSTCCCOMMAND */
@@ -224,8 +288,10 @@ char *CONST argv[];
 		printf("s:__HOSTCFLAGS__:$(CFLAGS):\n");
 		printf("s:__HOSTCPPFLAGS__:$(CPPFLAGS):\n");
 		printf("s:__HOSTLDFLAGS__:$(LDFLAGS):\n");
-		strappend(buf1, buf3);
 		strappend(buf1, "$(CFLAGS)");
+# if	defined (__GNUC__) && defined (__GNUC_MINOR__)
+		strappend(buf1, buf3);
+# endif
 		strappend(buf2, "$(COPTS)");
 	}
 
@@ -283,15 +349,12 @@ char *CONST argv[];
 #else
 	printf("s:__KCODEOPTION__:-s:\n");
 #endif
-#ifdef	UTF8DOC
-	printf("s:__KDOCOPTION__:-u:\n");
-#else	/* !UTF8DOC */
-# ifdef	CODEEUC
-	printf("s:__KDOCOPTION__:-e:\n");
-# else
-	printf("s:__KDOCOPTION__:-s:\n");
-# endif
-#endif	/* !UTF8DOC */
+#ifdef	CODEEUC
+	cp = "-e";
+#else
+	cp = "-s";
+#endif
+	printf("s:__KDOCOPTION__:%s:\n", (utf) ? "-u" : cp);
 
 #ifdef	CPP7BIT
 	printf("s:__MSBOPTION__:-7:\n");
@@ -317,11 +380,7 @@ char *CONST argv[];
 #else
 	printf("s:__UNITBLOBJ__::\n");
 #endif
-#ifdef	UTF8DOC
-	printf("s:__TUNITBLOBJ__:tunitbl$(OBJ):\n");
-#else
-	printf("s:__TUNITBLOBJ__::\n");
-#endif
+	printf("s:__TUNITBLOBJ__:%s:\n", (utf) ? "tunitbl$(OBJ)" : "");
 #if	defined (DEP_IME) && defined (DEP_EMBEDDICTTBL)
 	printf("s:__DICTTBLOBJ__:dicttbl$(OBJ):\n");
 #else

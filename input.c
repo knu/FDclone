@@ -75,7 +75,8 @@ static int NEAR attrkanjiputs2 __P_((CONST char *, int, int));
 #if	FD >= 2
 static VOID NEAR kanjiputs3 __P_((CONST char *, int, int, int, int));
 #else
-#define	kanjiputs3(s,n,l,p,m)	VOID_C kanjiputs2(s, l, p)
+#define	kanjiputs3(s, n, l, p, m) \
+				VOID_C kanjiputs2(s, l, p)
 #endif
 static VOID NEAR putcursor __P_((int, int));
 static VOID NEAR rightcursor __P_((VOID_A));
@@ -158,7 +159,7 @@ int maxcmdline = 0;
 int dumbshell = 0;
 #endif
 #ifdef	DEP_IME
-int imekey = -1;
+int imekey = 0;
 #endif
 #ifdef	DEP_URLPATH
 int hidepasswd = 0;

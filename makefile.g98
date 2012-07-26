@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00l
+VERSION	= 3.00m
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -150,6 +150,7 @@ RM	= del
 LN	= copy /y
 MV	= mv
 CHMOD	= chmod
+LINT	= lint
 TAR	= tar
 LHA	= lha
 SHAR	= shar
@@ -251,6 +252,9 @@ termio$(OBJ): termio.c
 system$(OBJ): system.c
 	$(CC) $(FDCFLAGS) $(DEFCFLAGS) -c -o $@ $*.c
 
+custom$(OBJ): custom.c
+	$(CC) $(FDCFLAGS)  -c -o $@ $*.c
+
 .c.o:
 	$(CC) $(FDCFLAGS) -c -o $@ $*.c
 
@@ -291,7 +295,7 @@ kanjicnv$(EXE): kanjicnv$(OBJ) $(KOBJ)
 #	@sleep 1
 
 kanjicnv$(OBJ): kanjicnv.c
-	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS) -c -o $@ $*.c
+	$(HOSTCC) $(HOSTCOPTS) $(HOSTCPPFLAGS)  -c -o $@ $*.c
 
 
 ############################################################
@@ -671,6 +675,26 @@ depend: $(SRC) $(HSRC) $(DSRC) config.h kanji.h funcno.h
 		-e 's: *$$::' \
 		-e '\: *$$\d' $(DEPDIR)\Makefile.tr >> Makefile.in
 	-rm -rf $(DEPDIR)
+
+
+############################################################
+# to verify sources
+
+lint: $(SRC) $(HSRC) config.h kanji.h funcno.h
+	$(LINT) $(OSOPTS) -DFD=$(VERMAJ) `$(SED) -e "s:\$(OBJ):\.c:g" $(ARGS)`
+	SRCS=`$(ECHO) $(UOBJ)|$(SED) -e "s:t\([^ ]*\)\$(OBJ):\1\.c:g"`; \
+	$(LINT) $(OSOPTS) mkunitbl.c $${SRCS}
+	SRCS=`$(ECHO) $(TOBJ)|$(SED) -e "s:t\([^ ]*\)\$(OBJ):\1\.c:g"`; \
+	$(LINT) $(OSOPTS) mkdict.c $${SRCS}; \
+	$(LINT) $(OSOPTS) mktankan.c $${SRCS}
+	$(LINT) $(OSOPTS) mkkanji.c
+	SRCS=`$(ECHO) $(COBJ)|$(SED) -e "s:t\([^ ]*\)\$(OBJ):\1\.c:g"`; \
+	$(LINT) $(OSOPTS) mkcat.c $${SRCS}
+	$(LINT) $(OSOPTS) mkdir_p.c
+	SRCS=`$(ECHO) $(KOBJ)|$(SED) -e "s:t\([^ ]*\)\$(OBJ):\1\.c:g"`; \
+	$(LINT) $(OSOPTS) kanjicnv.c $${SRCS}
+	$(LINT) $(OSOPTS) expfunc.c
+	$(LINT) $(OSOPTS) mkfuncno.c
 
 
 ############################################################
@@ -1634,11 +1658,11 @@ mkunitbl$(OBJ): headers.h machine.h config.h
 mkunitbl$(OBJ): typesize.h evalopt.h gentbl.h
 mkdict$(OBJ): headers.h machine.h config.h
 mkdict$(OBJ): kctype.h depend.h
-mkdict$(OBJ): typesize.h roman.h hinsi.h evalopt.h
-mkdict$(OBJ): gentbl.h
+mkdict$(OBJ): typesize.h string.h kconv.h roman.h
+mkdict$(OBJ): hinsi.h evalopt.h gentbl.h
 mktankan$(OBJ): headers.h machine.h config.h
 mktankan$(OBJ): kctype.h depend.h
-mktankan$(OBJ): typesize.h roman.h
+mktankan$(OBJ): typesize.h kconv.h roman.h
 mkkanji$(OBJ): headers.h machine.h config.h
 mkkanji$(OBJ): typesize.h
 mkcat$(OBJ): headers.h machine.h config.h

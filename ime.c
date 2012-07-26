@@ -233,8 +233,8 @@ int type, kana;
 			tmp[1] = ((buf[1] & 0xf0) >> 4);
 			if (tmp[0] >= 10 || tmp[1] >= 10) return((u_int)0);
 			buf[1] = tmp[1] * 10 + tmp[0];
-			buf[0] += 0xa0;
-			buf[1] += 0xa0;
+			buf[0] += (char)0xa0;
+			buf[1] += (char)0xa0;
 			buf[2] = type = '\0';
 			break;
 #ifdef	DEP_UNICODE

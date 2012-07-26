@@ -300,6 +300,7 @@ int w, forced;
 }
 
 static VOID NEAR reallocate(w, x, y)
+int w, x, y;
 {
 	if (pty[w].cur.attr
 	|| pty[w].cur.fg >= (short)0 || pty[w].cur.bg >= (short)0) {
@@ -1598,7 +1599,7 @@ static int NEAR evalinput(VOID_A)
 		if (incode != outcode) cnv++;
 		key.len = (u_char)2;
 		key.str = buf;
-		buf[0] = C_EKANA;
+		buf[0] = (char)C_EKANA;
 		buf[1] = (key.code & 0xff);
 	}
 #else	/* !DEP_KCONV */
@@ -1606,7 +1607,7 @@ static int NEAR evalinput(VOID_A)
 	else if (isekana2(key.code)) {
 		key.len = (u_char)2;
 		key.str = buf;
-		buf[0] = C_EKANA;
+		buf[0] = (char)C_EKANA;
 		buf[1] = (key.code & 0xff);
 	}
 # endif

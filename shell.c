@@ -1613,7 +1613,7 @@ int flags;
 	char *new;
 	int i, n, size;
 
-	if (flags < 0) {
+	if (flags & HST_INIT) {
 		for (n = 0; n < HISTTYPES; n++) {
 			history[n] = NULL;
 			histfile[n] = NULL;
@@ -1682,7 +1682,7 @@ int n;
 
 	if (n < 0 || n >= HISTTYPES) return(0);
 	if (!histfile[n] || !*(histfile[n])) return(0);
-	lck = lockfopen(histfile[n], "r", O_BINARY | O_RDONLY);
+	lck = lockfopen(histfile[n], "r", O_BINARY | O_RDONLY, 0);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);
@@ -1716,7 +1716,7 @@ int n;
 	if (!histfile[n] || !*(histfile[n]) || savehist[n] <= 0) return(0);
 	if (!history[n] || !history[n][0]) return(-1);
 	lck = lockfopen(histfile[n], "w",
-		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
+		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC, 0);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);

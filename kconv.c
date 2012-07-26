@@ -110,7 +110,7 @@ static int NEAR openunitbl __P_((CONST char *));
 static u_char *NEAR newunitbl __P_((ALLOC_T));
 # endif
 #define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
-#define	skread(f,o,s,n)		(Xlseek(f, o, L_SET) >= (off_t)0 \
+#define	skread(f, o, s, n)	(Xlseek(f, o, L_SET) >= (off_t)0 \
 				&& sureread(f, s, n) == n)
 #endif
 #ifndef	_NOKANJICONV
@@ -416,7 +416,7 @@ static CONST u_char h2btable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0	/* 0xf0 */
 };
 #endif	/* !_NOKANJICONV */
-#ifndef	_NOKANJIFCONV
+#ifdef	DEP_FILECONV
 static CONST kpathtable kpathlist[] = {
 	{&sjispath, SJIS},
 	{&eucpath, EUC},
@@ -434,7 +434,7 @@ static CONST kpathtable kpathlist[] = {
 	{&noconvpath, NOCNV},
 };
 #define	KPATHLISTSIZ		arraysize(kpathlist)
-#endif	/* !_NOKANJIFCONV */
+#endif	/* DEP_FILECONV */
 
 
 int onkanji1(s, ptr)
@@ -2002,7 +2002,7 @@ int in, out, io;
 {
 	char *buf;
 
-	buf = newkanjiconv(*sp, in, out, in);
+	buf = newkanjiconv(*sp, in, out, io);
 	if (buf != *sp) {
 		free(*sp);
 		*sp = buf;

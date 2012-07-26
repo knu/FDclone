@@ -105,7 +105,7 @@ static int NEAR printarch __P_((int, char *CONST []));
 static char **NEAR readargv __P_((char *CONST *, char **));
 static int NEAR custbrowse __P_((int, char *CONST []));
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
 static int NEAR setmacro __P_((char *));
 static int NEAR setkeybind __P_((int, char *CONST []));
 static int NEAR printbind __P_((int, char *CONST []));
@@ -191,7 +191,7 @@ static CONST builtintable builtinlist[] = {
 # ifndef	_NOBROWSE
 	{custbrowse,	BL_BROWSE},
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
 	{setkeybind,	BL_BIND},
 	{printbind,	BL_PBIND},
 #ifdef	DEP_DOSEMU
@@ -1122,6 +1122,7 @@ lsparse_t *list;
 	Xfree(list);
 }
 
+/*ARGSUSED*/
 static int NEAR custbrowse(argc, argv)
 int argc;
 char *CONST argv[];

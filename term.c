@@ -3136,7 +3136,7 @@ int c, desc;
 	if (!desc) return(Xungetch(c));
 # ifdef	TIOCSTI
 	ch = c;
-	Xioctl(ttyio, TIOCSTI, &ch);
+	VOID_C Xioctl(ttyio, TIOCSTI, &ch);
 # else
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
 	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),

@@ -14,7 +14,7 @@
 #define	MAXPATHLEN		260
 #define	unixmkdir(p, m)		((mkdir(p)) ? -1 : 0)
 #else
-#define	unixmkdir(p, m)		((mkdir(p,m)) ? -1 : 0)
+#define	unixmkdir(p, m)		((mkdir(p, m)) ? -1 : 0)
 #endif
 
 static int a2octal __P_((CONST char *));

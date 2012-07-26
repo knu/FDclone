@@ -40,6 +40,12 @@ UTF8DOC	This means to use UTF-8 as the Kanji code of documents.
 	If undefined, it follows the definition of CODEEUC.
 	You can also define the value of DEFKCODE as 'utf8-mac'
 	or 'utf8-iconv', which specified the UNICODE mapping.
+UTF8LANG
+	This specifies the string which indicates Kanji code
+	used as the OS standard and Kanji code of documents,
+	if the environment variable LANG includes "UTF". It
+	will be meaningless in case that LANG does not include
+	"UTF".
 NOMULTIKANJI
 	It is not necessary to consider the environment which
 	has multiple Kanji codes.

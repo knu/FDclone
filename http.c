@@ -1256,6 +1256,7 @@ int uh, flags;
 	return(fd);
 }
 
+/*ARGSUSED*/
 int httprerecvlist(uhp, listp)
 int *uhp;
 namelist **listp;

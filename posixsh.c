@@ -119,24 +119,24 @@ int job;
 	}
 
 	Xsigemptyset(mask);
-#ifdef	SIGTSTP
+# ifdef	SIGTSTP
 	Xsigaddset(mask, SIGTSTP);
-#endif
-#ifdef	SIGCHLD
+# endif
+# ifdef	SIGCHLD
 	Xsigaddset(mask, SIGCHLD);
-#endif
-#ifdef	SIGTTIN
+# endif
+# ifdef	SIGTTIN
 	Xsigaddset(mask, SIGTTIN);
-#endif
-#ifdef	SIGTTOU
+# endif
+# ifdef	SIGTTOU
 	Xsigaddset(mask, SIGTTOU);
-#endif
+# endif
 	Xsigblock(omask, mask);
 
-#ifdef	JOBVERBOSE
+# ifdef	JOBVERBOSE
 	VOID_C Xfprintf(ttyout,
 		"gettermio: %id: %id -> %id\n", mypid, ttypgrp, pgrp);
-#endif	/* JOBVERBOSE */
+# endif
 	if ((ret = settcpgrp(ttyio, pgrp)) >= 0) ttypgrp = pgrp;
 	Xsigsetmask(omask);
 
@@ -192,18 +192,53 @@ XFILE *fp;
 	VOID_C fputnl(fp);
 }
 
+int statjob(n)
+int n;
+{
+	int i, sig;
+
+	if (n < 0 || n >= maxjobs || !(joblist[n].pids)) return(-1);
+
+	sig = -1;
+	for (i = 0; i <= joblist[n].npipe; i++) {
+		if (joblist[n].stats[i] < 0 || joblist[n].stats[i] >= 128)
+			continue;
+		if (sig < joblist[n].stats[i]) sig = joblist[n].stats[i];
+	}
+
+	return(sig);
+}
+
+VOID freejob(n)
+int n;
+{
+	if (n < 0 || n >= maxjobs) return;
+	if (!(joblist[n].pids)) return;
+
+	Xfree(joblist[n].pids);
+	Xfree(joblist[n].stats);
+	Xfree(joblist[n].fds);
+	if (joblist[n].trp) {
+		freestree(joblist[n].trp);
+		Xfree(joblist[n].trp);
+	}
+	Xfree(joblist[n].tty);
+
+	joblist[n].pids = NULL;
+}
+
 int searchjob(pid, np)
 p_id_t pid;
 int *np;
 {
-	int i, j;
+	int i, n;
 
-	for (i = 0; i < maxjobs; i++) {
-		if (!(joblist[i].pids)) continue;
-		for (j = 0; j <= joblist[i].npipe; j++) {
-			if (joblist[i].pids[j] != pid) continue;
-			if (np) *np = j;
-			return(i);
+	for (n = 0; n < maxjobs; n++) {
+		if (!(joblist[n].pids)) continue;
+		for (i = 0; i <= joblist[n].npipe; i++) {
+			if (joblist[n].pids[i] != pid) continue;
+			if (np) *np = i;
+			return(n);
 		}
 	}
 
@@ -214,128 +249,128 @@ int getjob(s)
 CONST char *s;
 {
 	CONST char *cp;
-	int i, j;
+	int n, len;
 
 	if (!jobok) return(-1);
-	if (!s) i = lastjob;
+	if (!s) n = lastjob;
 	else {
 		if (s[0] != '%') return(-1);
 		if (!s[1] || ((s[1] == '%' || s[1] == '+') && !s[2]))
-			i = lastjob;
-		else if (s[1] == '-' && !s[2]) i = prevjob;
-		else if ((i = isnumeric(&(s[1]))) >= 0) i--;
+			n = lastjob;
+		else if (s[1] == '-' && !s[2]) n = prevjob;
+		else if ((n = isnumeric(&(s[1]))) >= 0) n--;
 		else {
-			j = strlen(&(s[1]));
-			for (i = 0; i < maxjobs; i++) {
-				if (!(joblist[i].pids) || !(joblist[i].trp)
-				|| !(cp = headstree(joblist[i].trp)))
+			len = strlen(&(s[1]));
+			for (n = 0; n < maxjobs; n++) {
+				if (!(joblist[n].pids) || !(joblist[n].trp)
+				|| !(cp = headstree(joblist[n].trp)))
 					continue;
-				if (!strnpathcmp(&(s[1]), cp, j)) break;
+				if (!strnpathcmp(&(s[1]), cp, len)) break;
 			}
 		}
 	}
-	if (i < 0 || i >= maxjobs || !joblist || !(joblist[i].pids))
+	if (n < 0 || n >= maxjobs || !joblist || !(joblist[n].pids))
 		return(-1);
-	j = joblist[i].npipe;
-	if (joblist[i].stats[j] < 0 || joblist[i].stats[j] >= 128) return(-2);
+	if (statjob(n) < 0) return(-2);
 
-	return(i);
+	return(n);
 }
 
-int stackjob(pid, sig, trp)
+int stackjob(pid, sig, fd, trp)
 p_id_t pid;
-int sig;
+int sig, fd;
 syntaxtree *trp;
 {
-	int i, j, n;
+	int i, n, min;
 
 #ifdef	FAKEUNINIT
-	j = 0;	/* fake for -Wuninitialized */
+	i = 0;	/* fake for -Wuninitialized */
 #endif
 	if (!joblist) {
 		joblist = (jobtable *)Xmalloc(BUFUNIT * sizeof(jobtable));
 		maxjobs = BUFUNIT;
-		i = 0;
-		for (n = 0; n < maxjobs; n++) joblist[n].pids = NULL;
+		n = 0;
+		for (i = 0; i < maxjobs; i++) joblist[i].pids = NULL;
 	}
 	else {
-		n = -1;
-		for (i = 0; i < maxjobs; i++) {
-			if (!(joblist[i].pids)) {
-				if (n < 0) n = i;
+		min = -1;
+		for (n = 0; n < maxjobs; n++) {
+			if (!(joblist[n].pids)) {
+				if (min < 0) min = n;
 				continue;
 			}
-			for (j = 0; j <= joblist[i].npipe; j++)
-				if (joblist[i].pids[j] == pid) break;
-			if (j <= joblist[i].npipe) break;
-			else if (joblist[i].pids[0] == childpgrp) {
-				j = joblist[i].npipe + 1;
+			for (i = 0; i <= joblist[n].npipe; i++)
+				if (joblist[n].pids[i] == pid) break;
+			if (i <= joblist[n].npipe) break;
+			else if (joblist[n].pids[0] == childpgrp) {
+				i = joblist[n].npipe + 1;
 				break;
 			}
 		}
-		if (i < maxjobs) /*EMPTY*/;
-		else if (n >= 0) i = n;
+		if (n < maxjobs) /*EMPTY*/;
+		else if (min >= 0) n = min;
 		else {
 			joblist = (jobtable *)Xrealloc(joblist,
 				(maxjobs + BUFUNIT) * sizeof(jobtable));
 			maxjobs += BUFUNIT;
-			for (n = i; n < maxjobs; n++) joblist[n].pids = NULL;
+			for (i = n; i < maxjobs; i++) joblist[i].pids = NULL;
 		}
 	}
 
-	if (!(joblist[i].pids)) {
-		joblist[i].pids = (p_id_t *)Xmalloc(BUFUNIT * sizeof(p_id_t));
-		joblist[i].stats = (int *)Xmalloc(BUFUNIT * sizeof(int));
-		joblist[i].npipe = 0;
-		joblist[i].trp = NULL;
-		joblist[i].tty = NULL;
-# ifdef	USESGTTY
-		joblist[i].ttyflag = NULL;
-# endif
-		j = 0;
+	if (!(joblist[n].pids)) {
+		joblist[n].pids = (p_id_t *)Xmalloc(BUFUNIT * sizeof(p_id_t));
+		joblist[n].stats = (int *)Xmalloc(BUFUNIT * sizeof(int));
+		joblist[n].fds = (int *)Xmalloc(BUFUNIT * sizeof(int));
+		joblist[n].npipe = 0;
+		joblist[n].trp = NULL;
+		joblist[n].tty = NULL;
+		i = 0;
 	}
-	else if (j > joblist[i].npipe) {
-		if (!(j % BUFUNIT)) {
-			joblist[i].pids = (p_id_t *)Xrealloc(joblist[i].pids,
-				(j + BUFUNIT) * sizeof(p_id_t));
-			joblist[i].stats = (int *)Xrealloc(joblist[i].stats,
-				(j + BUFUNIT) * sizeof(int));
+	else if (i > joblist[n].npipe) {
+		if (!(i % BUFUNIT)) {
+			joblist[n].pids = (p_id_t *)Xrealloc(joblist[n].pids,
+				(i + BUFUNIT) * sizeof(p_id_t));
+			joblist[n].stats = (int *)Xrealloc(joblist[n].stats,
+				(i + BUFUNIT) * sizeof(int));
+			joblist[n].fds = (int *)Xrealloc(joblist[n].fds,
+				(i + BUFUNIT) * sizeof(int));
 		}
-		joblist[i].npipe = j;
+		joblist[n].npipe = i;
+	}
+	else if (fd < 0) fd = joblist[n].fds[i];
+
+	joblist[n].pids[i] = pid;
+	joblist[n].stats[i] = sig;
+	joblist[n].fds[i] = fd;
+	if (!i && !(joblist[n].trp) && trp) {
+		joblist[n].trp = duplstree2(trp, NULL, 0L);
+		if (!isoppipe(joblist[n].trp) && joblist[n].trp -> next) {
+			freestree(joblist[n].trp -> next);
+			joblist[n].trp -> next = NULL;
+		}
 	}
 
-	joblist[i].pids[j] = pid;
-	joblist[i].stats[j] = sig;
-	if (!j && !(joblist[i].trp) && trp) {
-		joblist[i].trp = duplstree(trp, NULL, 0L);
-		if (!isoppipe(joblist[i].trp) && joblist[i].trp -> next) {
-			freestree(joblist[i].trp -> next);
-			joblist[i].trp -> next = NULL;
-		}
-	}
-
-#ifdef	JOBVERBOSE
-	VOID_C Xfprintf(ttyout, "stackjob: %id: %id, %d:", mypid, pid, i);
-	for (j = 0; j <= joblist[i].npipe; j++)
-		VOID_C Xfprintf(ttyout, "%id ", joblist[i].pids[j]);
+# ifdef	JOBVERBOSE
+	VOID_C Xfprintf(ttyout, "stackjob: %id: %id, %d:", mypid, pid, n);
+	for (i = 0; i <= joblist[n].npipe; i++)
+		VOID_C Xfprintf(ttyout, "%id ", joblist[n].pids[i]);
 	VOID_C fputnl(ttyout);
-#endif	/* JOBVERBOSE */
+# endif
 
-	return(i);
+	return(n);
 }
 
 int stoppedjob(pid)
 p_id_t pid;
 {
-	int i, j, sig;
+	int i, n;
 
 	if (stopped) return(1);
-	if ((i = searchjob(pid, &j)) >= 0) {
-		for (; j <= joblist[i].npipe; j++) {
-			sig = joblist[i].stats[j];
-			if (sig > 0 && sig < 128) return(1);
-			else if (!sig) return(0);
-		}
+	if ((n = searchjob(pid, &i)) < 0) /*EMPTY*/;
+	else for (; i <= joblist[n].npipe; i++) {
+		if (joblist[n].stats[i] < 0 || joblist[n].stats[i] >= 128)
+			continue;
+		return((joblist[n].stats[i]) ? 1 : 0);
 	}
 
 	return(-1);
@@ -344,43 +379,29 @@ p_id_t pid;
 VOID checkjob(fp)
 XFILE *fp;
 {
-	int i, j;
+	int n;
 
-	while (waitjob(-1, NULL, WNOHANG | WUNTRACED) > 0);
-	if (fp) for (i = 0; i < maxjobs; i++) {
-		if (!(joblist[i].pids)) continue;
-		j = joblist[i].npipe;
-		if (joblist[i].stats[j] >= 0 && joblist[i].stats[j] < 128)
-			continue;
+	while (waitjob(-1, NULL, WNOHANG | WUNTRACED) > 0) /*EMPTY*/;
+	if (fp) for (n = 0; n < maxjobs; n++) {
+		if (!(joblist[n].pids) || statjob(n) >= 0) continue;
 
-		if (joblist[i].trp
-		&& (isopbg(joblist[i].trp) || isopnown(joblist[i].trp)))
-			joblist[i].trp -> type = OP_NONE;
-		if (jobok && interactive && !nottyout) dispjob(i, fp);
-		Xfree(joblist[i].pids);
-		Xfree(joblist[i].stats);
-		if (joblist[i].trp) {
-			freestree(joblist[i].trp);
-			Xfree(joblist[i].trp);
-		}
-		Xfree(joblist[i].tty);
-# ifdef	USESGTTY
-		Xfree(joblist[i].ttyflag);
-# endif
-		joblist[i].pids = NULL;
+		if (joblist[n].trp
+		&& (isopbg(joblist[n].trp) || isopnown(joblist[n].trp)))
+			joblist[n].trp -> type = OP_NONE;
+		if (jobok && interactive && !nottyout) dispjob(n, fp);
+		freejob(n);
 	}
 }
 
 VOID killjob(VOID_A)
 {
-	int i, j;
+	int n, sig;
 
-	for (i = 0; i < maxjobs; i++) {
-		if (!(joblist[i].pids)) continue;
-		j = joblist[i].stats[joblist[i].npipe];
-		if (j < 0 || j >= 128) continue;
-		Xkillpg(joblist[i].pids[0], SIGHUP);
-		if (j > 0) Xkillpg(joblist[i].pids[0], SIGCONT);
+	for (n = 0; n < maxjobs; n++) {
+		if (!(joblist[n].pids) || (sig = statjob(n)) < 0) continue;
+
+		Xkillpg(joblist[n].pids[0], SIGHUP);
+		if (sig > 0) Xkillpg(joblist[n].pids[0], SIGCONT);
 	}
 }
 #endif	/* !NOJOB */
@@ -906,27 +927,19 @@ int reset;
 int posixjobs(trp)
 syntaxtree *trp;
 {
-	int i, j;
+	int n;
 
 	if (mypid != orgpgrp) return(RET_SUCCESS);
 	checkjob(NULL);
-	for (i = 0; i < maxjobs; i++) {
-		if (!(joblist[i].pids)) continue;
-		j = joblist[i].npipe;
+	for (n = 0; n < maxjobs; n++) {
+		if (!(joblist[n].pids)) continue;
 
-		if (joblist[i].stats[j] >= 0 && joblist[i].stats[j] < 128)
-			dispjob(i, Xstdout);
+		if (statjob(n) >= 0) dispjob(n, Xstdout);
 		else {
-			if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
-				joblist[i].trp -> type = OP_NONE;
-			dispjob(i, Xstdout);
-			Xfree(joblist[i].pids);
-			Xfree(joblist[i].stats);
-			if (joblist[i].trp) {
-				freestree(joblist[i].trp);
-				Xfree(joblist[i].trp);
-			}
-			joblist[i].pids = NULL;
+			if (isopbg(joblist[n].trp) || isopnown(joblist[n].trp))
+				joblist[n].trp -> type = OP_NONE;
+			dispjob(n, Xstdout);
+			freejob(n);
 		}
 	}
 
@@ -937,43 +950,40 @@ syntaxtree *trp;
 int posixfg(trp)
 syntaxtree *trp;
 {
-	termioctl_t tty;
-	char *s;
-	int i, j, n, ret;
+	char *s, *tty;
+	int i, n, ret;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
 	checkjob(NULL);
-	if ((i = getjob(s)) < 0) {
+	if ((n = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv,
 			(trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
+			(n < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
-	n = joblist[i].npipe;
-	if (tioctl(ttyio, REQGETP, &tty) < 0) {
-		doperror((trp -> comm) -> argv[0], "fatal error");
-		prepareexit(-1);
-		Xexit(RET_FATALERR);
+	savetermio(ttyio, &tty, NULL);
+	VOID_C Xfprintf(Xstderr, "[%d] %id\n",
+		n + 1, joblist[n].pids[joblist[n].npipe]);
+	loadtermio(ttyio, joblist[n].tty, NULL);
+	VOID_C gettermio(joblist[n].pids[0], jobok);
+	childpgrp = joblist[n].pids[0];
+	if (statjob(n) > 0) Xkillpg(joblist[n].pids[0], SIGCONT);
+	for (i = 0; i <= joblist[n].npipe; i++) {
+		if (joblist[n].stats[i] < 0 || joblist[n].stats[i] >= 128)
+			continue;
+		joblist[n].stats[i] = 0;
 	}
-	VOID_C Xfprintf(Xstderr, "[%d] %id\n", i + 1, joblist[i].pids[n]);
-	if (joblist[i].tty) tioctl(ttyio, REQSETP, joblist[i].tty);
-# ifdef	USESGTTY
-	if (joblist[i].ttyflag) Xioctl(ttyio, TIOCLSET, joblist[i].ttyflag);
-# endif
-	VOID_C gettermio(joblist[i].pids[0], jobok);
-	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
-		Xkillpg(joblist[i].pids[0], SIGCONT);
-		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
+	if (isopbg(joblist[n].trp) || isopnown(joblist[n].trp))
+		joblist[n].trp -> type = OP_NONE;
+	i = joblist[n].npipe;
+	ret = waitchild(joblist[n].pids[i], NULL);
+	while (i-- > 0) {
+		if (joblist[n].fds[i] < 0) continue;
+		VOID_C closepipe2(joblist[n].fds[i], -1);
 	}
-	if (isopbg(joblist[i].trp) || isopnown(joblist[i].trp))
-		joblist[i].trp -> type = OP_NONE;
-	ret = waitchild(joblist[i].pids[n], NULL);
 	VOID_C gettermio(orgpgrp, jobok);
-	if (tioctl(ttyio, REQSETP, &tty) < 0) {
-		doperror((trp -> comm) -> argv[0], "fatal error");
-		prepareexit(-1);
-		Xexit(RET_FATALERR);
-	}
+	loadtermio(ttyio, tty, NULL);
+	Xfree(tty);
 
 	return(ret);
 }
@@ -983,26 +993,27 @@ int posixbg(trp)
 syntaxtree *trp;
 {
 	char *s;
-	int i, j, n;
+	int i, n;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
 	checkjob(NULL);
-	if ((i = getjob(s)) < 0) {
+	if ((n = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv,
 			(trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
+			(n < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
-	n = joblist[i].npipe;
-	if ((j = joblist[i].stats[n]) > 0 && j < 128) {
-		Xkillpg(joblist[i].pids[0], SIGCONT);
-		for (j = 0; j <= n; j++) joblist[i].stats[j] = 0;
+	if (statjob(n) > 0) Xkillpg(joblist[n].pids[0], SIGCONT);
+	for (i = 0; i <= joblist[n].npipe; i++) {
+		if (joblist[n].stats[i] < 0 || joblist[n].stats[i] >= 128)
+			continue;
+		joblist[n].stats[i] = 0;
 	}
-	if (!isopbg(joblist[i].trp) || !isopnown(joblist[i].trp))
-		joblist[i].trp -> type = OP_BG;
-	if (interactive && !nottyout) dispjob(i, Xstderr);
+	if (!isopbg(joblist[n].trp) || !isopnown(joblist[n].trp))
+		joblist[n].trp -> type = OP_BG;
+	if (interactive && !nottyout) dispjob(n, Xstderr);
 	prevjob = lastjob;
-	lastjob = i;
+	lastjob = n;
 
 	return(RET_SUCCESS);
 }
@@ -1483,11 +1494,7 @@ syntaxtree *trp;
 	}
 	else if (flag == 'v') {
 		for (i = n; i < argc; i++) {
-#ifdef	NOALIAS
-			type = checktype(argv[i], &id, 0);
-#else
-			type = checktype(argv[i], &id, 0, 0);
-#endif
+			type = checktype2(argv[i], &id, 0, 0);
 
 			cp = argv[i];
 			if (type == CT_COMMAND) {
@@ -1515,11 +1522,7 @@ syntaxtree *trp;
 		return(ret);
 	}
 
-#ifdef	NOALIAS
-	type = checktype(argv[n], &id, 0);
-#else
-	type = checktype(argv[n], &id, 0, 0);
-#endif
+	type = checktype2(argv[n], &id, 0, 0);
 	if (verboseexec) {
 		VOID_C Xfprintf(Xstderr, "+ %k", argv[n]);
 		for (i = n + 1; i < argc; i++)
@@ -1529,20 +1532,11 @@ syntaxtree *trp;
 
 	(trp -> comm) -> argc -= n;
 	(trp -> comm) -> argv += n;
-	if (flag != 'p')
-#if	MSDOS
-		ret = exec_simplecom(trp, type, id);
-#else
-		ret = exec_simplecom(trp, type, id, 0);
-#endif
+	if (flag != 'p') ret = exec_simplecom2(trp, type, id, 0);
 	else {
 		path = Xstrdup(getconstvar(ENVPATH));
 		setenv2(ENVPATH, DEFPATH, 1);
-#if	MSDOS
-		ret = exec_simplecom(trp, type, id);
-#else
-		ret = exec_simplecom(trp, type, id, 0);
-#endif
+		ret = exec_simplecom2(trp, type, id, 0);
 		setenv2(ENVPATH, path, 1);
 		Xfree(path);
 	}

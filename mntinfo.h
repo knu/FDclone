@@ -32,7 +32,7 @@ typedef struct mntent		mnt_t;
 #define	Xmnt_type		mnt_type
 #define	Xmnt_opts		mnt_opts
 #define	Xsetmntent		setmntent
-#define	Xgetmntent(f,m)		getmntent(f)
+#define	Xgetmntent(f, m)	getmntent(f)
 #define	Xendmntent		endmntent
 #endif
 
@@ -44,7 +44,7 @@ typedef struct mnttab		mnt_t;
 #define	Xmnt_type		mnt_fstype
 #define	Xmnt_opts		mnt_mntopts
 #define	Xsetmntent		fopen
-#define	Xgetmntent(f,m)		(getmntent(f, m) ? NULL : m)
+#define	Xgetmntent(f, m)	(getmntent(f, m) ? NULL : m)
 #define	Xendmntent		fclose
 #endif
 
@@ -75,8 +75,8 @@ typedef struct fstab		mnt_t;
 #define	Xmnt_dir		fs_file
 #define	Xmnt_type		fs_vfstype
 #define	Xmnt_opts		fs_mntops
-#define	Xsetmntent(f,m)		(FILE *)setfsent()
-#define	Xgetmntent(f,m)		getfsent()
+#define	Xsetmntent(f, m)	(FILE *)setfsent()
+#define	Xgetmntent(f, m)	getfsent()
 #define	Xendmntent(fp)		endfsent()
 #endif
 

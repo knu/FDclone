@@ -88,7 +88,7 @@ char *deftmpdir = NULL;
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 int inheritcopy = 0;
 #endif
-int tmpumask = TMPUMASK;
+short tmpumask = (short)0;
 
 #ifdef	DEP_PSEUDOPATH
 static int pseudodrv = -1;
@@ -605,14 +605,14 @@ int flags, mode;
 	return(lck);
 }
 
-lockbuf_t *lockfopen(path, type, flags)
+lockbuf_t *lockfopen(path, type, flags, umask)
 CONST char *path, *type;
-int flags;
+int flags, umask;
 {
 	lockbuf_t *lck;
 	XFILE *fp;
 
-	if (!(lck = lockopen(path, flags, 0666))) return(NULL);
+	if (!(lck = lockopen(path, flags, 0666 & ~umask))) return(NULL);
 
 	if (!(lck -> flags & LCK_INVALID)) {
 		if (!(fp = Xfdopen(lck -> fd, type))) {
@@ -629,23 +629,27 @@ int flags;
 VOID lockclose(lck)
 lockbuf_t *lck;
 {
-	if (lck) {
-		if (lck -> name) {
-			VOID_C excllock(lck -> name, LOCK_UN);
-			Xfree(lck -> name);
-		}
-		if (!(lck -> flags & LCK_INVALID)) {
-#ifndef	NOFLOCK
-			if (lck -> flags & LCK_FLOCK)
-				VOID_C fcntllock(lck -> fd, LOCK_UN);
-#endif
-			if (lck -> flags & LCK_STREAM)
-				VOID_C Xfclose(lck -> fp);
-			else VOID_C Xclose(lck -> fd);
-		}
+	int duperrno;
 
-		Xfree(lck);
+	if (!lck) return;
+
+	duperrno = errno;
+	if (lck -> name) {
+		VOID_C excllock(lck -> name, LOCK_UN);
+		Xfree(lck -> name);
 	}
+	if (!(lck -> flags & LCK_INVALID)) {
+#ifndef	NOFLOCK
+		if (lck -> flags & LCK_FLOCK)
+			VOID_C fcntllock(lck -> fd, LOCK_UN);
+#endif
+		if (lck -> flags & LCK_STREAM)
+			VOID_C Xfclose(lck -> fp);
+		else VOID_C Xclose(lck -> fd);
+	}
+	errno = duperrno;
+
+	Xfree(lck);
 }
 
 int touchfile(path, stp)
@@ -912,6 +916,9 @@ struct stat *stp1, *stp2;
 #ifndef	NODIRLOOP
 	int issame;
 #endif
+#ifndef	_NOEXTRACOPY
+	off_t size;
+#endif
 	char buf[BUFSIZ];
 	off_t total;
 	int n, fd1, fd2, tty, flags, mode, timeout, duperrno;
@@ -988,7 +995,8 @@ struct stat *stp1, *stp2;
 			break;
 		}
 #ifndef	_NOEXTRACOPY
-		showprogress(n);
+		size = (off_t)n;
+		showprogress(&size);
 #endif
 		if ((n = surewrite(fd2, buf, n)) < 0) break;
 	}

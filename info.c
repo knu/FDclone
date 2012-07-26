@@ -143,7 +143,7 @@ extern VOID cputstr __P_((int, CONST char *));
 #ifdef	DEP_PTY
 extern VOID Xlocate __P_((int, int));
 extern VOID Xputterm __P_((int));
-extern VOID XXputch __P_((int));
+extern int XXputch __P_((int));
 extern VOID XXcputs __P_((CONST char *));
 extern int XXcprintf __P_((CONST char *, ...));
 extern int Xattrprintf __P_((CONST char *, int, ...));

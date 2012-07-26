@@ -48,8 +48,8 @@ typedef struct _digest_t {
 #ifdef	DEP_URLPATH
 
 #ifdef	FD
-extern int ttyiomode __P_((int));
-extern int stdiomode __P_((VOID_A));
+extern VOID ttyiomode __P_((int));
+extern VOID stdiomode __P_((VOID_A));
 extern char *inputstr __P_((CONST char *, int, int, CONST char *, int));
 extern char *inputpass __P_((VOID_A));
 #endif
