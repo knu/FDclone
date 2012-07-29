@@ -3,7 +3,7 @@
 #	FDclone Ver. 3.00 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Apr 21, 2012
+#	Jul 27, 2012
 #
 ############################################################
 
@@ -69,6 +69,10 @@ mktankan.c	単漢字変換テーブルファイル生成プログラム
 mkkanji.c	kanji.h 変換プログラム
 mkcat.c		メッセージカタログ生成プログラム
 mkdir_p.c	ディレクトリ生成プログラム
+evalopt.c	オプション文字列解析モジュール
+evalopt.h	evalopt.c 用のヘッダ
+gentbl.c	テーブル生成モジュール
+gentbl.h	gentbl.h 用のヘッダ
 mkmfsedg.sed	djgpp v1.xx 向けメイクファイル加工用スクリプト
 mkmfsedd.sed	djgpp v2.xx 向けメイクファイル加工用スクリプト
 mkmfdosl.sed	LSI C-86 3.5 向けメイクファイル加工用スクリプト
@@ -124,6 +128,9 @@ frontend.c	端末エミュレーションの前処理
 backend.c	端末エミュレーションの後処理
 libc.c		cc の標準関数のアレンジ
 file.c		ファイル操作関連
+mntinfo.c	マウント情報関連
+mntinfo.h	mntinfo.c 用のヘッダ
+statfs.c	statfs() の置換え
 apply.c		ファイルへの連続適用関連
 parse.c		文字列解析関連
 parse.h		parse.c 用のヘッダ
@@ -173,6 +180,7 @@ typesize.h	型サイズに関するヘッダ
 wait.h		子プロセス処理に関するヘッダ
 dirent.h	ディレクトリ操作関数用ヘッダ
 unixemu.h	MS-DOS での関数エミュレーション用のヘッダ
+fsinfo.h	ファイルシステム情報に関するヘッダ
 device.h	デバイス ID 用ヘッダ
 func.h		プロトタイプ宣言
 functabl.h	内部コマンドの属性定義用

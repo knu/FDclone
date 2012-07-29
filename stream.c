@@ -44,6 +44,9 @@ extern char *preparefile __P_((CONST char *, char *));
 # endif
 #endif	/* FD && !DEP_ORIGSHELL */
 
+#ifdef	FD
+extern char *Xstrchr __P_((CONST char *, int));
+#endif
 #ifdef	DEP_DOSDRIVE
 extern int dosflushbuf __P_((int));
 #endif
@@ -769,7 +772,9 @@ XFILE *fp;
 		}
 # endif
 		buf = c_realloc(buf, len, &size);
+# ifdef	FD
 		if ((fp -> flags & XF_NULLCONV) && !c) c = '\n';
+# endif
 
 		buf[len++] = c;
 		if (n == '\n') break;
@@ -786,9 +791,21 @@ int Xfputs(s, fp)
 CONST char *s;
 XFILE *fp;
 {
+# ifdef	FD
+	CONST char *eol;
+# endif
 	ALLOC_T len;
 
+# ifdef	FD
+	if (fp -> flags & XF_NULLCONV) while ((eol = Xstrchr(s, '\n'))) {
+		len = eol++ - s;
+		if (Xfwrite(s, len, fp) < (int)len || Xfputc('\0', fp) == EOF)
+			return(EOF);
+		s = eol;
+	}
+# endif
 	len = strlen(s);
+
 	return((Xfwrite(s, len, fp) < (int)len) ? EOF : 0);
 }
 

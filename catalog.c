@@ -114,9 +114,10 @@ CONST char *lang;
 
 	ofs = sizeof(ver) + 2 + 2 + 2 + 2 * catmax;
 #ifdef	USEMMAP
-	catbuf = mmap(NULL, ofs + size, PROT_READ, MAP_PRIVATE, fd, 0);
+	catbuf = (u_char *)mmap(NULL, (ALLOC_T)ofs + size,
+		PROT_READ, MAP_PRIVATE, fd, (off_t)0);
 	if (catbuf != (u_char *)MAP_FAILED) {
-		catsize = ofs + size;
+		catsize = (ALLOC_T)ofs + size;
 		catofs = ofs;
 	}
 	else

@@ -20,7 +20,7 @@
 #include "auth.h"
 #include "urldisk.h"
 
-#if	!MSDOS && !defined (MINIX)
+#ifndef	NOFTPH
 #include <arpa/ftp.h>
 #endif
 
@@ -279,8 +279,6 @@ int n;
 			n = 0;
 			break;
 		case PRELIM:
-			n = seterrno(EACCES);
-			break;
 		case CONTINUE:
 			n = seterrno(EACCES);
 			break;

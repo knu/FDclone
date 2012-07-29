@@ -73,7 +73,8 @@
 #define	unixreaddir		readdir
 #define	unixrewinddir		rewinddir
 # ifdef	USEGETWD
-# define	unixgetcwd(p,s)	(char *)getwd(p)
+# define	unixgetcwd(p, s) \
+				(char *)getwd(p)
 # else
 # define	unixgetcwd	(char *)getcwd
 # endif
@@ -82,19 +83,20 @@
 #define	unixchmod(p, m)		((chmod(p, m)) ? -1 : 0)
 #define	unixutimes		rawutimes
 #define	unixunlink(p)		((unlink(p)) ? -1 : 0)
-#define	unixrename(f, t)	((rename(f,t)) ? -1 : 0)
+#define	unixrename(f, t)	((rename(f, t)) ? -1 : 0)
 #define	unixrmdir(p)		((rmdir(p)) ? -1 : 0)
 #endif	/* !MSDOS */
 #if	MSDOS && !defined (DJGPP) && !defined (FD)
 #define	unixmkdir(p, m)		((mkdir(p)) ? -1 : 0)
 #endif
 #if	!MSDOS || (defined (DJGPP) && !defined (FD))
-#define	unixmkdir(p, m)		((mkdir(p,m)) ? -1 : 0)
+#define	unixmkdir(p, m)		((mkdir(p, m)) ? -1 : 0)
 #endif
 
 #ifndef	FD
-#define	convput(b,p,n,r,rp,cp)	(p)
-#define	convget(b,p,d)		(p)
+#define	convput(b, p, n, r, rp, cp) \
+				(p)
+#define	convget(b, p, d)	(p)
 #endif
 #ifdef	CYGWIN
 #define	opendir_saw_u_cygdrive	(1 << (8 * sizeof(dirp -> __flags) - 2))
@@ -196,13 +198,9 @@ int lastdrv = -1;
 int dosdrive = 0;
 #endif
 #ifdef	DEP_URLPATH
-# ifdef	WITHNETWORK
-int urldrive = 1;
-# else
 int urldrive = 0;
-# endif
 int urlkcode = NOCNV;
-#endif	/* DEP_URLPATH */
+#endif
 #ifndef	NOSELECT
 int (*readintrfunc)__P_((VOID_A)) = NULL;
 #endif

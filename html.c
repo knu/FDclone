@@ -578,6 +578,7 @@ char **argv;
 	return(NULL);
 }
 
+/*ARGSUSED*/
 static char *NEAR breaktag(hp, argv)
 htmlstat_t *hp;
 char **argv;

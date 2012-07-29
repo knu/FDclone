@@ -190,7 +190,7 @@ extern CONST char *promptstr;
 extern CONST char *promptstr2;
 #endif
 #if	FD >= 2
-extern int tmpumask;
+extern short tmpumask;
 #endif
 #ifdef	DEP_ORIGSHELL
 extern int dumbshell;
@@ -656,6 +656,14 @@ VOID initenv(VOID_A)
 				&& (*(char **)(envlist[i].var)))
 					*((char **)(envlist[i].var)) = NULL;
 				break;
+#ifdef	PRESETKCODE
+			case T_KIN:
+			case T_KOUT:
+			case T_KNAM:
+			case T_KTERM:
+				setenv2(env_str(i), PRESETKCODE, 0);
+/*FALLTHRU*/
+#endif
 			default:
 #if	!MSDOS && defined (FORCEDSTDC)
 				if (w > 0) {
@@ -829,7 +837,7 @@ int no;
 #if	FD >= 2
 		case T_OCTAL:
 			if ((n = atooctal(cp)) < 0) n = def_num(no);
-			*((int *)(envlist[no].var)) = n;
+			*((short *)(envlist[no].var)) = n;
 			break;
 #endif
 #if	defined (DEP_PTY) || defined (DEP_IME)
@@ -1743,7 +1751,7 @@ int no;
 # endif	/* DEP_KCONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
-			cp = ascoctal(*((int *)(envlist[no].var)), buf);
+			cp = ascoctal(*((short *)(envlist[no].var)), buf);
 			break;
 # endif
 # if	defined (DEP_PTY) || defined (DEP_IME)
@@ -2228,7 +2236,7 @@ int no;
 # endif	/* DEP_KCONV || (!_NOENGMES && !NOJPNMES) */
 # if	FD >= 2
 		case T_OCTAL:
-			ascoctal(*((int *)(envlist[no].var)), buf);
+			ascoctal(*((short *)(envlist[no].var)), buf);
 			cp = s = inputcustenvstr(env, 1, buf, -1);
 			if (cp == (char *)-1) return(0);
 			if (!cp) break;
@@ -2717,7 +2725,7 @@ XFILE *fp;
 	char *new;
 	int i, j, n;
 
-	if (origflaglist) new = NULL;
+	if (origflaglist || origmaxbind <= 0) new = NULL;
 	else {
 		origflaglist = new = Xmalloc(origmaxbind * sizeof(char));
 		memset(origflaglist, 0, origmaxbind * sizeof(char));
@@ -3453,7 +3461,7 @@ XFILE *fp;
 	char *new;
 	int i, j, n;
 
-	if (origflaglist) new = NULL;
+	if (origflaglist || origmaxlaunch <= 0) new = NULL;
 	else {
 		origflaglist = new = Xmalloc(origmaxlaunch * sizeof(char));
 		memset(origflaglist, 0, origmaxlaunch * sizeof(char));
@@ -3676,7 +3684,7 @@ XFILE *fp;
 	char *new;
 	int i, j, n;
 
-	if (origflaglist) new = NULL;
+	if (origflaglist || origmaxarchive <= 0) new = NULL;
 	else {
 		origflaglist = new = Xmalloc(origmaxarchive * sizeof(char));
 		memset(origflaglist, 0, origmaxarchive * sizeof(char));
@@ -3996,11 +4004,10 @@ XFILE *fp;
 	char *new;
 	int i, j, n;
 
-	if (origflaglist) new = NULL;
+	if (origflaglist || origmaxfdtype <= 0) new = NULL;
 	else {
-		for (n = 0; n < origmaxfdtype; n++) /*EMPTY*/;
-		origflaglist = new = Xmalloc(n * sizeof(char));
-		memset(origflaglist, 0, n * sizeof(char));
+		origflaglist = new = Xmalloc(origmaxfdtype * sizeof(char));
+		memset(origflaglist, 0, origmaxfdtype * sizeof(char));
 	}
 
 	for (i = n = 0; i < maxfdtype; i++) {
@@ -4148,7 +4155,7 @@ CONST char *file;
 	char *flaglist[MAXCUSTOM - 1], *origflaglist[MAXCUSTOM - 1];
 	int i, n, len, *slen, fd, argc, max[MAXCUSTOM], origmax[MAXCUSTOM - 1];
 
-	if (!(lck = lockfopen(file, "r", O_BINARY | O_RDWR))) {
+	if (!(lck = lockfopen(file, "r", O_BINARY | O_RDWR, 0))) {
 		warning(-1, file);
 		return(-1);
 	}
@@ -4532,7 +4539,7 @@ int no;
 				else {
 					lck = lockfopen(file, "w",
 						O_BINARY | O_WRONLY
-						| O_CREAT | O_TRUNC);
+						| O_CREAT | O_TRUNC, 0);
 					if (!lck || !(lck -> fp)) {
 						warning(-1, file);
 						lockclose(lck);

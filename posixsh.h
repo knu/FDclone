@@ -9,9 +9,11 @@
 #ifndef	NOJOB
 extern int gettermio __P_((p_id_t, int));
 extern VOID dispjob __P_((int, XFILE *));
+extern int statjob __P_((int));
+extern VOID freejob __P_((int));
 extern int searchjob __P_((p_id_t, int *));
 extern int getjob __P_((CONST char *));
-extern int stackjob __P_((p_id_t, int, syntaxtree *));
+extern int stackjob __P_((p_id_t, int, int, syntaxtree *));
 extern int stoppedjob __P_((p_id_t));
 extern VOID killjob __P_((VOID_A));
 extern VOID checkjob __P_((XFILE *));

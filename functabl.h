@@ -86,9 +86,9 @@ CONST functable funclist[] = {
 	_TBL_(tree_dir,		"LOG_TREE",	LGTR_H,	001101110),
 	_TBL_(copy_tree,	"COPY_TREE",	CPTR_H,	011001110),
 	_TBL_(move_tree,	"MOVE_TREE",	MVTR_H,	011001110),
-#ifndef	_NOARCHIVE
+# ifndef	_NOARCHIVE
 	_TBL_(unpack_tree,	"UNPACK_TREE",	UPTR_H,	011011110),
-#endif
+# endif
 #endif	/* !_NOTREE */
 	_TBL_(find_dir,		"FIND_DIR",	FNDD_H,	011001110),
 #ifndef	_NOEXTRAATTR

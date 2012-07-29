@@ -573,7 +573,7 @@ static int termflags = 0;
 #define	F_TERMENT		002
 #define	F_INITTERM		004
 #define	F_TTYCHANGED		010
-#define	F_INPROGRESS		020
+#define	F_WORKING		020
 #define	F_RESETTTY		(F_INITTTY | F_TTYCHANGED)
 #ifdef	CYGWIN
 static int cygterm = 0;
@@ -683,8 +683,8 @@ int reset;
 	static int dupout = -1;
 	int fd;
 
-	if (termflags & F_INPROGRESS) return;
-	termflags |= F_INPROGRESS;
+	if (termflags & F_WORKING) return;
+	termflags |= F_WORKING;
 
 	if (!reset) {
 		if (opentty(&ttyio, &ttyout) < 0) terror("opentty()");
@@ -735,7 +735,7 @@ int reset;
 			}
 		}
 	}
-	termflags &= ~F_INPROGRESS;
+	termflags &= ~F_WORKING;
 }
 
 VOID Xcooked(VOID_A)
@@ -877,14 +877,14 @@ int reset;
 	termioctl_t tty;
 	int n;
 
-	if (termflags & F_INPROGRESS) return;
-	termflags |= F_INPROGRESS;
+	if (termflags & F_WORKING) return;
+	termflags |= F_WORKING;
 
 	if (!reset) {
 		if (opentty(&ttyio, &ttyout) < 0) terror("opentty()");
 	}
 	else if (ttyio < 0 || (termflags & F_RESETTTY) != F_RESETTTY) {
-		termflags &= ~F_INPROGRESS;
+		termflags &= ~F_WORKING;
 		return;
 	}
 
@@ -916,7 +916,7 @@ int reset;
 		termflags &= ~F_INITTTY;
 		terror("ioctl()");
 	}
-	termflags &= ~F_INPROGRESS;
+	termflags &= ~F_WORKING;
 }
 
 # ifdef	USESGTTY
@@ -932,8 +932,8 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 # endif
 	termioctl_t tty;
 
-	if (!(termflags & F_INITTTY) || (termflags & F_INPROGRESS)) return;
-	termflags |= F_INPROGRESS;
+	if (!(termflags & F_INITTTY) || (termflags & F_WORKING)) return;
+	termflags |= F_WORKING;
 
 	if (tioctl(ttyio, REQGETP, &tty) < 0) terror("ioctl()");
 # ifdef	USESGTTY
@@ -957,7 +957,7 @@ int set, reset, iset, ireset, oset, oreset, vmin, vtime;
 # endif	/* !USESGTTY */
 	if (tioctl(ttyio, REQSETP, &tty) < 0) terror("ioctl()");
 	termflags |= F_TTYCHANGED;
-	termflags &= ~F_INPROGRESS;
+	termflags &= ~F_WORKING;
 }
 
 VOID Xcooked(VOID_A)
@@ -1430,15 +1430,15 @@ int arg1, arg2;
 VOID getterment(s)
 CONST char *s;
 {
-	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return;
-	termflags |= F_INPROGRESS;
+	if ((termflags & F_TERMENT) || (termflags & F_WORKING)) return;
+	termflags |= F_WORKING;
 
 	defaultterm();
 	if (n_column < 0) n_column = 80;
 	n_lastcolumn = n_column - 1;
 	if (n_line < 0) n_line = 25;
 	termflags |= F_TERMENT;
-	termflags &= ~F_INPROGRESS;
+	termflags &= ~F_WORKING;
 }
 
 #else	/* !MSDOS */
@@ -1785,8 +1785,8 @@ CONST char *s;
 	char *cp;
 	int i, j, dumb, dupdumbterm;
 
-	if ((termflags & F_TERMENT) || (termflags & F_INPROGRESS)) return;
-	termflags |= F_INPROGRESS;
+	if ((termflags & F_TERMENT) || (termflags & F_WORKING)) return;
+	termflags |= F_WORKING;
 
 	dupdumbterm = dumbterm;
 	dumbterm = dumb = 0;
@@ -1862,7 +1862,7 @@ CONST char *s;
 			keyseq[i].len = (keyseq[i].str)
 				? strlen(keyseq[i].str) : 0;
 		sortkeyseq();
-		termflags &= ~F_INPROGRESS;
+		termflags &= ~F_WORKING;
 		return;
 	}
 
@@ -2034,7 +2034,7 @@ CONST char *s;
 		}
 	}
 	sortkeyseq();
-	termflags &= ~F_INPROGRESS;
+	termflags &= ~F_WORKING;
 }
 
 VOID freeterment(VOID_A)
@@ -3136,7 +3136,7 @@ int c, desc;
 	if (!desc) return(Xungetch(c));
 # ifdef	TIOCSTI
 	ch = c;
-	Xioctl(ttyio, TIOCSTI, &ch);
+	VOID_C Xioctl(ttyio, TIOCSTI, &ch);
 # else
 	if (ungetnum >= arraysize(ungetbuf)) return(EOF);
 	memmove((char *)&(ungetbuf[1]), (char *)&(ungetbuf[0]),

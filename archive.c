@@ -626,7 +626,7 @@ CONST char *file;
 }
 
 VOID copyarcf(re, archre)
-CONST reg_t *re;
+CONST reg_ex_t *re;
 CONST char *archre;
 {
 	CONST char *cp;
@@ -809,15 +809,15 @@ CONST char *path;
 
 		cp = path;
 		if (*cp != '.') /*EMPTY*/;
-		else if (len == 1) cp = NULL;
+		else if (len == 1) cp = curpath;
 		else if (len == 2 && cp[1] == '.') cp = nullstr;
 
-		if (!cp) /*EMPTY*/;
-		else if (searcharchdir(cp, len)) {
+		if (searcharchdir(cp, len)) {
 			if (*(tmp = archivedir)) tmp = strcatdelim(archivedir);
 			Xstrncpy(tmp, path, len);
 			file = parentpath;
 		}
+		else if (cp == curpath) /*EMPTY*/;
 		else if (*cp || !(file = archoutdir())) {
 			Xstrcpy(archivedir, duparchdir);
 			errno = ENOENT;
@@ -980,7 +980,7 @@ int launcher(VOID_A)
 	CONST char *cp;
 	int flags;
 #endif
-	reg_t *re;
+	reg_ex_t *re;
 	int i, n;
 
 #ifndef	_NOBROWSE
@@ -1144,7 +1144,7 @@ CONST char *arch;
 	int drive;
 #endif
 	winvartable *wvp;
-	reg_t *re;
+	reg_ex_t *re;
 	char *tmpdir, *full, *duparchivefile, path[MAXPATHLEN];
 	int i, n, ret;
 
@@ -1246,7 +1246,7 @@ int tr, flags;
 	char *full, *dest, *tmpdest;
 	int drive, dupmaxfile, dupfilepos;
 #endif
-	reg_t *re;
+	reg_ex_t *re;
 	char *cp, *new, *tmpdir, path[MAXPATHLEN];
 	int i, n, ret;
 
@@ -1571,7 +1571,7 @@ int maxf, n;
 	namelist tmp;
 	lsparse_t *list;
 	namelist *dupfilelist;
-	reg_t *re;
+	reg_ex_t *re;
 	XFILE *fp;
 	char *cp, *next, *tmpdir, *file;
 	int i, c, nline, match, dupmaxfile, dupfilepos;

@@ -394,6 +394,9 @@ static sigcst_t NEAR signal2 __P_((int, sigcst_t));
 # if	MSDOS && !defined (BSPATHDELIM)
 static char *NEAR adjustpname __P_((char *));
 # endif
+# if	!MSDOS && !defined (NOJOB)
+static VOID NEAR stdiomode __P_((VOID_A));
+# endif
 #endif	/* !FD */
 
 #ifndef	NOJOB
@@ -522,13 +525,13 @@ static int NEAR Kopen __P_((CONST char *, int, int));
 #define	Kopen			Xopen
 #endif
 static VOID NEAR syntaxerror __P_((CONST char *));
-#if	!MSDOS && defined (DEP_PTY) && defined (CYGWIN)
+#if	!MSDOS && !defined (NOJOB) && defined (DEP_PTY) && defined (CYGWIN)
 static VOID NEAR addmychild __P_((p_id_t));
 #endif
 #if	!MSDOS
 static VOID NEAR setstopsig __P_((int));
-static p_id_t NEAR makechild __P_((int, p_id_t, int));
-#endif	/* !MSDOS */
+static p_id_t NEAR makechild __P_((int, p_id_t));
+#endif
 static VOID NEAR safermtmpfile __P_((CONST char *));
 static int NEAR getoption __P_((int, char *CONST *, int));
 static ALLOC_T NEAR c_allocsize __P_((int));
@@ -633,8 +636,10 @@ static int NEAR check_stree __P_((syntaxtree *));
 static syntaxtree *NEAR analyzeline __P_((CONST char *));
 #ifdef	DEBUG
 static VOID NEAR Xexecve __P_((CONST char *, char *[], char *[], int));
+#define	Xexecve2		Xexecve
 #else
 static VOID NEAR Xexecve __P_((CONST char *, char *[], char *[]));
+#define	Xexecve2(p, a, e, b)	Xexecve(p, a, e)
 #endif
 #if	MSDOS
 static char *NEAR addext __P_((char *, int));
@@ -642,19 +647,15 @@ static char **NEAR replacebat __P_((char **, char **));
 #endif
 #ifdef	USEFAKEPIPE
 static int NEAR openpipe __P_((p_id_t *, int, int));
+#define	openpipe2(p, f, n, t, pp) \
+				openpipe(p, f, n)
 #else
 static int NEAR openpipe __P_((p_id_t *, int, int, int, p_id_t));
+#define	openpipe2		openpipe
 #endif
 static pipelist **NEAR searchpipe __P_((int));
 static int NEAR reopenpipe __P_((int, int));
 static XFILE *NEAR fdopenpipe __P_((int));
-#ifdef	DJGPP
-static int NEAR closepipe __P_((int, int));
-#define	closepipe2(f, d)	closepipe(f, d)
-#else
-static int NEAR closepipe __P_((int));
-#define	closepipe2(f, d)	closepipe(f)
-#endif
 #ifndef	_NOUSEHASH
 static VOID NEAR disphash __P_((VOID_A));
 #endif
@@ -771,13 +772,17 @@ static char **NEAR checkshellbuiltinargv __P_((int, char **));
 static int NEAR checkshellbuiltin __P_((syntaxtree *));
 #if	MSDOS
 static int NEAR exec_command __P_((syntaxtree *, int *));
+#define	exec_command2(tr, c, b)	exec_command(tr, c)
 #else
 static int NEAR exec_command __P_((syntaxtree *, int *, int));
+#define	exec_command2		exec_command
 #endif
 #ifdef	USEFAKEPIPE
 static int NEAR exec_process __P_((syntaxtree *));
+#define	exec_process2(tr, p)	exec_process(tr)
 #else
 static int NEAR exec_process __P_((syntaxtree *, p_id_t));
+#define	exec_process2		exec_process
 #endif
 static int NEAR exec_stree __P_((syntaxtree *, int));
 static syntaxtree *NEAR execline __P_((CONST char *,
@@ -1052,6 +1057,7 @@ static int returnlevel = 0;
 #ifndef	MINIMUMSHELL
 static char **dirstack = NULL;
 static long shlineno = 0L;
+static int lastsig = -1;
 #endif
 static int isshellbuiltin = 0;
 static int execerrno = 0;
@@ -1327,22 +1333,40 @@ static CONST char *adjustvar[] = {
 # endif
 # ifdef	FD
 	ENVPWD,
-	"FD_TMPDIR",
-	"FD_PAGER", "FD_EDITOR", "FD_SHELL",
-#  ifndef	NOPOSIXUTIL
-	"FD_FCEDIT",
+	"FD_HISTFILE",
+#  ifdef	FD >= 2
+	"FD_DIRHISTFILE",
 #  endif
-#  if	MSDOS
-	"FD_COMSPEC",
+	"FD_TMPDIR",
+#  ifndef	_NOROCKRIDGE
+	"FD_RRPATH",
+#  endif
+#  ifndef	_NOPRECEDE
+	"FD_PRECEDEPATH",
+#  endif
+#  ifdef	DEP_LOGGING
+	"FD_LOGFILE",
+#  endif
+#  ifdef	DEP_FTPPATH
+	"FD_FTPLOGFILE",
+#  endif
+#  ifdef	DEP_HTTPPATH
+	"FD_HTTPLOGFILE", "FD_HTMLLOGFILE",
 #  endif
 #  ifdef	DEP_FILECONV
-	"FD_HISTFILE", "FD_RRPATH", "FD_PRECEDEPATH",
 	"FD_SJISPATH", "FD_EUCPATH",
 	"FD_JISPATH", "FD_JIS8PATH", "FD_JUNETPATH",
 	"FD_OJISPATH", "FD_OJIS8PATH", "FD_OJUNETPATH",
 	"FD_HEXPATH", "FD_CAPPATH",
 	"FD_UTF8PATH", "FD_UTF8MACPATH", "FD_UTF8ICONVPATH",
 	"FD_NOCONVPATH",
+#  endif
+	"FD_PAGER", "FD_EDITOR", "FD_SHELL",
+#  ifndef	NOPOSIXUTIL
+	"FD_FCEDIT",
+#  endif
+#  if	MSDOS
+	"FD_COMSPEC",
 #  endif
 # else	/* !FD */
 	ENVSHELL,
@@ -1642,6 +1666,38 @@ char *path;
 	return(path);
 }
 # endif	/* MSDOS && !BSPATHDELIM */
+
+# if	!MSDOS && !defined (NOJOB)
+static VOID NEAR stdiomode(VOID_A)
+{
+#  ifdef	USESGTTY
+	int lflag;
+#  endif
+	termioctl_t tty;
+
+	if (tioctl(ttyio, REQGETP, &tty) >= 0) {
+#  ifdef	USESGTTY
+		tty.sg_flags |= ECHO | CRMOD;
+		tty.sg_flags &= ~(RAW | CBREAK | XTABS);
+#  else
+		tty.c_lflag |= (TIO_LCOOKED | TIO_LECHO);
+		tty.c_lflag &= ~(PENDIN | ECHONL);
+		tty.c_iflag |= (TIO_ICOOKED | ICRNL);
+		tty.c_iflag &= TIO_INOCOOKED;
+		tty.c_oflag |= TIO_ONL;
+		tty.c_oflag &= (TIO_ONONL & ~TAB3);
+#  endif
+		VOID_C tioctl(ttyio, REQSETP, &tty);
+	}
+#  ifdef	USESGTTY
+	if (Xioctl(ttyio, TIOCLGET, &lflag) >= 0) {
+		lflag |= LPASS8 | LCRTBS | LCRTERA | LCRTKIL | LCTLECH;
+		lflag &= ~(LLITOUT | LPENDIN);
+		VOID_C Xioctl(ttyio, TIOCLSET, &lflag);
+	}
+#  endif
+}
+# endif	/* !MSDOS && !NOJOB */
 #endif	/* !FD */
 
 #ifndef	NOJOB
@@ -1794,6 +1850,9 @@ int sig;
 	duperrno = errno;
 	duptrapok = trapok;
 	trapok = -1;
+#ifndef	MINIMUMSHELL
+	lastsig = -1;
+#endif
 #if	!MSDOS
 	Xsigemptyset(mask);
 	Xsigaddset(mask, sig);
@@ -1828,7 +1887,7 @@ int sig;
 		trapmode[sig] |= TR_CATCH;
 		if (duptrapok > 0) exectrapcomm();
 	}
-	else if (trapped < 0 && *(signallist[i].mes)) {
+	else if (trapped < 0 && signallist[i].mes && *(signallist[i].mes)) {
 		Xfputs(signallist[i].mes, Xstderr);
 		VOID_C fputnl(Xstderr);
 	}
@@ -1853,6 +1912,9 @@ int sig;
 		killmyself(sig);
 	}
 
+#ifndef	MINIMUMSHELL
+	lastsig = i;
+#endif
 	switch (sig) {
 #ifdef	SIGHUP
 		case SIGHUP:
@@ -1898,7 +1960,8 @@ int sig;
 # endif
 # ifdef	SYSV
 	/* TIPS for obsolete SystemV signal() */
-			while (waitjob(-1, NULL, WNOHANG | WUNTRACED) > 0);
+			while (waitjob(-1, NULL, WNOHANG | WUNTRACED) > 0)
+				/*EMPTY*/;
 # endif
 			break;
 #endif	/* SIGCHLD && (!NOJOB || SYSV) */
@@ -2166,6 +2229,47 @@ static int trap_usr2(VOID_A)
 }
 #endif
 
+#ifndef	MINIMUMSHELL
+int catchsignal(verbose)
+int verbose;
+{
+	int n, duperrno;
+
+	if (verbose < 0) {
+		lastsig = -1;
+		return(0);
+	}
+
+	if (lastsig < 0) return(0);
+
+	switch (signallist[lastsig].sig) {
+# ifdef	SIGTTIN
+		case SIGTTIN:
+			n = -1;
+			break;
+# endif
+# ifdef	SIGTTOU
+		case SIGTTOU:
+			n = -1;
+			break;
+# endif
+		default:
+			n = 0;
+			break;
+	}
+
+	if (n >= 0 || !verbose) /*EMPTY*/;
+	else if (signallist[lastsig].mes && *(signallist[lastsig].mes)) {
+		duperrno = errno;
+		Xfputs(signallist[lastsig].mes, Xstderr);
+		VOID_C fputnl(Xstderr);
+		errno = duperrno;
+	}
+
+	return(n);
+}
+#endif	/* !MINIMUMSHELL */
+
 VOID prepareexit(noexit)
 int noexit;
 {
@@ -2185,8 +2289,7 @@ int noexit;
 		if (trapcomm[0] && *(trapcomm[0])) _dosystem(trapcomm[0]);
 	}
 #ifndef	NOJOB
-	if (ttyio >= 0 && ttypgrp >= (p_id_t)0 && oldttypgrp >= (p_id_t)0)
-		VOID_C settcpgrp(ttyio, oldttypgrp);
+	if (ttyio >= 0) VOID_C gettermio(oldttypgrp, 1);
 #endif
 #ifdef	DEP_URLPATH
 	VOID_C urlallclose();
@@ -2233,16 +2336,7 @@ int noexit;
 	}
 # ifndef	NOJOB
 	if (joblist) {
-		for (i = 0; i < maxjobs; i++) {
-			if (!(joblist[i].pids)) continue;
-			Xfree(joblist[i].pids);
-			Xfree(joblist[i].stats);
-			if (joblist[i].trp) {
-				freestree(joblist[i].trp);
-				Xfree(joblist[i].trp);
-			}
-			joblist[i].pids = NULL;
-		}
+		for (i = 0; i < maxjobs; i++) freejob(i);
 		maxjobs = 0;
 		Xfree(joblist);
 		joblist = NULL;
@@ -2453,6 +2547,7 @@ XFILE *fp;
 		if ((width -= strsize("Signal ")) < 0) width = 0;
 		VOID_C Xfprintf(fp, "Signal %-*d", width, sig);
 	}
+	else if (!signallist[i].mes || !*(signallist[i].mes)) /*EMPTY*/;
 	else if (!width) Xfputs(signallist[i].mes, fp);
 	else VOID_C Xfprintf(fp, "%-*.*s", width, width, signallist[i].mes);
 }
@@ -2468,7 +2563,7 @@ int opt;
 	static int maxtrap = 0;
 # endif
 # ifndef	NOJOB
-	int i, j, sig;
+	int i, n, sig;
 # endif
 	sigmask_t mask, omask;
 	wait_pid_t w;
@@ -2487,16 +2582,16 @@ int opt;
 # else	/* JOBTEST */
 		tmp = Xwait3(&w, opt, NULL);
 		if (pid >= (p_id_t)0 && tmp >= (p_id_t)0 && pid != tmp) {
-			if ((i = searchjob(tmp, &j)) < 0) continue;
-			sig = joblist[i].stats[j];
-			joblist[i].stats[j] = getwaitsig(w);
+			if ((n = searchjob(tmp, &i)) < 0) continue;
+			sig = joblist[n].stats[i];
+			joblist[n].stats[i] = getwaitsig(w);
 #  if	defined (SIGCONT) && (defined (SIGTTIN) || defined (SIGTTOU))
-			if (sig == joblist[i].stats[j]) sig = 0;
+			if (sig == joblist[n].stats[i]) sig = 0;
 #   ifdef	SIGTTIN
-			else if (joblist[i].stats[j] == SIGTTIN) /*EMPTY*/;
+			else if (joblist[n].stats[i] == SIGTTIN) /*EMPTY*/;
 #   endif
 #   ifdef	SIGTTOU
-			else if (joblist[i].stats[j] == SIGTTOU) /*EMPTY*/;
+			else if (joblist[n].stats[i] == SIGTTOU) /*EMPTY*/;
 #   endif
 			else sig = 0;
 
@@ -2548,12 +2643,13 @@ int opt;
 	}
 
 # ifndef	NOJOB
-	if (ret >= 0 && (i = searchjob(tmp, &j)) >= 0
-	&& sig != joblist[i].stats[j]) {
-		joblist[i].stats[j] = sig;
-		if (jobok && interactive && !nottyout
-		&& pid != tmp && WIFSTOPPED(w))
-			dispjob(i, Xstderr);
+	if (ret < 0) /*EMPTY*/;
+	else if ((n = searchjob(tmp, &i)) >= 0 && sig != joblist[n].stats[i]) {
+		joblist[n].stats[i] = sig;
+		if (pid == tmp || i < joblist[n].npipe || !WIFSTOPPED(w))
+			/*EMPTY*/;
+		else if (jobok && interactive && !nottyout)
+			dispjob(n, Xstderr);
 	}
 # endif
 	if (wp) *wp = w;
@@ -2561,7 +2657,7 @@ int opt;
 	return(ret);
 }
 
-# if	!MSDOS && defined (DEP_PTY) && defined (CYGWIN)
+# if	!defined (NOJOB) && defined (DEP_PTY) && defined (CYGWIN)
 static VOID NEAR addmychild(pid)
 p_id_t pid;
 {
@@ -2573,7 +2669,7 @@ p_id_t pid;
 	mychildren[n++] = pid;
 	mychildren[n] = (p_id_t)-1;
 }
-# endif	/* !MSDOS && DEP_PTY && CYGWIN */
+# endif	/* !NOJOB && DEP_PTY && CYGWIN */
 
 static VOID NEAR setstopsig(valid)
 int valid;
@@ -2593,10 +2689,9 @@ int valid;
 }
 
 /*ARGSUSED*/
-static p_id_t NEAR makechild(tty, ppid, stop)
+static p_id_t NEAR makechild(tty, ppid)
 int tty;
 p_id_t ppid;
-int stop;
 {
 # ifdef	DEBUG
 	extern VOID (*__free_hook) __P_((VOID_P));
@@ -2605,7 +2700,7 @@ int stop;
 # endif
 	sigmask_t mask, omask;
 	p_id_t pid;
-	int i;
+	int i, stop;
 
 	Xsigfillset(mask);
 	Xsigblock(omask, mask);
@@ -2621,14 +2716,12 @@ int stop;
 		Xsigdelset(omask, SIGCHLD);
 # endif
 		mypid = getpid();
-		if (!stop) {
+		stop = -1;
 # ifdef	NOJOB
-			if (!loginshell) stop = -1;
+		if (loginshell) stop = 0;
 # else
-			if (!jobok) stop = -1;
-			else if (tty && childpgrp != orgpgrp) stop = 1;
+		if (jobok) stop = (tty && childpgrp != orgpgrp) ? 1 : 0;
 # endif
-		}
 		setstopsig(stop);
 	}
 	Xsigsetmask(omask);
@@ -2669,12 +2762,8 @@ p_id_t pid;
 syntaxtree *trp;
 {
 # ifndef	NOJOB
-#  ifdef	USESGTTY
-	int lflag;
-#  endif
-	termioctl_t tty;
-	int i, j;
-# endif	/* !NOJOB */
+	int n;
+# endif
 	wait_pid_t w;
 	int ret;
 
@@ -2717,49 +2806,15 @@ syntaxtree *trp;
 		checkscreen(-1, -1);
 #  endif
 		prevjob = lastjob;
-		lastjob = stackjob(pid, ret, trp);
+		lastjob = stackjob(pid, ret, -1, trp);
 		breaklevel = loopdepth;
 		stopped = 1;
 		if (!jobok) return(RET_SUCCESS);
-		if (tioctl(ttyio, REQGETP, &tty) >= 0) {
-			Xfree(joblist[lastjob].tty);
-			joblist[lastjob].tty =
-				(termioctl_t *)Xmalloc(sizeof(tty));
-			memcpy((char *)(joblist[lastjob].tty), (char *)&tty,
-				sizeof(tty));
-#  ifndef	FD
-#   ifdef	USESGTTY
-			tty.sg_flags |= ECHO | CRMOD;
-			tty.sg_flags &= ~(RAW | CBREAK | XTABS);
-#   else
-			tty.c_lflag |= (TIO_ICOOKED | TIO_LECHO);
-			tty.c_lflag &= ~(PENDIN | ECHONL);
-			tty.c_iflag |= (TIO_ICOOKED | ICRNL);
-			tty.c_iflag &= TIO_INOCOOKED;
-			tty.c_oflag |= TIO_ONL;
-			tty.c_oflag &= (TIO_ONONL & ~TAB3);
-#   endif
-			tioctl(ttyio, REQSETP, &tty);
-#  endif	/* !FD */
-		}
-#  ifdef	USESGTTY
-		if (ioctl(ttyio, TIOCLGET, &lflag) >= 0) {
-			Xfree(joblist[lastjob].ttyflag);
-			joblist[lastjob].ttyflag =
-				(int *)Xmalloc(sizeof(lflag));
-			memcpy((char *)(joblist[lastjob].ttyflag),
-				(char *)&lflag, sizeof(lflag));
-#   ifndef	FD
-			lflag |= LPASS8 | LCRTBS | LCRTERA | LCRTKIL | LCTLECH;
-			lflag &= ~(LLITOUT | LPENDIN);
-			Xioctl(ttyio, TIOCLSET, &lflag);
-#   endif
-		}
-#  endif	/* USESGTTY */
+		Xfree(joblist[lastjob].tty);
+		savetermio(ttyio, &(joblist[lastjob].tty), NULL);
+
 		if (interactive && !nottyout) {
-#  ifdef	FD
 			stdiomode();
-#  endif
 			dispjob(lastjob, Xstderr);
 		}
 
@@ -2769,7 +2824,8 @@ syntaxtree *trp;
 	if (trapok >= 0) trapok = 0;
 
 # ifndef	NOJOB
-	if (mypid == orgpgrp) {
+	if (childpgrp >= (p_id_t)0 && pid != childpgrp) /*EMPTY*/;
+	else if (mypid == orgpgrp) {
 		VOID_C gettermio(orgpgrp, jobok);
 #  ifdef	FD
 		checkscreen(-1, -1);
@@ -2777,6 +2833,7 @@ syntaxtree *trp;
 		childpgrp = (p_id_t)-1;
 	}
 # endif	/* !NOJOB */
+
 	if (ret < 0) {
 		if (!trp && errno == ECHILD) ret = errno = 0;
 	}
@@ -2784,8 +2841,8 @@ syntaxtree *trp;
 		ret = WTERMSIG(w);
 
 # ifndef	NOJOB
-		if ((i = searchjob(pid, NULL)) >= 0)
-			Xkillpg(joblist[i].pids[0], ret);
+		if ((n = searchjob(pid, NULL)) >= 0)
+			Xkillpg(joblist[n].pids[0], ret);
 # endif
 # ifdef	SIGINT
 		if (ret == SIGINT) interrupted = 1;
@@ -2808,16 +2865,8 @@ syntaxtree *trp;
 
 	if (ret < 0) return(-1);
 # ifndef	NOJOB
-	if ((i = searchjob(pid, &j)) >= 0 && j == joblist[i].npipe) {
-		Xfree(joblist[i].pids);
-		Xfree(joblist[i].stats);
-		if (joblist[i].trp) {
-			freestree(joblist[i].trp);
-			Xfree(joblist[i].trp);
-		}
-		joblist[i].pids = NULL;
-	}
-# endif	/* !NOJOB */
+	if ((n = searchjob(pid, NULL)) >= 0 && statjob(n) < 0) freejob(n);
+# endif
 
 	return((int)ret);
 }
@@ -3640,12 +3689,7 @@ int old;
 
 	fdin = newdup(Xopen(hdp -> filename, O_BINARY | O_RDONLY, 0666));
 	if (fdin < 0) return(-1);
-#ifdef	USEFAKEPIPE
-	if ((fd = openpipe(&pipein, old, 1)) < 0)
-#else
-	if ((fd = openpipe(&pipein, old, 1, interactive_io, mypid)) < 0)
-#endif
-	{
+	if ((fd = openpipe2(&pipein, old, 1, interactive_io, mypid)) < 0) {
 		safeclose(fdin);
 		return(-1);
 	}
@@ -3724,7 +3768,7 @@ redirectlist *rp;
 
 # ifndef	USEFAKEPIPE
 	if (pipe(fds) < 0) /*EMPTY*/;
-	else if ((pid = makechild(0, mypid, 0)) < (p_id_t)0) {
+	else if ((pid = makechild(0, mypid)) < (p_id_t)0) {
 		safeclose(fds[0]);
 		safeclose(fds[1]);
 		return(-1);
@@ -3925,6 +3969,10 @@ redirectlist *rp;
 	}
 	else {
 #ifdef	WITHSOCKREDIR
+# ifdef	FAKEUNINIT
+		addr = NULL;
+		port = -1;
+# endif
 		if ((scheme = parsesocket(tmp, &addr, &port))) {
 			if (scheme < 0) return(rp);
 			opt = SCK_LOWDELAY;
@@ -4572,13 +4620,8 @@ long top;
 #endif
 	if ((comm = trp -> comm)) {
 		if (trp -> flags & ST_NODE)
-#ifdef	MINIMUMSHELL
-			new -> comm = (command_t *)duplstree(
-				(syntaxtree *)comm, new);
-#else
-			new -> comm = (command_t *)duplstree(
+			new -> comm = (command_t *)duplstree2(
 				(syntaxtree *)comm, new, top);
-#endif
 		else {
 			new -> comm = newcomm();
 			(new -> comm) -> hash = comm -> hash;
@@ -4590,24 +4633,15 @@ long top;
 					(new -> comm) -> argv =
 						duplvar(comm -> argv, 0);
 				else (new -> comm) -> argv =
-#ifdef	MINIMUMSHELL
-					(char **)duplstree((syntaxtree *)
-						(comm -> argv), new);
-#else
-					(char **)duplstree((syntaxtree *)
+					(char **)duplstree2((syntaxtree *)
 						(comm -> argv), new, top);
-#endif
 			}
 			(new -> comm) -> redp = duplrlist(comm -> redp);
 		}
 	}
 	if (trp -> next) {
 		if (!(trp -> cont & (CN_QUOT | CN_ESCAPE)))
-#ifdef	MINIMUMSHELL
-			new -> next = duplstree(trp -> next, new);
-#else
-			new -> next = duplstree(trp -> next, new, top);
-#endif
+			new -> next = duplstree2(trp -> next, new, top);
 		else {
 			rp = (redirectlist *)Xmalloc(sizeof(redirectlist));
 			memcpy((char *)rp, (char *)(trp -> next),
@@ -4631,11 +4665,7 @@ shfunctable *func;
 	dupl = (shfunctable *)Xmalloc((n + 1) * sizeof(shfunctable));
 	for (i = 0; i < n; i++) {
 		dupl[i].ident = Xstrdup(func[i].ident);
-#ifdef	MINIMUMSHELL
-		dupl[i].func = duplstree(func[i].func, NULL);
-#else
-		dupl[i].func = duplstree(func[i].func, NULL, 0L);
-#endif
+		dupl[i].func = duplstree2(func[i].func, NULL, 0L);
 	}
 	dupl[i].ident = NULL;
 
@@ -6311,7 +6341,7 @@ p_id_t ppid;
 # endif
 		pid = (p_id_t)-1;
 	}
-	else if ((pid = makechild(tty, ppid, -1)) < (p_id_t)0) {
+	else if ((pid = makechild(tty, ppid)) < (p_id_t)0) {
 # ifdef	FAKEUNINIT
 		fd = -1;	/* fake for -Wuninitialized */
 # endif
@@ -6348,7 +6378,7 @@ p_id_t ppid;
 			}
 			else {
 # ifndef	NOJOB
-				stackjob(pid, 0, NULL);
+				stackjob(pid, 0, fd, NULL);
 # endif
 				pl -> old = fd;
 			}
@@ -6472,13 +6502,16 @@ int fd;
 }
 
 #ifdef	DJGPP
-static int NEAR closepipe(fd, dupl)
+int closepipe(fd, dupl)
 int fd, dupl;
 #else
-static int NEAR closepipe(fd)
+int closepipe(fd)
 int fd;
 #endif
 {
+#if	!MSDOS && defined (NOJOB)
+	wait_pid_t w;
+#endif
 	pipelist *pl, **prevp;
 	int ret, duperrno;
 
@@ -6527,8 +6560,6 @@ int fd;
 	}
 	else if (pl -> pid > (p_id_t)0) {
 # ifdef	NOJOB
-		wait_pid_t w;
-
 		VOID_C kill(pl -> pid, SIGPIPE);
 		while (!(ret = waitjob(pl -> pid, &w, WUNTRACED)))
 			if (interrupted) break;
@@ -6866,11 +6897,7 @@ int *typep, *contp;
 	}
 	else {
 		stripquote(tmp = Xstrdup(comm -> argv[0]), EA_STRIPQ);
-#ifdef	NOALIAS
-		*typep = checktype(tmp, &id, 1);
-#else
-		*typep = checktype(tmp, &id, 0, 1);
-#endif
+		*typep = checktype2(tmp, &id, 0, 1);
 		Xfree(tmp);
 	}
 
@@ -7458,11 +7485,11 @@ syntaxtree *trp;
 	return(ret);
 #else	/* !MSDOS */
 	body = statementbody(trp);
-	if ((pid = makechild(1, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
+	if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
 	else if (!pid) {
 		childdepth++;
 # ifndef	NOJOB
-		stackjob(mypid, 0, body);
+		stackjob(mypid, 0, -1, body);
 # endif
 		ret = exec_stree(body, 0);
 		prepareexit(1);
@@ -7470,7 +7497,7 @@ syntaxtree *trp;
 	}
 	else {
 # ifndef	NOJOB
-		stackjob(pid, 0, body);
+		stackjob(pid, 0, -1, body);
 # endif
 		if (isopbg(trp) || isopnown(trp)) return(RET_SUCCESS);
 		ret = waitchild(pid, trp);
@@ -7677,7 +7704,7 @@ syntaxtree *trp;
 {
 	syntaxtree *var, *body;
 	command_t *comm;
-	reg_t *re;
+	reg_ex_t *re;
 	char *tmp, *key;
 	int i, n, ret;
 
@@ -7841,11 +7868,7 @@ int errexit;
 #ifdef	FD
 	prepareexitfd(0);
 #endif
-#ifdef	DEBUG
-	Xexecve(path, comm -> argv, evar, 0);
-#else
-	Xexecve(path, comm -> argv, evar);
-#endif
+	Xexecve2(path, comm -> argv, evar, 0);
 
 	return(RET_NOTEXEC);
 }
@@ -8512,7 +8535,7 @@ syntaxtree *trp;
 	char *s;
 	p_id_t pid;
 # ifndef	NOJOB
-	int i, j;
+	int i, n;
 # endif
 
 	if ((trp -> comm) -> argc <= 1) {
@@ -8520,13 +8543,13 @@ syntaxtree *trp;
 		pid = lastpid;
 # else
 		for (;;) {
-			for (i = 0; i < maxjobs; i++) {
-				if (!(joblist[i].pids)) continue;
-				j = joblist[i].npipe;
-				if (!(joblist[i].stats[j])) break;
+			for (n = 0; n < maxjobs; n++) {
+				if (!(joblist[n].pids)) continue;
+				i = joblist[n].npipe;
+				if (!(joblist[n].stats[i])) break;
 			}
-			if (i >= maxjobs) return(RET_SUCCESS);
-			waitchild(joblist[i].pids[j], NULL);
+			if (n >= maxjobs) return(RET_SUCCESS);
+			VOID_C waitchild(joblist[n].pids[i], NULL);
 		}
 # endif
 	}
@@ -8535,10 +8558,10 @@ syntaxtree *trp;
 # ifndef	NOJOB
 		if (*s == '%') {
 			checkjob(NULL);
-			if ((i = getjob(s)) < 0) pid = (p_id_t)-1;
+			if ((n = getjob(s)) < 0) pid = (p_id_t)-1;
 			else {
-				j = joblist[i].npipe;
-				pid = joblist[i].pids[j];
+				i = joblist[n].npipe;
+				pid = joblist[n].pids[i];
 			}
 		}
 		else
@@ -8550,10 +8573,10 @@ syntaxtree *trp;
 # ifndef	NOJOB
 		else {
 			checkjob(NULL);
-			if (!joblist || (i = searchjob(pid, &j)) < 0) {
+			if (!joblist || (n = searchjob(pid, &i)) < 0) {
 				pid = (p_id_t)-1;
 #  ifdef	FAKEUNINIT
-				i = -1;		/* fake for -Wuninitialized */
+				n = -1;		/* fake for -Wuninitialized */
 #  endif
 			}
 		}
@@ -8562,7 +8585,7 @@ syntaxtree *trp;
 			execerror((trp -> comm) -> argv, s, ER_NOSUCHJOB, 2);
 			return(RET_FAIL);
 		}
-		if (joblist[i].stats[j]) return(RET_SUCCESS);
+		if (joblist[n].stats[i]) return(RET_SUCCESS);
 # endif	/* !NOJOB */
 	}
 
@@ -8608,21 +8631,23 @@ syntaxtree *trp;
 static int NEAR doulimit(trp)
 syntaxtree *trp;
 {
+#ifdef	USERESOURCEH
+	struct rlimit lim;
+	XFILE *fp;
+	u_long flags;
+	int i, j, n, err, hs, res, inf;
+#endif
+#if	defined (USERESOURCEH) || defined (USEULIMITH)
+	long val;
+	char **argv;
+	int argc;
+#endif
+
 #if	!defined (USERESOURCEH) && !defined (USEULIMITH)
 	execerror((trp -> comm) -> argv, NULL, ER_BADULIMIT, 1);
 
 	return(RET_FAIL);
 #else	/* USERESOURCEH || USEULIMITH */
-# ifdef	USERESOURCEH
-	struct rlimit lim;
-	XFILE *fp;
-	u_long flags;
-	int j, n, err, hs, res, inf;
-# endif
-	long val;
-	char **argv;
-	int i, argc;
-
 	argc = (trp -> comm) -> argc;
 	argv = (trp -> comm) -> argv;
 # ifdef	USERESOURCEH
@@ -8861,23 +8886,17 @@ static int NEAR dodisown(trp)
 syntaxtree *trp;
 {
 	char *s;
-	int i;
+	int n;
 
 	s = ((trp -> comm) -> argc > 1) ? (trp -> comm) -> argv[1] : NULL;
 	checkjob(NULL);
-	if ((i = getjob(s)) < 0) {
+	if ((n = getjob(s)) < 0) {
 		execerror((trp -> comm) -> argv,
 			(trp -> comm) -> argv[1],
-			(i < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
+			(n < -1) ? ER_TERMINATED : ER_NOSUCHJOB, 2);
 		return(RET_FAIL);
 	}
-	Xfree(joblist[i].pids);
-	Xfree(joblist[i].stats);
-	if (joblist[i].trp) {
-		freestree(joblist[i].trp);
-		Xfree(joblist[i].trp);
-	}
-	joblist[i].pids = NULL;
+	freejob(n);
 
 	return(RET_SUCCESS);
 }
@@ -8891,11 +8910,7 @@ XFILE *fp;
 	int type, id;
 
 	kanjifputs(s, fp);
-#ifdef	NOALIAS
-	type = checktype(s, &id, 1);
-#else
-	type = checktype(s, &id, 1, 1);
-#endif
+	type = checktype2(s, &id, 1, 1);
 
 	if (type == CT_BUILTIN) Xfputs(" is a shell builtin", fp);
 #ifdef	FD
@@ -9638,12 +9653,8 @@ syntaxtree *trp;
 		Xfree(new);
 		return(RET_FAIL);
 	}
-#ifdef	MINIMUMSHELL
-	(trp -> comm) -> argv = (char **)duplstree(functr, NULL);
-#else
 	(trp -> comm) -> argv =
-		(char **)duplstree(functr, NULL, functr -> lineno);
-#endif
+		(char **)duplstree2(functr, NULL, functr -> lineno);
 	functr -> flags |= ST_TOP;
 	setshfunc(new, functr);
 #ifdef	DEP_PTY
@@ -9771,20 +9782,11 @@ int type, id, bg;
 # endif
 	if (bg || isopbg(trp) || isopnown(trp)) {
 		searchheredoc(trp, 1);
-# ifdef	DEBUG
-		Xexecve(path, comm -> argv, exportvar, 1);
-# else
-		Xexecve(path, comm -> argv, exportvar);
-# endif
+		Xexecve2(path, comm -> argv, exportvar, 1);
 	}
 
-	if ((pid = makechild(1, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
-	if (!pid)
-# ifdef	DEBUG
-		Xexecve(path, comm -> argv, exportvar, 1);
-# else
-		Xexecve(path, comm -> argv, exportvar);
-# endif
+	if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
+	if (!pid) Xexecve2(path, comm -> argv, exportvar, 1);
 
 	ret = waitchild(pid, trp);
 #endif	/* !MSDOS */
@@ -9809,11 +9811,7 @@ char **argv;
 	if (!argc) return(argv);
 
 	stripquote(tmp = Xstrdup(argv[0]), EA_STRIPQ);
-#ifdef	NOALIAS
-	type = checktype(tmp, &id, 1);
-#else
-	type = checktype(tmp, &id, 0, 1);
-#endif
+	type = checktype2(tmp, &id, 0, 1);
 	Xfree(tmp);
 #ifdef	STRICTPOSIX
 	if (type == CT_BUILTIN && (shbuiltinlist[id].flags & BT_POSIXSPECIAL))
@@ -9999,11 +9997,7 @@ int *contp, bg;
 	Xfree(ps);
 #endif
 
-#if	MSDOS
-	ret = exec_simplecom(trp, type, id);
-#else
-	ret = exec_simplecom(trp, type, id, bg);
-#endif
+	ret = exec_simplecom2(trp, type, id, bg);
 	Xfpurge(Xstdin);
 	Xfflush(Xstdout);
 	Xfflush(Xstderr);
@@ -10049,7 +10043,7 @@ p_id_t pipein;
 #if	!MSDOS
 	syntaxtree *tmptr;
 	p_id_t pid;
-	int bg, sub, stop;
+	int bg, sub;
 #endif
 #ifndef	MINIMUMSHELL
 	long dupshlineno;
@@ -10058,54 +10052,46 @@ p_id_t pipein;
 	int cont, ret;
 
 	next = statementcheck(trp -> next, SM_STATEMENT);
-	if (getstatid(next) == SM_LPAREN - 1) {
-#if	!MSDOS
-		tmptr = trp -> next;
-#endif
-	}
-	else {
+	if (getstatid(next) != SM_LPAREN - 1) {
 #if	!MSDOS
 		tmptr = trp;
 #endif
 		next = NULL;
 	}
 #if	!MSDOS
-	sub = stop = 0;
+	else tmptr = trp -> next;
+#endif
+
+#if	!MSDOS
+	sub = 0;
 # if	!defined (BASHSTYLE) && !defined (USEFAKEPIPE)
 	/* bash does not treat the end of pipeline as sub shell */
-	if (!(tmptr -> next) && (tmptr -> flags & ST_NEXT)
-	&& (tmptr = getparent(trp)) && isoppipe(tmptr)) {
+	if (tmptr -> next || !(tmptr -> flags & ST_NEXT)) /*EMPTY*/;
+	else if ((tmptr = getparent(trp)) && isoppipe(tmptr))
 		sub = 1;
-		stop = -1;
-	}
 # endif
 
-	if (isstatement(trp -> comm)) {
-		if ((trp -> comm) -> id == SM_CHILD) sub = 0;
+	if (!isstatement(trp -> comm)) /*EMPTY*/;
+	else if ((trp -> comm) -> id == SM_CHILD) sub = 0;
 # if	!defined (NOJOB) && defined (CHILDSTATEMENT)
-		else if (jobok && mypid == orgpgrp) sub = 1;
+	else if (jobok && mypid == orgpgrp) sub = 1;
 # endif
 # ifndef	BASHSTYLE
 	/* bash does not treat redirected statements as sub shell */
-		else if ((trp -> comm) -> redp) sub = 1;
+	else if ((trp -> comm) -> redp) sub = 1;
 # endif
-	}
 
-	if (sub) {
-		if ((pid = makechild(1, (p_id_t)-1, stop)) < (p_id_t)0)
-			return(-1);
-		else if (!pid) {
+	if (!sub) /*EMPTY*/;
+	else if ((pid = makechild(1, (p_id_t)-1)) < (p_id_t)0) return(-1);
+	else if (pid) {
 # ifndef	NOJOB
-			stackjob(mypid, 0, trp);
+		stackjob(pid, 0, -1, trp);
 # endif
-		}
-		else {
-# ifndef	NOJOB
-			stackjob(pid, 0, trp);
-# endif
-			return(waitchild(pid, trp));
-		}
+		return(waitchild(pid, trp));
 	}
+# ifndef	NOJOB
+	else stackjob(mypid, 0, -1, trp);
+# endif
 #endif	/* !MSDOS */
 
 	if (isstatement(trp -> comm)) {
@@ -10119,9 +10105,7 @@ p_id_t pipein;
 		dupshlineno = shlineno;
 		setshlineno(trp -> lineno);
 #endif
-#if	MSDOS
-		ret = exec_command(trp, &cont);
-#else	/* !MSDOS */
+#if	!MSDOS
 		if (sub) bg = 1;
 # ifndef	USEFAKEPIPE
 		else if (!pipein) bg = 1;
@@ -10130,9 +10114,9 @@ p_id_t pipein;
 		else if (ttypgrp < (p_id_t)0 && !(trp -> next)) bg = 1;
 # endif
 		else bg = 0;
-
-		ret = exec_command(trp, &cont, bg);
 #endif	/* !MSDOS */
+		ret = exec_command2(trp, &cont, bg);
+
 #ifndef	MINIMUMSHELL
 		setshlineno(dupshlineno);
 #endif
@@ -10186,12 +10170,12 @@ int cond;
 	fd = -1;
 #if	!MSDOS
 	if (!isopbg(trp) && !isopnown(trp)) pid = (p_id_t)-1;
-	else if ((pid = makechild(0, (p_id_t)-1, 0)) < (p_id_t)0) return(-1);
+	else if ((pid = makechild(0, (p_id_t)-1)) < (p_id_t)0) return(-1);
 	else if (!pid) {
 		nownstree(trp -> next);
 # ifndef	NOJOB
 		ttypgrp = (p_id_t)-1;
-		if (!isopnown(trp)) stackjob(mypid, 0, trp);
+		if (!isopnown(trp)) stackjob(mypid, 0, -1, trp);
 		if (jobok) /*EMPTY*/;
 		else
 # endif
@@ -10210,7 +10194,7 @@ int cond;
 		childpgrp = (p_id_t)-1;
 		if (!isopnown(trp)) {
 			prevjob = lastjob;
-			lastjob = stackjob(pid, 0, trp);
+			lastjob = stackjob(pid, 0, -1, trp);
 		}
 # endif
 		if (interactive && !nottyout) {
@@ -10235,12 +10219,8 @@ int cond;
 
 	tmptr = skipfuncbody(trp);
 	if (!isoppipe(tmptr)) pipein = (p_id_t)-1;
-#ifdef	USEFAKEPIPE
-	else if ((fd = openpipe(&pipein, STDIN_FILENO, 0)) < 0) return(-1);
-#else
-	else if ((fd = openpipe(&pipein, STDIN_FILENO, 0, 1, (p_id_t)-1)) < 0)
+	else if ((fd = openpipe2(&pipein, STDIN_FILENO, 0, 1, (p_id_t)-1)) < 0)
 		return(-1);
-#endif
 
 #ifdef	FD
 	replaceargs(NULL, NULL, NULL, 0);
@@ -10248,27 +10228,19 @@ int cond;
 
 	if (!(trp -> comm) || pipein > (p_id_t)0) {
 #ifndef	NOJOB
-		if (pipein > (p_id_t)0) stackjob(pipein, 0, trp);
+		if (pipein > (p_id_t)0) stackjob(pipein, 0, fd, trp);
 #endif
 		ret = ret_status;
 	}
 	else if (trp -> flags & ST_NODE)
 		ret = exec_stree((syntaxtree *)(trp -> comm), cond);
 	else if (!((trp -> comm) -> redp)) {
-#ifdef	USEFAKEPIPE
-		ret = exec_process(trp);
-#else
-		ret = exec_process(trp, pipein);
-#endif
+		ret = exec_process2(trp, pipein);
 		ret_status = (ret >= 0) ? ret : RET_FAIL;
 	}
 	else for (;;) {
 		if (!(errp = doredirect((trp -> comm) -> redp)))
-#ifdef	USEFAKEPIPE
-			ret = exec_process(trp);
-#else
-			ret = exec_process(trp, pipein);
-#endif
+			ret = exec_process2(trp, pipein);
 		else {
 			if (checkshellbuiltin(trp) < 0) /*EMPTY*/;
 			else if (errno < 0) /*EMPTY*/;
@@ -10314,7 +10286,10 @@ int cond;
 			prepareexit(1);
 			Xexit(RET_SUCCESS);
 		}
-#endif	/* !MSDOS */
+#endif
+#ifndef	NOJOB
+		if (pipein > (p_id_t)0) stackjob(pipein, 0, fd, trp);
+#endif
 
 		if (interrupted) {
 			breaklevel = loopdepth;
@@ -10490,10 +10465,8 @@ CONST char *command;
 	trp = (command) ? analyzeline(command) : NULL;
 
 	nottyout++;
-#ifdef	USEFAKEPIPE
-	fd = openpipe(&pipein, STDIN_FILENO, 1);
-#else
-	fd = openpipe(&pipein, STDIN_FILENO, 1, 1, mypid);
+	fd = openpipe2(&pipein, STDIN_FILENO, 1, 1, mypid);
+#ifndef	USEFAKEPIPE
 	prevp = searchpipe(fd);
 #endif
 
@@ -10802,7 +10775,9 @@ int initshell(argc, argv)
 int argc;
 char *CONST *argv;
 {
-#if	!MSDOS
+#if	MSDOS
+	char *tmp;
+#else	/* !MSDOS */
 # if	!defined (NOJOB) && defined (NTTYDISC) && defined (ldisc)
 	ldiscioctl_t tty;
 # endif
@@ -10812,7 +10787,6 @@ char *CONST *argv;
 	sigmask_t mask;
 #endif	/* !MSDOS */
 	CONST char *cp, *cp2;
-	char *tmp;
 	int i, n, isstdin, tmprestricted;
 
 	shellname = argv[0];
@@ -10922,11 +10896,12 @@ char *CONST *argv;
 		argvar[1] = NULL;
 	}
 
-	if (!(tmp = getconstvar(ENVPATH))) setenv2(ENVPATH, DEFPATH, 1);
 #if	MSDOS
+	if (!(tmp = getconstvar(ENVPATH))) setenv2(ENVPATH, DEFPATH, 1);
 	else for (i = 0; tmp[i]; i++) if (tmp[i] == ';') tmp[i] = PATHDELIM;
 #else
-	if (!(tmp = getconstvar(ENVTERM))) setenv2(ENVTERM, DEFTERM, 1);
+	if (!getconstvar(ENVPATH)) setenv2(ENVPATH, DEFPATH, 1);
+	if (!getconstvar(ENVTERM)) setenv2(ENVTERM, DEFTERM, 1);
 #endif
 
 	if (interactive) {
@@ -11225,6 +11200,9 @@ char *CONST *argv, *CONST *envp;
 	saveorigenviron();
 # endif
 #endif	/* FD */
+#if	defined (DEP_URLPATH) && defined (WITHNETWORK)
+	urldrive = 1;
+#endif
 	ret_status = RET_SUCCESS;
 	initrc(!loginshell);
 #ifdef	FD

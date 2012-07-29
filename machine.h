@@ -28,16 +28,18 @@
 #define	DOUBLESLASH
 #define	NOTZFILEH
 #define	USETIMEH
+#define	NOFTPH
 #define	USEUTIME
 #define	NOFLOCK
 #define	NOSYSLOG
 #define	USEMKTIME
+#define	NOSETPGRP
 #define	USESTRERROR
 #define	SENSEPERSEC		20
 # if	defined (__TURBOC__) && defined (__WIN32__)
 # define	BCC32
 # endif
-# ifdef	__GNUC__
+# if	defined (__GNUC__)
 # define	USERESOURCEH
 # define	SIGFNCINT
 #  ifndef	DJGPP
@@ -52,11 +54,8 @@
 # define	NOFILEMODE
 # define	NOUNISTDH
 # endif	/* !__GNUC__ */
-# if	!defined (__GNUC__) || (DJGPP >= 2)
-typedef unsigned int		u_int;
-typedef unsigned char		u_char;
-typedef unsigned short		u_short;
-typedef unsigned long		u_long;
+# if	!defined (__GNUC__) || (defined (DJGPP) && DJGPP >= 2)
+# define	NOUINT
 # endif
 # ifdef	__TURBOC__
 #  ifndef	BCC32
@@ -173,7 +172,7 @@ typedef long	off_t;
 #define	SYSV
 #define	OSTYPE			"IRIX"
 #define	CODEEUC
-# if	defined (_COMPILER_VERSION) && (_COMPILER_VERSION >= 600)
+# if	defined (_COMPILER_VERSION) && ((_COMPILER_VERSION) >= 600)
 # define	EXTENDCCOPT	"-32 -O"
 # endif
 # if	!defined (SYSTYPE_SVR4) && !defined (_SYSTYPE_SVR4)
@@ -204,10 +203,10 @@ typedef long	off_t;
 || defined (__H3050) || defined (__H3050R) || defined (__H3050RX)
 #define	SYSV
 #define	OSTYPE			"HPUX"
-# ifdef	__CLASSIC_C__
+# if	defined (__CLASSIC_C__)
 # define	NOSTDC
 # endif
-# ifdef	__STDC_EXT__
+# if	defined (__STDC_EXT__)
 # define	EXTENDCCOPT	"-D_FILE_OFFSET_BITS=64"
 # endif
 /*
@@ -223,7 +222,7 @@ typedef long	off_t;
 #define	BUGGY_HPUX
  *
  */
-# ifndef	__HP_cc
+# if	!defined (__HP_cc)
 # define	BUGGY_HPUX	/* Maybe HP-UX 10.20 */
 # endif
 # if	!defined (BUGGY_HPUX)
@@ -480,12 +479,15 @@ typedef long	off_t;
 #if	defined (__CYGWIN__)
 #define	POSIX
 #define	OSTYPE			"CYGWIN"
+#define	DEFKCODE		"utf8"
+#define	UTF8DOC
 #define	EXTENDCCOPT		"-O -D_FILE_OFFSET_BITS=64"
 #define	PATHNOCASE
 #define	COMMNOCASE
 #define	USECRNL
 #define	DOUBLESLASH
 #define	USEMANLANG
+#define	LANGWIDTH		2
 #define	BSDINSTALL
 #define	TARUSESPACE
 /*
@@ -528,6 +530,7 @@ typedef long	off_t;
 #if	defined (linux)
 #define	POSIX
 #define	OSTYPE			"LINUX"
+#define	UTF8LANG		"utf8-iconv"
 #define	CODEEUC
 # if	defined (alpha) || defined (__alpha) || defined (__alpha__)
 /* Linux/Alpha need not support LFS and cannot use statfs(2) with LFS */
@@ -536,6 +539,7 @@ typedef long	off_t;
 # define	EXTENDCCOPT	"-O -D_FILE_OFFSET_BITS=64"
 # endif
 #define	USEMANLANG
+#define	LANGWIDTH		2
 #define	BSDINSTALL
 #define	TARUSESPACE
 /*
@@ -572,7 +576,7 @@ typedef long	off_t;
 && !defined (x86_64) && !defined (__x86_64) && !defined (__x86_64__) \
 && !defined (s390x) && !defined (__s390x) && !defined (__s390x__) \
 && !defined (CONFIG_ARCH_S390X) \
-&& (!defined (PPC) || !defined (__GNUC__) || __GNUC__ >= 3)	/* for bug */
+&& (!defined (PPC) || !defined (__GNUC__) || (__GNUC__) >= 3)	/* for bug */
 # define	USELLSEEK
 # endif
 #define	SIGFNCINT
@@ -612,7 +616,10 @@ typedef long	off_t;
 #define	NOTZFILEH
 #define	USEMOUNTH
 #define	USEMNTINFO
-# if	__FreeBSD__ < 3
+# if	(__FreeBSD__) >= 5
+# define	LANGWIDTH		2
+# endif
+# if	(__FreeBSD__) < 3
 # define	USEVFCNAME
 # else
 # define	USEFFSTYPE
@@ -646,6 +653,9 @@ typedef long	off_t;
 # if	defined (NetBSD1_0) && (NetBSD1_0 < 1)
 # define	USEFFSIZE
 # endif
+# if	defined (__NetBSD_Version__) && (__NetBSD_Version__ >= 104000000)
+# define	USESOCKLEN
+# endif
 # if	defined (__NetBSD_Version__) && (__NetBSD_Version__ >= 300000000)
 # define	USESTATVFSH
 # define	USEGETVFSTAT
@@ -672,7 +682,7 @@ typedef long	off_t;
 #define	USEMKTIME
 #define	USEINETATON
 #include <sys/param.h>
-# if	!defined (BSD) || (BSD < 199306)
+# if	!defined (BSD) || ((BSD) < 199306)
 # define	USEFFSIZE
 # endif
 #endif
@@ -687,8 +697,8 @@ typedef long	off_t;
 #define	DECLERRLIST
 #define	USEMOUNTH
 #define	USEMNTINFO
-# ifdef	__FreeBSD__
-#  if	__FreeBSD__ < 3
+# if	defined (__FreeBSD__)
+#  if	(__FreeBSD__) < 3
 #  define	USEVFCNAME
 #  else
 #  define	USEFFSTYPE
@@ -726,7 +736,10 @@ typedef long	off_t;
 #if	defined (__APPLE__) && defined (__MACH__) && !defined (OSTYPE)
 #define	BSD44
 #define	OSTYPE			"DARWIN"	/* aka Mac OS X */
+#define	DEFKCODE		"utf8-mac"
+#define	UTF8DOC
 #define	USEMANLANG
+#define	LANGWIDTH		2
 #define	BSDINSTALL
 #define	TARFROMPAX
 #define	TERMCAPLIB		"-lcurses"
@@ -751,51 +764,91 @@ typedef long	off_t;
 #ifndef	_MINIX
 #define	_MINIX			1
 #endif
+#include <minix/config.h>
+# if	defined (_VCS_REVISION)
+# define	MINIX32
+#  ifndef	_XOPEN_SOURCE
+#  define	_XOPEN_SOURCE	520
+#  endif
+# else
+# define	MINIX3
+# endif
 #define	CODEEUC
-#define	CPP7BIT
-#define	OLDARGINT
 #define	EXTENDCCOPT		"-O -D_MINIX=1"
-#define	TERMCAPLIB		"-lcurses"
-#define	NOFUNCMACRO
-#define	NOLONGLONG
 #define	USEPID_T
 #define	NOSIGLIST
-#define	NOTZFILEH
 #define	USESELECTH
-#define	USETIMEH
 #define	USETERMIOS
 #define	USEDEVPTY
 #define	SYSVDIRENT
 #define	NODNAMLEN
 #define	DNAMESIZE		1
-#define	NOTMGMTOFF
-#define	NOSTBLKSIZE
-#define	USESTATFSH
-#define	NOFBLOCKS
-#define	NOFBFREE
-#define	NOFFILES
-#define	USEFSTATFS
 #define	USESETENV
-#define	NOTERMVAR
 #define	USEUTIME
-#define	NOFTRUNCATE
 #define	USEFCNTLOCK
-#define	NOSYSLOG
 #define	USEMKTIME
 #define	USESYSCONF
-#define	NOKILLPG
 #define	USEWAITPID
 #define	USESIGACTION
 #define	USESIGPMASK
 #define	USETIMES
 #define	GETPGRPVOID
+#define	NOSETPGRP
 #define	USESETVBUF
-#define	USESTRERROR
-#define	USESETSID
 #define	SIGFNCINT
+#define	USESTRERROR
+#define	GETTODNULL
+#define	USESETSID
 #define	USESOCKLEN
-#define	USEINETATON
+#define	NOSENDFLAGS
 #define	USEGETGROUPS
+# ifdef	MINIX32
+# define	BUGGYSIGNALH
+# define	USELEAPCNT
+# define	USESTDARGH
+# define	USESTATVFSH
+# define	USEGETFSENT
+# define	USEULIMITH
+# define	USEINETPTON
+# else
+# define	CPP7BIT
+# define	TERMCAPLIB	"-lcurses"
+# define	OLDARGINT
+# define	NOFUNCMACRO
+# define	NOLONGLONG
+# define	NOTZFILEH
+# define	USETIMEH
+# define	NOTMGMTOFF
+# define	NOSTBLKSIZE
+# define	NOFTPH
+# define	USESTATFSH
+# define	NOFBLOCKS
+# define	NOFBFREE
+# define	NOFFILES
+# define	USEFSTATFS
+# define	USEREADMTAB
+# define	NOTERMVAR
+# define	NOFTRUNCATE
+# define	NOSYSLOG
+# define	NOKILLPG
+# define	USEINETATON
+# endif
+#endif
+
+#if	defined (__ANDROID__) || defined (__BIONIC__)
+#define	OSTYPE2			"ANDROID"
+#define	DEFKCODE		"utf8-iconv"
+#define	UTF8DOC
+#define	USETERMIO
+#define	NOFTPH
+#define	USEREADMTAB
+#define	USEPROCMNT
+#define	NOVSPRINTF
+#define	NOSYSLOG
+#define	NOKILLPG
+#define	NOGETPASS
+#define	NOGETPWENT
+#define	NOGETGRENT
 #endif
 
 #if	defined (__386BSD__) && !defined (OSTYPE)
@@ -837,6 +890,11 @@ typedef long	off_t;
 #define	SIGARGINT
 #endif
 
+#if	defined (__GNUC__) && defined (__clang__)
+#define	OSTYPE2			"LLVM"
+#define	NOUINT
+#endif
+
 /****************************************************************
  *	If your machine is not described above,	you should	*
  *	comment out below manually to apply your environment.	*
@@ -868,8 +926,9 @@ typedef long	off_t;
 /*	AUX		;A/UX (Apple) */
 /*	DGUX		;DG/UX AViiON (DG) */
 /*	UXPM		;UXP/M (Fujitsu) */
-/*	MIPS		;RISC/os (MIPS) */
+/*	UXPDS		;UXP/DS (Fujitsu) */
 /*	NEXTSTEP	;NEXTSTEP (NeXT) */
+/*	CYGWIN		;Cygwin */
 /*	LINUX		;Linux */
 /*	JCCBSD		;4.4BSD-Lite (JCC) */
 /*	FREEBSD		;FreeBSD */
@@ -879,9 +938,15 @@ typedef long	off_t;
 /*	OPENBSD		;OpenBSD */
 /*	DARWIN		;Darwin (Apple) */
 /*	MINIX		;MINIX */
+/*	ANDROID		;Android (aka Linux) */
 /*	ORG_386BSD	;386BSD */
+/*	MIPS		;RISC/os (MIPS) */
+/*	LLVM		;Low Level Virtual Machine */
 
 /* #define CODEEUC	;kanji code type is EUC */
+/* #define DEFKCODE	;default string for kanji code type */
+/* #define UTF8DOC	;kanji code type for documents is UTF-8 */
+/* #define UTF8LANG	;kanji code type if LANG environment value is UTF-8 */
 /* #define NOMULTIKANJI	;no need to support multiple kanji codes */
 /* #define PATHNOCASE	;pathname is case insensitive */
 /* #define COMMNOCASE	;shell command name is case insensitive */
@@ -894,12 +959,14 @@ typedef long	off_t;
 /* #define CWDINPATH	;CWD is implicitly included in command path */
 /* #define DOUBLESLASH	;pathname starting with // has some special mean */
 /* #define USEMANLANG	;man(1) directory includes LANG environment value */
+/* #define LANGWIDTH	;column width of LANG used man(1) directory */
 /* #define SUPPORTSJIS	;cc(1) or man(1) supports Shift JIS perfectly */
 /* #define BSDINSTALL	;install(1) with option -c is valid like BSD */
 /* #define BSDINSTCMD	;command name except "install" to install like BSD */
 /* #define TARUSESPACE	;tar(1) uses space to divide file mode from UID */
 /* #define TARFROMPAX	;tar(1) comes from pax(1) */
 /* #define BUGGYMAKE	;make(1) assumes the same timestamp as earlier */
+/* #define BUGGYSIGNALH	;<signal.h> cannot be included for duplicated body */
 /* #define CPP7BIT	;cpp(1) cannot through 8bit */
 /* #define OLDARGINT	;cc(1) treats any old-fashioned argument as integer */
 /* #define CCCOMMAND	;fullpath of suitable cc(1) */
@@ -922,6 +989,7 @@ typedef long	off_t;
 /* #define NOSTDC	;defined __STDC__, but expect traditional C */
 /* #define NOCONST	;defined __STDC__, but cannot use 'const' qualifier */
 /* #define NOVOID	;cannot use type 'void' */
+/* #define NOUINT	;cannot use type 'u_int' */
 /* #define NOLONGLONG	;cannot use type 'long long' */
 /* #define HAVELONGLONG	;have type 'long long' */
 /* #define NOUID_T	;uid_t, gid_t is not defined in <sys/types.h> */
@@ -957,6 +1025,7 @@ typedef long	off_t;
 /* #define HAVETIMEZONE	;have extern variable 'timezone' */
 /* #define NOTMGMTOFF	;'struct tm' hasn't 'tm_gmtoff' */
 /* #define NOSTBLKSIZE	;'struct stat' hasn't 'st_blksize' */
+/* #define NOFTPH	;have not <arpa/ftp.h> */
 /* #define USEINSYSTMH	;use <netinet/in_systm.h> for <netinet/ip.h> */
 /* #define NOHADDRLIST	;'struct hostent' hasn't 'h_addr_list' */
 
@@ -975,7 +1044,7 @@ typedef long	off_t;
 /* #define STATFSARGS	;the number of arguments in statfs() */
 /* #define USEFSTATFS	;the fstatfs() instead of statfs() */
 
-/* following 9 items are exclusive */
+/* following 10 items are exclusive */
 /* #define USEMNTENTH	;use <mntent.h> as header of the mount entry */
 /* #define USEMNTTABH	;use <sys/mnttab.h> as header of the mount entry */
 /* #define USEGETFSSTAT	;use getfsstat() to get the mount entry */
@@ -985,6 +1054,9 @@ typedef long	off_t;
 /* #define USEMNTINFO	;use getmntinfo() to get the mount entry */
 /* #define USEGETMNT	;use getmnt() to get the mount entry */
 /* #define USEGETFSENT	;use getfsent() to get the mount entry */
+/* #define USEREADMTAB	;read directly /etc/mtab to get the mount entry */
+
+/* #define USEPROCMNT	;use /proc/mounts as MOUNTED */
 
 /* following 2 items are exclusive */
 /* #define USEVFCNAME	;'struct vfsconf' has 'vfc_name' as the mount type */
@@ -1025,17 +1097,24 @@ typedef long	off_t;
 /* #define USETIMES	;use times() for getting process time */
 /* #define GETPGRPVOID	;getpgrp() needs void argument */
 /* #define USESETPGID	;use setpgid() instead of setpgrp() */
+/* #define USESETPGID	;use setpgid() instead of setpgrp() */
+/* #define NOSETPGRP	;have not setpgrp() */
 /* #define USETCGETPGRP	;use tcgetpgrp()/tcsetpgrp() instead of ioctl() */
 /* #define USESETVBUF	;use setvbuf() instead of setbuf() or setlinebuf() */
 /* #define SIGARGINT	;the 2nd argument function of signal() returns int */
 /* #define SIGFNCINT	;the 2nd argument function of signal() needs int */
 /* #define USESTRERROR	;use strerror() instead of sys_errlist[] */
 /* #define GETTODARGS	;the number of arguments in gettimeofday() */
+/* #define GETTODNULL	;the 2nd argument of gettimeofday() must be NULL */
 /* #define USESETSID	;use setsid() to set session ID */
 /* #define USEMMAP	;use mmap() to map files into memory */
+/* #define NOGETPASS	;have not getpass() */
 /* #define USESOCKLEN	;use socklen_t for bind()/connect()/accept() */
+/* #define NOSENDFLAGS	;send() cannot support flags */
 /* #define USEINETATON	;use inet_aton() instead of inet_addr() */
 /* #define USEINETPTON	;use inet_pton() instead of inet_addr() */
+/* #define NOGETPWENT	;have not getpwent() */
+/* #define NOGETGRENT	;have not getgrent() */
 /* #define USESETREUID	;use setreuid() to set effective user ID */
 /* #define USESETRESUID	;use setresuid() to set effective user ID */
 /* #define USESETREGID	;use setregid() to set effective group ID */
@@ -1131,9 +1210,23 @@ typedef long	off_t;
 #define	USEGETGROUPS
 #endif
 
-#if	!defined (__GNUC__) && !defined (__attribute__)
+#if	(!defined (__GNUC__) || defined (__clang__)) \
+&& !defined (__attribute__)
 #define	__attribute__(x)
 #endif
+
+#ifdef	__HOST_LANG__
+#undef	CODEEUC
+# if	!MSDOS \
+&& !defined (NEWS_OS6) && !defined (NEWS_OS4) && !defined (NEWS_OS3) \
+&& !defined (HPUX) && !defined (UNIOSB) \
+&& !defined (AIX) && !defined (AUX) \
+&& !defined (CYGWIN) && !defined (BOW) && !defined (DARWIN) \
+&& !defined (ANDROID) && !defined (ORG_386BSD)
+# define	CODEEUC
+# endif
+#endif
+
 
 /*                                 */
 /* Eval configurations by Configur */
@@ -1198,6 +1291,13 @@ typedef long	off_t;
 #define	VOID_T			void
 #define	VOID_P			void *
 #define	VOID_C			(void)
+#endif
+
+#ifdef	NOUINT
+typedef unsigned int		u_int;
+typedef unsigned char		u_char;
+typedef unsigned short		u_short;
+typedef unsigned long		u_long;
 #endif
 
 #if	defined (USEREGCMP) && !defined (REGEXPLIB)
@@ -1304,21 +1404,39 @@ typedef long	off_t;
 #if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
 || defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
 || defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT)
+#undef	USEREADMTAB
+#endif
+
+#if	defined (USEMNTTABH) || defined (USEGETFSSTAT) \
+|| defined (USEGETVFSTAT) || defined (USEMNTCTL) || defined (USEMNTINFOR) \
+|| defined (USEMNTINFO) || defined (USEGETMNT) || defined (USEGETFSENT) \
+|| defined (USEREADMTAB)
 #undef	USEMNTENTH
 #endif
 
 #if	!defined (USEMNTTABH) && !defined (USEGETFSSTAT) \
 && !defined (USEGETVFSTAT) && !defined (USEMNTCTL) && !defined (USEMNTINFOR) \
 && !defined (USEMNTINFO) && !defined (USEGETMNT) && !defined (USEGETFSENT) \
-&& !defined (USEMNTENTH)
+&& !defined (USEREADMTAB) && !defined (USEMNTENTH)
 #define	USEMNTENTH
 #endif
 
 #if	MSDOS
 #undef	USEVFSH
-#endif
-#if	MSDOS || defined (MINIX)
 #undef	USEMNTENTH
+#endif
+
+#if	defined (USEVFCNAME)
+#undef	USEFFSTYPE
+#endif
+
+
+#if	defined (USERE_COMP)
+#undef	USEREGCOMP
+#endif
+
+#if	defined (USERE_COMP) || defined (USEREGCOMP)
+#undef	USEREGCMP
 #endif
 
 

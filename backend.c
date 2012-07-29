@@ -21,14 +21,18 @@
 #define	MAXTABSTOP		255
 #define	MAXLASTUCS2		(MAXNFLEN - 1)
 
+typedef struct _ptystat_t {
+	short x, y;
+	short fg, bg;
+	u_short attr;
+} ptystat_t;
+
 typedef struct _ptyterm_t {
-	short cur_x, cur_y;
+	ptystat_t cur, save;
 	short min_x, min_y;
 	short max_x, max_y;
-	short save_x, save_y;
 	short min_scroll, max_scroll;
 	short last1, last2;
-	short fg, bg;
 	u_char escmode;
 	u_char nparam;
 	u_char nchar;
@@ -39,7 +43,6 @@ typedef struct _ptyterm_t {
 #ifdef	DEP_KCONV
 	u_short last_ucs2[MAXLASTUCS2];
 #endif
-	u_short attr;
 	u_short termflags;
 	char codeselect[MAXESCCHAR + 2];
 } ptyterm_t;
@@ -127,8 +130,8 @@ static VOID NEAR resettermattr(w)
 int w;
 {
 	if (w >= 0) {
-		pty[w].fg = pty[w].bg = (short)-1;
-		pty[w].attr = (u_short)0;
+		pty[w].cur.attr = (u_short)0;
+		pty[w].cur.fg = pty[w].cur.bg = (short)-1;
 	}
 	else if (last_attr || last_fg >= (short)0 || last_bg >= (short)0) {
 		putterm(T_NORMAL);
@@ -188,8 +191,8 @@ int w, clean;
 	}
 
 	if (clean) {
-		pty[w].cur_x = pty[w].save_x = pty[w].min_x;
-		pty[w].cur_y = pty[w].save_y = pty[w].max_y - 1;
+		pty[w].cur.x = pty[w].min_x;
+		pty[w].cur.y = pty[w].max_y - 1;
 		pty[w].min_scroll = pty[w].min_y;
 		pty[w].max_scroll = pty[w].max_y - 1;
 		pty[w].escmode = '\0';
@@ -202,16 +205,18 @@ int w, clean;
 		resettermattr(w);
 		resettermcode(w);
 		resettabstop(w);
+		memcpy((char *)&(pty[w].save), (char *)&(pty[w].cur),
+			sizeof(pty[w].save));
 	}
 	else {
-		pty[w].cur_x += pty[w].min_x - min_x;
-		pty[w].cur_y += pty[w].min_y - min_y;
-		pty[w].save_x += pty[w].save_x - min_x;
-		pty[w].save_y += pty[w].save_y - min_y;
+		pty[w].cur.x += pty[w].min_x - min_x;
+		pty[w].cur.y += pty[w].min_y - min_y;
+		pty[w].save.x += pty[w].min_x - min_x;
+		pty[w].save.y += pty[w].min_y - min_y;
 		pty[w].min_scroll += pty[w].min_y - min_y;
 		pty[w].max_scroll += pty[w].max_y - max_y;
-		biasxy(w, &(pty[w].cur_x), &(pty[w].cur_y));
-		biasxy(w, &(pty[w].save_x), &(pty[w].save_y));
+		biasxy(w, &(pty[w].cur.x), &(pty[w].cur.y));
+		biasxy(w, &(pty[w].save.x), &(pty[w].save.y));
 		biasxy(w, NULL, &(pty[w].min_scroll));
 		biasxy(w, NULL, &(pty[w].max_scroll));
 	}
@@ -234,31 +239,31 @@ short *xp, *yp;
 static VOID NEAR settermattr(w)
 int w;
 {
-	if ((last_fg >= (short)0 && pty[w].fg < (short)0)
-	|| (last_bg >= (short)0 && pty[w].bg < (short)0))
+	if ((last_fg >= (short)0 && pty[w].cur.fg < (short)0)
+	|| (last_bg >= (short)0 && pty[w].cur.bg < (short)0))
 		resettermattr(-1);
 
-	if (last_attr != pty[w].attr) {
+	if (last_attr != pty[w].cur.attr) {
 		putterm(T_NORMAL);
 		last_fg = last_bg = (short)-1;
-		if (pty[w].attr & A_BOLD) putterm(T_BOLD);
-		if (pty[w].attr & A_REVERSE) putterm(T_REVERSE);
-		if (pty[w].attr & A_DIM) putterm(T_DIM);
-		if (pty[w].attr & A_BLINK) putterm(T_BLINK);
-		if (pty[w].attr & A_STANDOUT) putterm(T_STANDOUT);
-		if (pty[w].attr & A_UNDERLINE) putterm(T_UNDERLINE);
-		last_attr = pty[w].attr;
+		if (pty[w].cur.attr & A_BOLD) putterm(T_BOLD);
+		if (pty[w].cur.attr & A_REVERSE) putterm(T_REVERSE);
+		if (pty[w].cur.attr & A_DIM) putterm(T_DIM);
+		if (pty[w].cur.attr & A_BLINK) putterm(T_BLINK);
+		if (pty[w].cur.attr & A_STANDOUT) putterm(T_STANDOUT);
+		if (pty[w].cur.attr & A_UNDERLINE) putterm(T_UNDERLINE);
+		last_attr = pty[w].cur.attr;
 	}
 
-	if (last_fg != pty[w].fg && pty[w].fg >= (short)0) {
-		if (tputparam(T_FGCOLOR, pty[w].fg, 0, 1) < 0)
-			tprintf("\033[%dm", 1, pty[w].fg + ANSI_NORMAL);
-		last_fg = pty[w].fg;
+	if (last_fg != pty[w].cur.fg && pty[w].cur.fg >= (short)0) {
+		if (tputparam(T_FGCOLOR, pty[w].cur.fg, 0, 1) < 0)
+			tprintf("\033[%dm", 1, pty[w].cur.fg + ANSI_NORMAL);
+		last_fg = pty[w].cur.fg;
 	}
-	if (last_bg != pty[w].bg && pty[w].bg >= (short)0) {
-		if (tputparam(T_BGCOLOR, pty[w].bg, 0, 1) < 0)
-			tprintf("\033[%dm", 1, pty[w].bg + ANSI_REVERSE);
-		last_bg = pty[w].bg;
+	if (last_bg != pty[w].cur.bg && pty[w].cur.bg >= (short)0) {
+		if (tputparam(T_BGCOLOR, pty[w].cur.bg, 0, 1) < 0)
+			tprintf("\033[%dm", 1, pty[w].cur.bg + ANSI_REVERSE);
+		last_bg = pty[w].cur.bg;
 	}
 }
 
@@ -285,29 +290,31 @@ int w;
 static VOID NEAR surelocate(w, forced)
 int w, forced;
 {
-	if (!forced && pty[w].cur_x == last_x && pty[w].cur_y == last_y)
+	if (!forced && pty[w].cur.x == last_x && pty[w].cur.y == last_y)
 		return;
 
 	resettermattr(-1);
-	locate(pty[w].cur_x, pty[w].cur_y);
-	last_x = pty[w].cur_x;
-	last_y = pty[w].cur_y;
+	locate(pty[w].cur.x, pty[w].cur.y);
+	last_x = pty[w].cur.x;
+	last_y = pty[w].cur.y;
 }
 
 static VOID NEAR reallocate(w, x, y)
+int w, x, y;
 {
-	if (pty[w].attr || pty[w].fg >= (short)0 || pty[w].bg >= (short)0) {
+	if (pty[w].cur.attr
+	|| pty[w].cur.fg >= (short)0 || pty[w].cur.bg >= (short)0) {
 		surelocate(w, 1);
 		settermattr(w);
 	}
 
-	pty[w].cur_x = x;
-	pty[w].cur_y = y;
-	biasxy(w, &(pty[w].cur_x), &(pty[w].cur_y));
-	locate(pty[w].cur_x, pty[w].cur_y);
+	pty[w].cur.x = x;
+	pty[w].cur.y = y;
+	biasxy(w, &(pty[w].cur.x), &(pty[w].cur.y));
+	locate(pty[w].cur.x, pty[w].cur.y);
 	tflush();
-	last_x = pty[w].cur_x;
-	last_y = pty[w].cur_y;
+	last_x = pty[w].cur.x;
+	last_y = pty[w].cur.y;
 }
 
 #ifdef	SIGWINCH
@@ -342,8 +349,8 @@ static VOID NEAR evalsignal(VOID_A)
 
 		if (xmax != pty[i].max_x - pty[i].min_x
 		|| ymax != pty[i].max_y - pty[i].min_y) {
-			pty[i].cur_x = pty[i].save_x = pty[i].min_x;
-			pty[i].cur_y = pty[i].save_y = pty[i].max_y - 1;
+			pty[i].cur.x = pty[i].save.x = pty[i].min_x;
+			pty[i].cur.y = pty[i].save.y = pty[i].max_y - 1;
 		}
 	}
 	resetptyterm(i, 0);
@@ -572,20 +579,20 @@ static VOID NEAR evalscroll(w, n, c)
 int w, n, c;
 {
 	resettermattr(-1);
-	regionscroll(n, c, pty[w].cur_x, pty[w].cur_y,
+	regionscroll(n, c, pty[w].cur.x, pty[w].cur.y,
 		pty[w].min_scroll, pty[w].max_scroll);
 	tflush();
-	last_x = pty[w].cur_x;
-	last_y = pty[w].cur_y;
+	last_x = pty[w].cur.x;
+	last_y = pty[w].cur.y;
 }
 
 static VOID NEAR evallf(w)
 int w;
 {
-	if (pty[w].cur_y < pty[w].max_y
-	&& pty[w].cur_y == pty[w].max_scroll)
+	if (pty[w].cur.y < pty[w].max_y
+	&& pty[w].cur.y == pty[w].max_scroll)
 		evalscroll(w, C_SCROLLFORW, 1);
-	else reallocate(w, pty[w].cur_x, pty[w].cur_y + 1);
+	else reallocate(w, pty[w].cur.x, pty[w].cur.y + 1);
 }
 
 static VOID NEAR outputnormal(w, buf, width)
@@ -599,8 +606,8 @@ int width;
 #endif
 	CONST char *cp;
 
-	if (pty[w].cur_x + width > pty[w].max_x) {
-		pty[w].cur_x = pty[w].min_x;
+	if (pty[w].cur.x + width > pty[w].max_x) {
+		pty[w].cur.x = pty[w].min_x;
 		evallf(w);
 	}
 
@@ -608,7 +615,7 @@ int width;
 	settermattr(w);
 	settermcode(w);
 	cp = buf;
-	if (pty[w].attr & A_INVISIBLE) {
+	if (pty[w].cur.attr & A_INVISIBLE) {
 		memset(buf, ' ', width);
 		buf[width] = '\0';
 	}
@@ -622,11 +629,11 @@ int width;
 
 	Xcputs(cp);
 	tflush();
-	pty[w].cur_x += width;
+	pty[w].cur.x += width;
 	last_x += width;
 
-	if (n_lastcolumn < n_column && pty[w].cur_x >= pty[w].max_x) {
-		pty[w].cur_x = pty[w].min_x;
+	if (n_lastcolumn < n_column && pty[w].cur.x >= pty[w].max_x) {
+		pty[w].cur.x = pty[w].min_x;
 		evallf(w);
 	}
 }
@@ -646,7 +653,7 @@ int w, c;
 #endif
 
 	if ((pty[w].termflags & T_NOAUTOMARGIN)
-	&& pty[w].cur_x >= pty[w].max_x - 1)
+	&& pty[w].cur.x >= pty[w].max_x - 1)
 		return;
 
 	i = 0;
@@ -716,17 +723,17 @@ int w, c;
 
 	switch (c) {
 		case '\b':
-			reallocate(w, pty[w].cur_x - 1, pty[w].cur_y);
+			reallocate(w, pty[w].cur.x - 1, pty[w].cur.y);
 			break;
 		case '\t':
 			for (i = 0; i < pty[w].ntabstop; i++)
-				if (pty[w].cur_x < pty[w].tabstop[i]) break;
+				if (pty[w].cur.x < pty[w].tabstop[i]) break;
 			i = (i < pty[w].ntabstop)
 				? pty[w].tabstop[i] : pty[w].max_x - 1;
-			reallocate(w, i, pty[w].cur_y);
+			reallocate(w, i, pty[w].cur.y);
 			break;
 		case '\r':
-			reallocate(w, pty[w].min_x, pty[w].cur_y);
+			reallocate(w, pty[w].min_x, pty[w].cur.y);
 			break;
 		case '\n':
 		case '\v':
@@ -759,13 +766,13 @@ int w, c;
 	pty[w].escmode = '\0';
 	switch (c) {
 		case '7':
-			pty[w].save_x = pty[w].cur_x;
-			pty[w].save_y = pty[w].cur_y;
+			memcpy((char *)&(pty[w].save), (char *)&(pty[w].cur),
+				sizeof(pty[w].save));
 			break;
 		case '8':
-			pty[w].cur_x = pty[w].save_x;
-			pty[w].cur_y = pty[w].save_y;
-			biasxy(w, &(pty[w].cur_x), &(pty[w].cur_y));
+			memcpy((char *)&(pty[w].cur), (char *)&(pty[w].save),
+				sizeof(pty[w].cur));
+			biasxy(w, &(pty[w].cur.x), &(pty[w].cur.y));
 			surelocate(w, 1);
 			tflush();
 			break;
@@ -779,36 +786,38 @@ int w, c;
 			evallf(w);
 			break;
 		case 'E':
-			pty[w].cur_x = pty[w].min_x;
+			pty[w].cur.x = pty[w].min_x;
 			evallf(w);
 			break;
 		case 'H':
 			if (pty[w].ntabstop >= (u_char)MAXTABSTOP) break;
 			for (i = 0; i < pty[w].ntabstop; i++)
-				if (pty[w].cur_x <= pty[w].tabstop[i]) break;
+				if (pty[w].cur.x <= pty[w].tabstop[i]) break;
 			if (i >= pty[w].ntabstop)
 				pty[w].tabstop[(pty[w].ntabstop)++] =
-					pty[w].cur_x;
-			else if (pty[w].cur_x == pty[w].tabstop[i]) break;
+					pty[w].cur.x;
+			else if (pty[w].cur.x == pty[w].tabstop[i]) break;
 			else {
 				memmove((char *)&(pty[w].tabstop[i + 1]),
 					(char *)&(pty[w].tabstop[i]),
 					((pty[w].ntabstop)++ - i)
 						* sizeof(u_short));
-				pty[w].tabstop[i] = pty[w].cur_x;
+				pty[w].tabstop[i] = pty[w].cur.x;
 			}
 			break;
 		case 'M':
-			if (pty[w].cur_y >= pty[w].min_y
-			&& pty[w].cur_y == pty[w].min_scroll)
+			if (pty[w].cur.y >= pty[w].min_y
+			&& pty[w].cur.y == pty[w].min_scroll)
 				evalscroll(w, L_INSERT, 1);
-			else reallocate(w, pty[w].cur_x, pty[w].cur_y - 1);
+			else reallocate(w, pty[w].cur.x, pty[w].cur.y - 1);
 			break;
 		case 'c':
 			pty[w].termflags = (u_short)0;
 			resettermattr(w);
 			resettermcode(w);
 			resettabstop(w);
+			memcpy((char *)&(pty[w].save), (char *)&(pty[w].cur),
+				sizeof(pty[w].save));
 			surelocate(w, 1);
 			tflush();
 			pty[w].min_scroll = pty[w].min_y;
@@ -865,25 +874,25 @@ int w, c, fd;
 			if (pty[w].escmode != ']') break;
 			n = pty[w].escparam[0];
 			if (n <= 0) n = 1;
-			reallocate(w, pty[w].cur_x, pty[w].cur_y - n);
+			reallocate(w, pty[w].cur.x, pty[w].cur.y - n);
 			break;
 		case 'B':
 			if (pty[w].escmode != ']') break;
 			n = pty[w].escparam[0];
 			if (n <= 0) n = 1;
-			reallocate(w, pty[w].cur_x, pty[w].cur_y + n);
+			reallocate(w, pty[w].cur.x, pty[w].cur.y + n);
 			break;
 		case 'C':
 			if (pty[w].escmode != ']') break;
 			n = pty[w].escparam[0];
 			if (n <= 0) n = 1;
-			reallocate(w, pty[w].cur_x + n, pty[w].cur_y);
+			reallocate(w, pty[w].cur.x + n, pty[w].cur.y);
 			break;
 		case 'D':
 			if (pty[w].escmode != ']') break;
 			n = pty[w].escparam[0];
 			if (n <= 0) n = 1;
-			reallocate(w, pty[w].cur_x - n, pty[w].cur_y);
+			reallocate(w, pty[w].cur.x - n, pty[w].cur.y);
 			break;
 		case 'H':
 		case 'f':
@@ -892,8 +901,6 @@ int w, c, fd;
 				? 0 : pty[w].escparam[1] - 1);
 			y = pty[w].min_y + (pty[w].escparam[0] - 1);
 			reallocate(w, x, y);
-			pty[w].save_x = pty[w].cur_x;
-			pty[w].save_y = pty[w].cur_y;
 			break;
 		case 'm':
 			if (pty[w].escmode != ']') break;
@@ -901,65 +908,67 @@ int w, c, fd;
 			switch (pty[w].escparam[i]) {
 				case -1:
 				case 0:
-					pty[w].attr = (u_short)0;
-					pty[w].fg = pty[w].bg = (short)-1;
+					pty[w].cur.attr = (u_short)0;
+					pty[w].cur.fg =
+					pty[w].cur.bg = (short)-1;
 					break;
 				case 1:
-					pty[w].attr |= A_BOLD;
+					pty[w].cur.attr |= A_BOLD;
 					break;
 				case 2:
-					pty[w].attr |= A_DIM;
+					pty[w].cur.attr |= A_DIM;
 					break;
 				case 4:
-					pty[w].attr |= A_UNDERLINE;
+					pty[w].cur.attr |= A_UNDERLINE;
 					break;
 				case 5:
-					pty[w].attr |= A_BLINK;
+					pty[w].cur.attr |= A_BLINK;
 					break;
 				case 7:
-					pty[w].attr |= A_REVERSE;
+					pty[w].cur.attr |= A_REVERSE;
 					break;
 				case 8:
-					pty[w].attr |= A_INVISIBLE;
+					pty[w].cur.attr |= A_INVISIBLE;
 					break;
 				case 22:
-					pty[w].attr &= ~A_BOLD;
+					pty[w].cur.attr &= ~A_BOLD;
 					break;
 				case 24:
-					pty[w].attr &= ~A_UNDERLINE;
+					pty[w].cur.attr &= ~A_UNDERLINE;
 					break;
 				case 25:
-					pty[w].attr &= ~A_BLINK;
+					pty[w].cur.attr &= ~A_BLINK;
 					break;
 				case 27:
-					pty[w].attr &= ~A_REVERSE;
+					pty[w].cur.attr &= ~A_REVERSE;
 					break;
 				case 28:
-					pty[w].attr &= ~A_INVISIBLE;
+					pty[w].cur.attr &= ~A_INVISIBLE;
 					break;
 				case 100:
-					pty[w].fg = pty[w].bg = (short)-1;
+					pty[w].cur.fg =
+					pty[w].cur.bg = (short)-1;
 					break;
 				default:
 					n = pty[w].escparam[i];
 					if (n >= 30 && n <= 37)
-						pty[w].fg = n % 10;
+						pty[w].cur.fg = n % 10;
 					else if (n >= 40 && n <= 47)
-						pty[w].bg = n % 10;
+						pty[w].cur.bg = n % 10;
 					break;
 			}
 			tflush();
 			break;
 		case 's':
 			if (pty[w].escmode != ']') break;
-			pty[w].save_x = pty[w].cur_x;
-			pty[w].save_y = pty[w].cur_y;
+			memcpy((char *)&(pty[w].save), (char *)&(pty[w].cur),
+				sizeof(pty[w].save));
 			break;
 		case 'u':
 			if (pty[w].escmode != ']') break;
-			pty[w].cur_x = pty[w].save_x;
-			pty[w].cur_y = pty[w].save_y;
-			biasxy(w, &(pty[w].cur_x), &(pty[w].cur_y));
+			memcpy((char *)&(pty[w].cur), (char *)&(pty[w].save),
+				sizeof(pty[w].cur));
+			biasxy(w, &(pty[w].cur.x), &(pty[w].cur.y));
 			surelocate(w, 1);
 			tflush();
 			break;
@@ -984,12 +993,12 @@ int w, c, fd;
 			switch (pty[w].escparam[0]) {
 				case -1:
 				case 0:
-					min = pty[w].cur_y;
+					min = pty[w].cur.y;
 					max = pty[w].max_y;
 					break;
 				case 1:
 					min = pty[w].min_y;
-					max = pty[w].cur_y + 1;
+					max = pty[w].cur.y + 1;
 					break;
 				case 2:
 					min = pty[w].min_y;
@@ -1022,7 +1031,7 @@ int w, c, fd;
 					putterm(L_CLEARBOL);
 					break;
 				case 2:
-					locate(pty[w].min_x, pty[w].cur_y);
+					locate(pty[w].min_x, pty[w].cur.y);
 					putterm(L_CLEAR);
 					surelocate(w, 1);
 					break;
@@ -1102,10 +1111,10 @@ int w, c, fd;
 					if (pty[w].ntabstop <= (u_char)0)
 						break;
 					for (i = 0; i < pty[w].ntabstop; i++)
-						if (pty[w].cur_x
+						if (pty[w].cur.x
 						<= pty[w].tabstop[i])
 							break;
-					if (pty[w].cur_x != pty[w].tabstop[i])
+					if (pty[w].cur.x != pty[w].tabstop[i])
 						break;
 					memmove((char *)&(pty[w].tabstop[i]),
 						(char *)
@@ -1131,9 +1140,9 @@ int w, c, fd;
 				case 6:
 					i = Xsnprintf(buf, sizeof(buf),
 						SIZEFMT,
-						pty[w].cur_y
+						pty[w].cur.y
 						- pty[w].min_y + 1,
-						pty[w].cur_x
+						pty[w].cur.x
 						- pty[w].min_x + 1);
 					break;
 				case 99:
@@ -1259,32 +1268,33 @@ int n, c;
 			putterm(L_CLEAR);
 			break;
 		case T_NORMAL:
-			pty[MAXWINDOWS].attr = (u_short)0;
-			pty[MAXWINDOWS].fg = pty[MAXWINDOWS].bg = (short)-1;
+			pty[MAXWINDOWS].cur.attr = (u_short)0;
+			pty[MAXWINDOWS].cur.fg =
+			pty[MAXWINDOWS].cur.bg = (short)-1;
 			break;
 		case T_BOLD:
-			pty[MAXWINDOWS].attr |= A_BOLD;
+			pty[MAXWINDOWS].cur.attr |= A_BOLD;
 			break;
 		case T_REVERSE:
-			pty[MAXWINDOWS].attr |= A_REVERSE;
+			pty[MAXWINDOWS].cur.attr |= A_REVERSE;
 			break;
 		case T_DIM:
-			pty[MAXWINDOWS].attr |= A_DIM;
+			pty[MAXWINDOWS].cur.attr |= A_DIM;
 			break;
 		case T_BLINK:
-			pty[MAXWINDOWS].attr |= A_BLINK;
+			pty[MAXWINDOWS].cur.attr |= A_BLINK;
 			break;
 		case T_STANDOUT:
-			pty[MAXWINDOWS].attr |= A_STANDOUT;
+			pty[MAXWINDOWS].cur.attr |= A_STANDOUT;
 			break;
 		case T_UNDERLINE:
-			pty[MAXWINDOWS].attr |= A_UNDERLINE;
+			pty[MAXWINDOWS].cur.attr |= A_UNDERLINE;
 			break;
 		case END_STANDOUT:
-			pty[MAXWINDOWS].attr &= ~A_STANDOUT;
+			pty[MAXWINDOWS].cur.attr &= ~A_STANDOUT;
 			break;
 		case END_UNDERLINE:
-			pty[MAXWINDOWS].attr &= ~A_UNDERLINE;
+			pty[MAXWINDOWS].cur.attr &= ~A_UNDERLINE;
 			break;
 		case L_INSERT:
 		case L_DELETE:
@@ -1299,13 +1309,13 @@ int n, c;
 			tflush();
 			break;
 		case C_HOME:
-			pty[MAXWINDOWS].cur_x =
-			pty[MAXWINDOWS].cur_y = (short)0;
+			pty[MAXWINDOWS].cur.x =
+			pty[MAXWINDOWS].cur.y = (short)0;
 			reallocate(MAXWINDOWS, 0, 0);
 			break;
 		case C_RETURN:
 			reallocate(MAXWINDOWS,
-				pty[MAXWINDOWS].min_x, pty[MAXWINDOWS].cur_y);
+				pty[MAXWINDOWS].min_x, pty[MAXWINDOWS].cur.y);
 			break;
 		case C_NEWLINE:
 			while (c--) evallf(MAXWINDOWS);
@@ -1313,26 +1323,26 @@ int n, c;
 		case C_UP:
 		case C_NUP:
 			reallocate(MAXWINDOWS,
-				pty[MAXWINDOWS].cur_x,
-				pty[MAXWINDOWS].cur_y - c);
+				pty[MAXWINDOWS].cur.x,
+				pty[MAXWINDOWS].cur.y - c);
 			break;
 		case C_DOWN:
 		case C_NDOWN:
 			reallocate(MAXWINDOWS,
-				pty[MAXWINDOWS].cur_x,
-				pty[MAXWINDOWS].cur_y + c);
+				pty[MAXWINDOWS].cur.x,
+				pty[MAXWINDOWS].cur.y + c);
 			break;
 		case C_RIGHT:
 		case C_NRIGHT:
 			reallocate(MAXWINDOWS,
-				pty[MAXWINDOWS].cur_x + c,
-				pty[MAXWINDOWS].cur_y);
+				pty[MAXWINDOWS].cur.x + c,
+				pty[MAXWINDOWS].cur.y);
 			break;
 		case C_LEFT:
 		case C_NLEFT:
 			reallocate(MAXWINDOWS,
-				pty[MAXWINDOWS].cur_x - c,
-				pty[MAXWINDOWS].cur_y);
+				pty[MAXWINDOWS].cur.x - c,
+				pty[MAXWINDOWS].cur.y);
 			break;
 		default:
 			return(n);
@@ -1360,7 +1370,7 @@ int n;
 			settermattr(MAXWINDOWS);
 			settermcode(MAXWINDOWS);
 			i = Xcprintf("%c", w1);
-			pty[MAXWINDOWS].cur_x += i;
+			pty[MAXWINDOWS].cur.x += i;
 			last_x += i;
 			tflush();
 			break;
@@ -1372,7 +1382,7 @@ int n;
 				settermcode(MAXWINDOWS);
 				s[w1] = '\0';
 				i = Xcprintf("%s", s);
-				pty[MAXWINDOWS].cur_x += i;
+				pty[MAXWINDOWS].cur.x += i;
 				last_x += i;
 				tflush();
 			}
@@ -1407,25 +1417,25 @@ int n;
 			reallocate(MAXWINDOWS, w1, w2);
 			for (i = 0; i < MAXWINDOWS; i++) {
 				if (ptylist[i].pid) continue;
-				pty[i].cur_x = w1;
-				pty[i].cur_y = w2;
-				biasxy(i, &(pty[i].cur_x), &(pty[i].cur_y));
+				pty[i].cur.x = w1;
+				pty[i].cur.y = w2;
+				biasxy(i, &(pty[i].cur.x), &(pty[i].cur.y));
 			}
 			break;
 		case TE_CPUTNL:
-			pty[MAXWINDOWS].cur_x = (short)0;
+			pty[MAXWINDOWS].cur.x = (short)0;
 			evallf(MAXWINDOWS);
 			break;
 		case TE_CHGCOLOR:
 			if (ptyrecvword(&n) < 0) break;
 
 			if (n) {
-				pty[MAXWINDOWS].fg = (w1 == ANSI_BLACK)
+				pty[MAXWINDOWS].cur.fg = (w1 == ANSI_BLACK)
 					? ANSI_WHITE : ANSI_BLACK;
-				pty[MAXWINDOWS].bg = w1;
+				pty[MAXWINDOWS].cur.bg = w1;
 			}
 			else {
-				pty[MAXWINDOWS].fg = w1;
+				pty[MAXWINDOWS].cur.fg = w1;
 			}
 			break;
 		case TE_MOVECURSOR:
@@ -1444,7 +1454,7 @@ int n;
 			win = w1;
 			if (pid < (p_id_t)0) break;
 			resetptyterm(win, (ptylist[win].pid) ? 0 : 1);
-			biasxy(win, &(pty[win].cur_x), &(pty[win].cur_y));
+			biasxy(win, &(pty[win].cur.x), &(pty[win].cur.y));
 			ptylist[win].pid = pid;
 			surelocate(win, 1);
 			tflush();
@@ -1589,7 +1599,7 @@ static int NEAR evalinput(VOID_A)
 		if (incode != outcode) cnv++;
 		key.len = (u_char)2;
 		key.str = buf;
-		buf[0] = C_EKANA;
+		buf[0] = (char)C_EKANA;
 		buf[1] = (key.code & 0xff);
 	}
 #else	/* !DEP_KCONV */
@@ -1597,7 +1607,7 @@ static int NEAR evalinput(VOID_A)
 	else if (isekana2(key.code)) {
 		key.len = (u_char)2;
 		key.str = buf;
-		buf[0] = C_EKANA;
+		buf[0] = (char)C_EKANA;
 		buf[1] = (key.code & 0xff);
 	}
 # endif

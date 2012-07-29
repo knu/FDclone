@@ -3,7 +3,7 @@
 #	About FDclone Ver. 3.00
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Apr 21, 2012
+#	Jul 27, 2012
 #
 ############################################################
 
@@ -67,6 +67,10 @@ mktankan.c	Tan-Kanji translation table generator
 mkkanji.c	kanji.h convertor
 mkcat.c		message catalog generator
 mkdir_p.c	directory generator
+evalopt.c	option strings parser module
+evalopt.h	header for evalopt.c
+gentbl.c	table generator module
+gentbl.h	header for gentbl.c
 mkmfsedg.sed	sed script filtering Makefile for djgpp v1.xx
 mkmfsedd.sed	sed script filtering Makefile for djgpp v2.xx
 mkmfdosl.sed	sed script filtering Makefile for LSI C-86 3.5
@@ -122,6 +126,9 @@ frontend.c	frontend module of terminal emulation
 backend.c	backend module of terminal emulation
 libc.c		arrangement of C standard library
 file.c		file I/O module
+mntinfo.c	mount information module
+mntinfo.h	header for mntinfo.c
+statfs.c	alternative statfs()
 apply.c		applying one after another module
 parse.c		strings parser module
 parse.h		header for parse.c
@@ -171,6 +178,7 @@ typesize.h	header for size of types
 wait.h		header for child processes
 dirent.h	header for directory entries
 unixemu.h	header for system call emulation on MS-DOS
+fsinfo.h	header for file system information
 device.h	header for device ID
 func.h		prototype declarations
 functabl.h	header for attribute on internal command

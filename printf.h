@@ -30,6 +30,8 @@ typedef struct _printbuf_t {
 #define	VF_THOUSAND		002000
 #define	VF_STRICTWIDTH		004000
 #define	VF_PRINTABLE		010000
+#define	VF_SIZEUNIT		020000
+#define	VF_ASPOSSIBLE		040000
 
 #ifdef	MINIMUMSHELL
 #define	strlen3			strlen2

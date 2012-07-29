@@ -7,11 +7,12 @@
 #include "headers.h"
 #include "kctype.h"
 #include "typesize.h"
+#include "kconv.h"
 #include "roman.h"
 
 #define	MAXKANASTR		255
 #define	DEFFREQ			0
-#define	DEFTK(s,c)		{s, strsize(s), c}
+#define	DEFTK(s, c)		{s, strsize(s), c}
 
 typedef struct _tankantable {
 	CONST char *str;
@@ -21,6 +22,7 @@ typedef struct _tankantable {
 
 extern romantable *romanlist;
 
+static int NEAR Xjis2str __P_((char *, u_int));
 static VOID NEAR roman2str __P_((char *, CONST char *, ALLOC_T));
 int main __P_((int, char *CONST []));
 
@@ -646,6 +648,25 @@ static CONST tankantable tankanlist[] = {
 #define	TANKANLISTSIZ		arraysize(tankanlist)
 
 
+static int NEAR Xjis2str(buf, c)
+char *buf;
+u_int c;
+{
+#ifndef	CODEEUC
+	char tmp[MAXKLEN + 1];
+#endif
+	int n;
+
+#ifdef	CODEEUC
+	n = jis2str(buf, c);
+#else
+	n = jis2str(tmp, c);
+	VOID_C kanjiconv2(buf, tmp, MAXKLEN, DEFCODE, EUC, L_INPUT);
+#endif
+
+	return n;
+}
+
 static VOID NEAR roman2str(buf, s, size)
 char *buf;
 CONST char *s;
@@ -662,10 +683,11 @@ ALLOC_T size;
 		for (len = size; len > (ALLOC_T)0; len--)
 			if ((n = searchroman(s, len)) >= 0) break;
 		if (len <= (ALLOC_T)0) {
-			if (*s == 'n') ptr += jis2str(&(buf[ptr]), J_NN);
-			else if (*s == '-') ptr += jis2str(&(buf[ptr]), J_CHO);
+			if (*s == 'n') ptr += Xjis2str(&(buf[ptr]), J_NN);
+			else if (*s == '-')
+				ptr += Xjis2str(&(buf[ptr]), J_CHO);
 			else if (*s == *(s + 1))
-				ptr += jis2str(&(buf[ptr]), J_TSU);
+				ptr += Xjis2str(&(buf[ptr]), J_TSU);
 
 			s++;
 			size--;
@@ -674,7 +696,7 @@ ALLOC_T size;
 
 		for (i = 0; i < R_MAXKANA; i++) {
 			if (!romanlist[n].code[i]) break;
-			ptr += jis2str(&(buf[ptr]), romanlist[n].code[i]);
+			ptr += Xjis2str(&(buf[ptr]), romanlist[n].code[i]);
 		}
 		s += len;
 		size -= len;
@@ -699,13 +721,13 @@ char *CONST argv[];
 
 	initroman();
 	for (n = len = 0; n < arraysize(tankanstr); n++)
-		len += jis2str(&(tbuf[len]), tankanstr[n]);
+		len += Xjis2str(&(tbuf[len]), tankanstr[n]);
 	for (n = 0; n < TANKANLISTSIZ - 1; n++) {
 		if (!tankanlist[n].str) continue;
 		roman2str(buf, tankanlist[n].str, tankanlist[n].len);
 		code = tankanlist[n].code;
 		while (code < tankanlist[n + 1].code) {
-			VOID_C jis2str(kbuf, code++);
+			VOID_C Xjis2str(kbuf, code++);
 			fprintf(fp, "%s %s %s %d\n", buf, kbuf, tbuf, DEFFREQ);
 			while (!VALIDJIS(code)) if (++code >= J_MAX) break;
 		}

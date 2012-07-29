@@ -315,5 +315,6 @@ typedef char **			orighelpindex_t;
 #define	HST_USER		0002
 #define	HST_GROUP		0003
 #define	HST_UNIQ		0010
+#define	HST_INIT		0400
 #define	nohist(n)		((n) != HST_COMM && (n) != HST_PATH)
 #define	completable(n)		((n) >= 0)

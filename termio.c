@@ -77,6 +77,9 @@ typedef struct fd_set {
 # define	MAXFDSET	(BITSPERBYTE * sizeof(u_int))
 #endif	/* !FD_SET */
 
+#if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+extern int catchsignal __P_((int));
+#endif
 #if	!MSDOS && defined (FD) && !defined (NOSELECT)
 extern VOID checksuspend __P_((VOID));
 #endif
@@ -210,7 +213,7 @@ int Xgetdtablesize(VOID_A)
 # endif	/* SYSV */
 #endif	/* !MSDOS */
 
-#if	!MSDOS && !defined (MINIX)
+#if	!MSDOS && !defined (MINIX3)
 # ifndef	SYSV
 	if ((n = getdtablesize()) >= 0) return(n);
 # else	/* SYSV */
@@ -222,7 +225,7 @@ int Xgetdtablesize(VOID_A)
 #   endif
 #  endif	/* !USERESOURCEH */
 # endif	/* SYSV */
-#endif	/* !MSDOS */
+#endif	/* !MSDOS && !MINIX3 */
 
 	return(MAXOPENFILE);
 }
@@ -272,6 +275,9 @@ int nbytes;
 {
 	int n;
 
+#if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+#endif
 	for (;;) {
 #ifdef	DEP_ORIGSHELL
 		if (interrupted) {
@@ -290,6 +296,9 @@ int nbytes;
 		else if (errno == EWOULDBLOCK) continue;
 #endif
 		else if (errno != EINTR) break;
+#if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+#endif
 	}
 
 	return(-1);
@@ -304,6 +313,9 @@ int nbytes;
 	int n;
 
 	cp = (char *)buf;
+#if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+#endif
 	for (;;) {
 #ifdef	DEP_ORIGSHELL
 		if (interrupted) {
@@ -332,6 +344,9 @@ int nbytes;
 		else if (errno == EWOULDBLOCK) continue;
 #endif
 		else if (errno != EINTR) break;
+#if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+#endif
 	}
 
 	return(-1);
@@ -384,7 +399,7 @@ XFILE **fpp;
 #endif
 
 	if (*fpp) fp = *fpp;
-#if	!defined (MINIX) && !defined (SELECTRWONLY)
+#if	!defined (MINIX3) && !defined (SELECTRWONLY)
 	else if ((fp = Xfdopen(fd, "w+b"))) /*EMPTY*/;
 #endif
 	else if (!(fp = Xfopen(_PATH_TTY, "w+b"))) {
@@ -430,6 +445,9 @@ int fd;
 ioctlreq_t request;
 VOID_P argp;
 {
+# if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+# endif
 	for (;;) {
 		if (ioctl(fd, request, argp) >= 0) {
 			errno = 0;
@@ -442,6 +460,9 @@ VOID_P argp;
 		else if (errno == EWOULDBLOCK) continue;
 # endif
 		else if (errno != EINTR) break;
+# if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+# endif
 	}
 
 	return(-1);
@@ -452,6 +473,9 @@ int Xtcgetattr(fd, t)
 int fd;
 termioctl_t *t;
 {
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+#  endif
 	for (;;) {
 		if (tcgetattr(fd, t) >= 0) {
 			errno = 0;
@@ -464,6 +488,9 @@ termioctl_t *t;
 		else if (errno == EWOULDBLOCK) continue;
 #  endif
 		else if (errno != EINTR) break;
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+#  endif
 	}
 
 	return(-1);
@@ -473,6 +500,9 @@ int Xtcsetattr(fd, action, t)
 int fd, action;
 CONST termioctl_t *t;
 {
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+#  endif
 	for (;;) {
 		if (tcsetattr(fd, action, t) >= 0) {
 			errno = 0;
@@ -485,6 +515,9 @@ CONST termioctl_t *t;
 		else if (errno == EWOULDBLOCK) continue;
 #  endif
 		else if (errno != EINTR) break;
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+#  endif
 	}
 
 	return(-1);
@@ -493,6 +526,9 @@ CONST termioctl_t *t;
 int Xtcflush(fd, selector)
 int fd, selector;
 {
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+#  endif
 	for (;;) {
 		if (tcflush(fd, selector) >= 0) {
 			errno = 0;
@@ -505,6 +541,9 @@ int fd, selector;
 		else if (errno == EWOULDBLOCK) continue;
 #  endif
 		else if (errno != EINTR) break;
+#  if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+#  endif
 	}
 
 	return(-1);
@@ -512,7 +551,7 @@ int fd, selector;
 # endif	/* USETERMIOS */
 #endif	/* !MSDOS */
 
-#if	defined (FD) || defined (CYGWIN)
+#if	defined (FD) || defined (CYGWIN) || !defined (NOJOB)
 /*ARGSUSED*/
 VOID loadtermio(fd, tty, ws)
 int fd;
@@ -624,7 +663,7 @@ char **ttyp, **wsp;
 	} while (0);
 # endif	/* !MSDOS */
 }
-#endif	/* FD || CYGWIN */
+#endif	/* FD || CYGWIN || !NOJOB */
 
 #ifdef	CYGWIN
 p_id_t Xfork(VOID_A)
@@ -675,6 +714,9 @@ int flags;
 	}
 	if (max++ < 0) return(0);
 
+# if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+	VOID_C catchsignal(-1);
+# endif
 	for (;;) {
 # ifdef	DEP_ORIGSHELL
 		if (interrupted) {
@@ -687,6 +729,9 @@ int flags;
 # endif
 		n = select(max, readfds, writefds, NULL, (struct timeval *)vp);
 		if (n >= 0 || errno != EINTR) break;
+# if	defined (DEP_ORIGSHELL) && !defined(MINIMUMSHELL)
+		else if (catchsignal(1) < 0) break;
+# endif
 		if (flags & SEL_NOINTR) break;
 	}
 	for (i = 0; i < nfd; i++)

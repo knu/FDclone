@@ -286,11 +286,7 @@ extern char *_mtrace_file;
 #define	WCOLUMNHARD		42
 #define	WCOLUMNMIN		34
 #define	S_BYTES			" bytes"
-#define	S_KBYTES		" KB"
-#define	S_MBYTES		" MB"
 #define	W_BYTES			strsize(S_BYTES)
-#define	W_KBYTES		strsize(S_KBYTES)
-#define	W_MBYTES		strsize(S_MBYTES)
 #define	S_PAGE			"Page:"
 #define	S_MARK			"Mark:"
 #define	S_INFO			""

@@ -222,7 +222,8 @@ typedef struct ttysize		termwsize_t;
 # ifdef	DJGPP
 #  if	(DJGPP < 2)
 #  define	__dpmi_regs	_go32_dpmi_registers
-#  define	__dpmi_int(v,r)	((r) -> x.ss = (r) -> x.sp = 0, \
+#  define	__dpmi_int(v, r) \
+				((r) -> x.ss = (r) -> x.sp = 0, \
 				_go32_dpmi_simulate_int(v, r))
 #  define	_dos_ds		_go32_info_block.selector_for_linear_memory
 #  define	__tb \
@@ -300,7 +301,7 @@ extern int Xtcsetattr __P_((int, int, CONST termioctl_t *));
 extern int Xtcflush __P_((int, int));
 # endif
 #endif	/* !MSDOS */
-#if	defined (FD) || defined (CYGWIN)
+#if	defined (FD) || defined (CYGWIN) || !defined (NOJOB)
 extern VOID loadtermio __P_((int, CONST char *, CONST char *));
 extern VOID savetermio __P_((int, char **, char **));
 #endif

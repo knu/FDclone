@@ -105,7 +105,7 @@ static int NEAR printarch __P_((int, char *CONST []));
 static char **NEAR readargv __P_((char *CONST *, char **));
 static int NEAR custbrowse __P_((int, char *CONST []));
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
 static int NEAR setmacro __P_((char *));
 static int NEAR setkeybind __P_((int, char *CONST []));
 static int NEAR printbind __P_((int, char *CONST []));
@@ -191,7 +191,7 @@ static CONST builtintable builtinlist[] = {
 # ifndef	_NOBROWSE
 	{custbrowse,	BL_BROWSE},
 # endif
-#endif
+#endif	/* !_NOARCHIVE */
 	{setkeybind,	BL_BIND},
 	{printbind,	BL_PBIND},
 #ifdef	DEP_DOSEMU
@@ -1122,6 +1122,7 @@ lsparse_t *list;
 	Xfree(list);
 }
 
+/*ARGSUSED*/
 static int NEAR custbrowse(argc, argv)
 int argc;
 char *CONST argv[];
@@ -2248,7 +2249,7 @@ char *CONST argv[];
 		f = parsehist((n < argc) ? argv[n] : "!", NULL, '\0');
 		if (f < 0) {
 			builtinerror(argv, argv[n], ER_EVENTNOFOUND);
-			entryhist(tmp, HST_COMM);
+			VOID_C entryhist(tmp, HST_COMM);
 			Xfree(tmp);
 			return(-1);
 		}
@@ -2276,7 +2277,7 @@ char *CONST argv[];
 		}
 		kanjifputs(s, Xstdout);
 		VOID_C fputnl(Xstdout);
-		entryhist(s, HST_COMM);
+		VOID_C entryhist(s, HST_COMM);
 		n = execmacro(s, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
 		if (n < 0) n = 0;
@@ -2300,7 +2301,7 @@ char *CONST argv[];
 		if (f < 0) builtinerror(argv, argv[n], ER_EVENTNOFOUND);
 		else builtinerror(argv,
 			(n + 1 < argc) ? argv[n + 1] : NULL, ER_EVENTNOFOUND);
-		entryhist(tmp, HST_COMM);
+		VOID_C entryhist(tmp, HST_COMM);
 		Xfree(tmp);
 		return(-1);
 	}
@@ -2363,7 +2364,7 @@ char *CONST argv[];
 
 	if (list) {
 		Xfflush(Xstdout);
-		entryhist(tmp, HST_COMM);
+		VOID_C entryhist(tmp, HST_COMM);
 		Xfree(tmp);
 		return(0);
 	}
@@ -2390,7 +2391,7 @@ char *CONST argv[];
 		if (!*cp) continue;
 		kanjifputs(cp, Xstdout);
 		VOID_C fputnl(Xstdout);
-		entryhist(cp, HST_COMM);
+		VOID_C entryhist(cp, HST_COMM);
 		n = execmacro(cp, NULL,
 			F_NOCONFIRM | F_ARGSET | F_IGNORELIST);
 	}
@@ -2534,7 +2535,7 @@ char *CONST argv[];
 		return(-1);
 	}
 
-#  ifdef	DEP_UNICODE
+#  if	defined (DEP_UNICODE) && !defined (DEP_EMBEDUNITBL)
 	if ((i = (in > out) ? in : out) >= UTF8) readunitable(i - UTF8);
 #  endif
 	while ((cp = Xfgets(fpin))) {
@@ -2545,7 +2546,7 @@ char *CONST argv[];
 		Xfree(cp);
 	}
 
-#  ifdef	DEP_UNICODE
+#  if	defined (DEP_UNICODE) && !defined (DEP_EMBEDUNITBL)
 	if (!unicodebuffer) discardunitable();
 #  endif
 	if (fpin != Xstdin) VOID_C Xfclose(fpin);
@@ -2882,7 +2883,7 @@ char *ident, *comm;
 int deletealias(ident)
 CONST char *ident;
 {
-	reg_t *re;
+	reg_ex_t *re;
 	int i, n;
 
 	n = 0;

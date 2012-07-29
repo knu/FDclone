@@ -60,6 +60,11 @@ extern u_int _stklen = 0x5800;
 #define	harderr_t		int
 #endif
 
+typedef struct _sigfunc_t {
+	int sig;
+	int (*func)__P_((VOID_A));
+} sigfunc_t;
+
 #if	MSDOS
 # ifndef	BSPATHDELIM
 extern char *adjustpname __P_((char *));
@@ -231,6 +236,57 @@ static int timersec = 0;
 #ifdef	SIGWINCH
 static int nowinch = 0;
 #endif
+static CONST sigfunc_t sigfunclist[] = {
+#ifdef	SIGINT
+	{SIGINT, ignore_int},
+#endif
+#ifdef	SIGQUIT
+	{SIGQUIT, ignore_quit},
+#endif
+#ifdef	SIGCONT
+	{SIGCONT, ignore_cont},
+#endif
+#ifdef	SIGHUP
+	{SIGHUP, hanguperror},
+#endif
+#ifdef	SIGILL
+	{SIGILL, illerror},
+#endif
+#ifdef	SIGTRAP
+	{SIGTRAP, traperror},
+#endif
+#ifdef	SIGIOT
+	{SIGIOT, ioerror},
+#endif
+#ifdef	SIGEMT
+	{SIGEMT, emuerror},
+#endif
+#ifdef	SIGFPE
+	{SIGFPE, floaterror},
+#endif
+#ifdef	SIGBUS
+	{SIGBUS, buserror},
+#endif
+#ifdef	SIGSEGV
+	{SIGSEGV, segerror},
+#endif
+#ifdef	SIGSYS
+	{SIGSYS, syserror},
+#endif
+#ifdef	SIGPIPE
+	{SIGPIPE, pipeerror},
+#endif
+#ifdef	SIGTERM
+	{SIGTERM, terminate},
+#endif
+#ifdef	SIGXCPU
+	{SIGXCPU, xcpuerror},
+#endif
+#ifdef	SIGXFSZ
+	{SIGXFSZ, xsizerror},
+#endif
+	{-1, NULL}
+};
 
 
 #if	MSDOS && !defined (PROTECTED_MODE)
@@ -1281,7 +1337,7 @@ char *CONST *argv;
 		}
 #endif	/* !MSDOS */
 		for (i = 0; i < 2; i++) loadhistory(i);
-		entryhist(origpath, HST_PATH | HST_UNIQ);
+		VOID_C entryhist(origpath, HST_PATH | HST_UNIQ);
 	}
 #ifdef	DEP_LOGGING
 	startlog(argv);
@@ -1408,56 +1464,11 @@ char *CONST argv[], *CONST envp[];
 	_harderr(criticalerror);
 #endif
 
-#ifdef	SIGHUP
-	signal2(SIGHUP, (sigcst_t)hanguperror);
-#endif
-#ifdef	SIGINT
-	signal2(SIGINT, (sigcst_t)ignore_int);
-#endif
-#ifdef	SIGQUIT
-	signal2(SIGQUIT, (sigcst_t)ignore_quit);
-#endif
-#ifdef	SIGCONT
-	signal2(SIGCONT, (sigcst_t)ignore_cont);
-#endif
-#ifdef	SIGILL
-	signal2(SIGILL, (sigcst_t)illerror);
-#endif
-#ifdef	SIGTRAP
-	signal2(SIGTRAP, (sigcst_t)traperror);
-#endif
-#ifdef	SIGIOT
-	signal2(SIGIOT, (sigcst_t)ioerror);
-#endif
-#ifdef	SIGEMT
-	signal2(SIGEMT, (sigcst_t)emuerror);
-#endif
-#ifdef	SIGFPE
-	signal2(SIGFPE, (sigcst_t)floaterror);
-#endif
-#ifdef	SIGBUS
-	signal2(SIGBUS, (sigcst_t)buserror);
-#endif
-#ifdef	SIGSEGV
-	signal2(SIGSEGV, (sigcst_t)segerror);
-#endif
-#ifdef	SIGSYS
-	signal2(SIGSYS, (sigcst_t)syserror);
-#endif
-#ifdef	SIGPIPE
-	signal2(SIGPIPE, (sigcst_t)pipeerror);
-#endif
-#ifdef	SIGTERM
-	signal2(SIGTERM, (sigcst_t)terminate);
-#endif
-#ifdef	SIGXCPU
-	signal2(SIGXCPU, (sigcst_t)xcpuerror);
-#endif
-#ifdef	SIGXFSZ
-	signal2(SIGXFSZ, (sigcst_t)xsizerror);
-#endif
+	for (i = 0; i < arraysize(sigfunclist); i++)
+		signal2(sigfunclist[i].sig, (sigcst_t)(sigfunclist[i].func));
 	sigvecset(0);
 
+	VOID_C entryhist(NULL, HST_INIT);
 #ifdef	DEP_DYNAMICLIST
 	helpindex = copystrarray(NULL, orighelpindex, NULL, MAXHELPINDEX);
 	for (i = 0; origbindlist[i].key >= 0; i++) /*EMPTY*/;
@@ -1533,7 +1544,7 @@ char *CONST argv[], *CONST envp[];
 	}
 	interactive = fdmode = 1;
 	setshellvar(envp);
-	prepareterm();
+	if (prepareterm() < 0) error(NULL);
 	argc = initoption(argc, argv);
 	if (dumbterm > 1) {
 		errno = 0;

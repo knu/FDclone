@@ -9,6 +9,8 @@
 #include "kctype.h"
 #include "typesize.h"
 #include "version.h"
+#include "evalopt.h"
+#include "gentbl.h"
 
 #define	MAXLINEBUF		255
 #define	MAXVERBUF		8
@@ -30,19 +32,22 @@ static char *NEAR getversion __P_((VOID_A));
 static CONST char *NEAR getnum __P_((CONST char *, u_int *));
 static int NEAR geteol __P_((CONST char *));
 static VOID NEAR putstr __P_((CONST char *, int, FILE *));
-static int NEAR mkcat __P_((int, FILE *, FILE *));
+static int NEAR mkcat __P_((FILE *, FILE *));
 static int NEAR addbuf __P_((u_int, CONST char *));
 static VOID NEAR cleanbuf __P_((VOID_A));
-static int NEAR fputbyte __P_((int, FILE *));
-static int NEAR fputword __P_((u_int, FILE *));
 static int NEAR cnvcat __P_((FILE *, FILE *));
 int main __P_((int, char *CONST []));
 
 static char **meslist = NULL;
 static u_int maxmes = (u_int)0;
+static int n_column = 0;
 static CONST char escapechar[] = "abefnrtv";
 static CONST char escapevalue[] = {
 	0x07, 0x08, 0x1b, 0x0c, 0x0a, 0x0d, 0x09, 0x0b,
+};
+static CONST opt_t optlist[] = {
+	{'c', &n_column, 0, "column"},
+	{'\0', NULL, 0, NULL},
 };
 
 
@@ -173,8 +178,7 @@ FILE *fp;
 	fputc('\n', fp);
 }
 
-static int NEAR mkcat(col, fpin, fpout)
-int col;
+static int NEAR mkcat(fpin, fpout)
 FILE *fpin, *fpout;
 {
 	CONST char *cp, *tmp, *ptr[MAXCATALOG];
@@ -227,7 +231,7 @@ FILE *fpin, *fpout;
 		if (i < MAXCATALOG) continue;
 
 		fprintf(fpout, "%s%u\n", BEGINSTR, w);
-		putstr(ptr[col], len[col], fpout);
+		putstr(ptr[n_column - 1], len[n_column - 1], fpout);
 		fprintf(fpout, "%s\n", ENDSTR);
 	}
 
@@ -279,24 +283,6 @@ static VOID NEAR cleanbuf(VOID_A)
 	meslist = NULL;
 }
 
-static int NEAR fputbyte(c, fp)
-int c;
-FILE *fp;
-{
-	return((fputc(c, fp) == EOF && ferror(fp)) ? -1 : 0);
-}
-
-static int NEAR fputword(w, fp)
-u_int w;
-FILE *fp;
-{
-	if (fputbyte((int)(w & 0xff), fp) < 0
-	|| fputbyte((int)((w >> 8) & 0xff), fp) < 0)
-		return(-1);
-
-	return(0);
-}
-
 static int NEAR cnvcat(fpin, fpout)
 FILE *fpin, *fpout;
 {
@@ -313,7 +299,7 @@ FILE *fpin, *fpout;
 		if (w) {
 			if (!strcmp(buf, ENDSTR)) w = (u_int)0;
 			else if (addbuf(w, buf) < 0) {
-				fprintf(stderr, "cannot allocate memory.\n");
+				fprintf(stderr, "Cannot allocate memory.\n");
 				cleanbuf();
 				return(-1);
 			}
@@ -327,7 +313,7 @@ FILE *fpin, *fpout;
 			cp += strsize(VERSIONSTR);
 			ver = getversion();
 			if (strcmp(cp, ver)) {
-				fprintf(stderr, "%s: illegal version.\n", cp);
+				fprintf(stderr, "%s: Illegal version.\n", cp);
 				cleanbuf();
 				return(-1);
 			}
@@ -336,7 +322,7 @@ FILE *fpin, *fpout;
 			cp += strsize(SUMSTR);
 			if (!(cp = getnum(cp, &sum)) || *cp || !sum) {
 				fprintf(stderr,
-					"%s: illegal check sum.\n", cp);
+					"%s: Illegal check sum.\n", cp);
 				cleanbuf();
 				return(-1);
 			}
@@ -345,7 +331,7 @@ FILE *fpin, *fpout;
 		else if (!strncmp(buf, BEGINSTR, strsize(BEGINSTR))) {
 			cp += strsize(BEGINSTR);
 			if (!(cp = getnum(cp, &w)) || *cp || !w) {
-				fprintf(stderr, "%s: illegal ID.\n", cp);
+				fprintf(stderr, "%s: Illegal ID.\n", cp);
 				cleanbuf();
 				return(-1);
 			}
@@ -353,12 +339,12 @@ FILE *fpin, *fpout;
 	}
 
 	if (!ver) {
-		fprintf(stderr, "no version exists.\n");
+		fprintf(stderr, "No version exists.\n");
 		cleanbuf();
 		return(-1);
 	}
 	if (flags & CF_NOSUM) {
-		fprintf(stderr, "no check sum exists.\n");
+		fprintf(stderr, "No check sum exists.\n");
 		cleanbuf();
 		return(-1);
 	}
@@ -367,7 +353,7 @@ FILE *fpin, *fpout;
 		if (fwrite(ver, MAXVERBUF, 1, fpout) != 1
 		|| fputword(flags, fpout) < 0 || fputword(sum, fpout) < 0
 		|| fputword(maxmes, fpout) < 0) {
-			fprintf(stderr, "cannot write.\n");
+			fprintf(stderr, "Cannot write.\n");
 			cleanbuf();
 			return(-1);
 		}
@@ -376,12 +362,12 @@ FILE *fpin, *fpout;
 			n += (meslist[i]) ? strlen(meslist[i]) : 0;
 			n++;
 			if (n >= MAXUTYPE(u_short)) {
-				fprintf(stderr, "too mary messages.\n");
+				fprintf(stderr, "Too mary messages.\n");
 				cleanbuf();
 				return(-1);
 			}
 			if (fputword(n, fpout) < 0) {
-				fprintf(stderr, "cannot write.\n");
+				fprintf(stderr, "Cannot write.\n");
 				cleanbuf();
 				return(-1);
 			}
@@ -390,7 +376,7 @@ FILE *fpin, *fpout;
 			cp = (meslist[i]) ? meslist[i] : "";
 			n = strlen(cp);
 			if (fwrite(cp, n + 1, 1, fpout) != 1) {
-				fprintf(stderr, "cannot write.\n");
+				fprintf(stderr, "Cannot write.\n");
 				cleanbuf();
 				return(-1);
 			}
@@ -407,49 +393,31 @@ int argc;
 char *CONST argv[];
 {
 	FILE *fpin, *fpout;
-	CONST char *cp;
-	int n, col;
+	int n;
 
-	col = 0;
-	for (n = 1; n < argc; n++) {
-		if (argv[n][0] != '-' || !argv[n][1]) break;
-		if (argv[n][1] == '-' && !argv[n][2]) {
-			n++;
-			break;
-		}
-		if (argv[n][1] == 'c') {
-			cp = &(argv[n][2]);
-			if (!*cp) cp = argv[++n];
-			if (!cp || (col = atoi(cp)) <= 0) {
-				n = argc;
-				break;
-			}
-			if (col > MAXCATALOG) {
-				fprintf(stderr,
-					"%d: column too large.\n", col);
-				return(1);
-			}
-		}
-	}
-
+	initopt(optlist);
+	n = evalopt(argc, argv, optlist);
 	if (n >= argc || n + 2 < argc) {
-		fprintf(stderr,
-			"Usage: mkcat [-c <column>] <infile> [<outfile>]\n");
+		optusage(argv[0], "<infile> [<outfile>]", optlist);
 		return(1);
 	}
+	if (n_column > MAXCATALOG) {
+		fprintf(stderr, "%d: Column too large.\n", n_column);
+		return(1);
+	}
+
 	if (!strcmp(argv[n], "-")) fpin = stdin;
 	else if (!(fpin = fopen(argv[n], "r"))) {
-		fprintf(stderr, "%s: cannot open.\n", argv[n]);
+		fprintf(stderr, "%s: Cannot open.\n", argv[n]);
 		return(1);
 	}
 	if (n + 1 >= argc) fpout = stdout;
-	else if (!(fpout = fopen(argv[n + 1], "wb"))) {
-		fprintf(stderr, "%s: cannot open.\n", argv[n + 1]);
+	else if (!(fpout = opentbl(argv[n + 1]))) {
 		VOID_C fclose(fpin);
 		return(1);
 	}
 
-	if (col) n = mkcat(col - 1, fpin, fpout);
+	if (n_column) n = mkcat(fpin, fpout);
 	else n = cnvcat(fpin, fpout);
 	VOID_C fclose(fpin);
 	VOID_C fclose(fpout);

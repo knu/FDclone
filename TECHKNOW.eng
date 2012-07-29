@@ -31,6 +31,21 @@ CODEEUC	This means to use EUC-JP (Extended Unix Code) as the
 	code, and so on.
 	You can dynamically change the Kanji code used in
 	input/output and filename, after compiled.
+DEFKCODE
+	This specifies the string which indicates Kanji code
+	used as the OS standard. If defined, it is used as
+	the default value of each internal variables for Kanji
+	code.
+UTF8DOC	This means to use UTF-8 as the Kanji code of documents.
+	If undefined, it follows the definition of CODEEUC.
+	You can also define the value of DEFKCODE as 'utf8-mac'
+	or 'utf8-iconv', which specified the UNICODE mapping.
+UTF8LANG
+	This specifies the string which indicates Kanji code
+	used as the OS standard and Kanji code of documents,
+	if the environment variable LANG includes "UTF". It
+	will be meaningless in case that LANG does not include
+	"UTF".
 NOMULTIKANJI
 	It is not necessary to consider the environment which
 	has multiple Kanji codes.
@@ -61,6 +76,13 @@ USEMANLANG
 	The search pathname referred to man(1) includes the
 	string shown by the environment variable LANG, such
 	as '/usr/man/ja_JP.SJIS/', to support M17N.
+LANGWIDTH
+	In case that USEMANLANG is defined, this specifies
+	width of the string included by the search pathname
+	of man(1) from the beginning of the string shown by
+	the environment valiable LANG. It will be 2 or 5
+	letters with the standard NLS (Native Language
+	System).
 USEDATADIR
 	fd-unicd.tbl, which is the translation table for
 	UNICODE, and fd-dict.tbl, which is the Kana-Kanji
@@ -98,6 +120,9 @@ TARFROMPAX
 BUGGYMAKE
 	make(1) cannot evaluate correctly a time relationship
 	between the files created continuously within 1 second.
+BUGGYSIGNALH
+	When <signal.h> is included, the same body is build
+	in each modules to cause link error.
 CPP7BIT	cpp(1) cannot pass through any 8bit character, such
 	as the Kanji.
 OLDARGINT
@@ -170,6 +195,7 @@ NOCONST	Although __STDC__ is pre-defined, the compiler expects
 NOCONST	Although __STDC__ is pre-defined, the compiler does
 	not support the "const" qualifier.
 NOVOID	The "void" type cannot be used.
+NOUINT	The "u_int" type cannot be used.
 NOLONGLONG
 	The "long long" type cannot be used.
 HAVELONGLONG
@@ -259,6 +285,8 @@ NOTMGMTOFF
 	The structure tm doesn't have the member tm_gmtoff.
 NOSTBLKSIZE
 	The structure stat doesn't have the member st_blksize.
+NOFTPH
+	<arpa/ftp.h> don't exist.
 USEINSYSTMH
 	<netinet/in_systm.h> is needed for <netinet/ip.h>.
 NOHADDRLIST
@@ -286,8 +314,8 @@ USEFFSIZE
 	The structure statfs has the member f_fsize, which
 	indicates the block size of the filesystem. If undefined,
 	member f_bsize is referred.
-	In case of that USESTATVFSH, USEFSDATA is defined,
-	this is meaningless.
+	In case that USESTATVFSH, USEFSDATA is defined, this
+	is meaningless.
 NOFBLOCKS
 	The structure statfs doesn't have the member f_blocks.
 NOFBFREE
@@ -299,13 +327,13 @@ USESTATVFS_T
 STATFSARGS
 	This indicates the number of arguments used by
 	function statfs(2).
-	In case of that USESTATVFSH, USEFSDATA is defined,
-	this is meaningless.
+	In case that USESTATVFSH, USEFSDATA is defined, this
+	is meaningless.
 USEFSTATFS
 	The function statfs(2) is unavailable to get the
 	filesystem information, and fstatfs(2) is used instead.
 
-(The following 9 identifiers is exclusive. These can not be
+(The following 10 identifiers is exclusive. These can not be
 defined simultaneously.)
 USEMNTENTH
 	The functions declared in <mntent.h> is used to get
@@ -337,9 +365,19 @@ USEGETFSENT
 	(This method can get only the information before mount,
 	not to be recommended. Suppose that it is a last
 	resort.)
+USEREADMTAB
+	/etc/mtab is read directly to get the mount
+	information.
+
+USEPROCMNT
+	The file /proc/mounts is used as the mount information
+	file.
+	(This method can get only the information from kernel,
+	instead of mount(8), not to be recommended. Suppose
+	that it is a last resort.)
 
 (The following 2 identifiers is exclusive. These can not be
-defined simultaneously. In case of that the identifier except
+defined simultaneously. In case that the identifier except
 USEMNTINFO is defined among the above 8 choices, this is
 meaningless.)
 USEVFCNAME
@@ -455,6 +493,9 @@ GETPGRPVOID
 USESETPGID
 	The function setpgid(2) is used instead of setpgrp(2)
 	to set the process group.
+NOSETPGRP
+	The function setpgrp(2) is not available to set the
+	process group.
 USETCGETPGRP
 	The function tcgetpgrp(3)/tcsetpgrp(3) is used instead
 	of ioctl(2) to get/set the control terminal.
@@ -473,21 +514,37 @@ USESTRERROR
 	The function strerror(3) is used instead of sys_errlist[]
 	to get error messages.
 GETTODARGS
-	This indicates the number of arguments used by
-	function gettimeofday(3). The default value is 2.
+	This indicates the number of arguments used by the
+	time-getting function gettimeofday(3). The default
+	value is 2.
+GETTODNULL
+	The second argument of the time-getting function
+	gettimeofday(3) must be NULL.
 USESETSID
 	The function setsid(2) can be used to control session.
 USEMMAP
 	The function mmap(2) can be used to map files.
+NOGETPASS
+	The function getpass(3) is not avaliable to input
+	password.
 USESOCKLEN
 	The third argument of the socket function bind(2)/
 	connect(2)/accept(2) must be the type socklen_t.
+NOSENDFLAGS
+	The fourth argument of the socket function send(2)
+	cannot be specified as flags.
 USEINETATON
 	The function inet_aton(3) is used instead of
 	inet_addr(3) to manipulate the Internet address.
 USEINETPTON
 	The function inet_pton(3) is used instead of
 	inet_addr(3) to manipulate the Internet address.
+NOGETPWENT
+	The function getpwent(3) is not available to get the
+	user ID.
+NOGETGRENT
+	The function getgrent(3) is not available to get the
+	group ID.
 USESETREUID
 	The function setreuid(2) is used instead of geteuid(2)
 	to set the user ID.
@@ -1043,6 +1100,8 @@ not implemented.
 	_NOSOCKREDIR	cannot use socket redirections
 	_NOFTP		cannot use FTP connections
 	_NOHTTP		cannot use HTTP connections
+	_NOUNICDTBL	cannot use fd-unicd.tbl (but embed it)
+	_NODICTTBL	cannot use fd-dict.tbl (but embed it)
 
   If you edit config.hin to add the definition of these
 identifiers, you can reduce functions to make size small,

@@ -177,20 +177,20 @@ cat ./config.hin
 for i in TARUSESPACE CPP7BIT OLDARGINT USETERMINFO \
 TERMCAPLIB REGEXPLIB SOCKETLIB EXTENDLIB \
 NOFILEMACRO NOFUNCMACRO NOLINEMACRO \
-FORCEDSTDC STRICTSTDC NOSTDC NOCONST NOVOID NOLONGLONG HAVELONGLONG \
+FORCEDSTDC STRICTSTDC NOSTDC NOCONST NOVOID NOUINT NOLONGLONG HAVELONGLONG \
 NOUID_T USEPID_T DECLSIGLIST NOSIGLIST \
 DECLERRLIST PWNEEDERROR NOERRNO NOFILEMODE NOUNISTDH NOSTDLIBH NOTZFILEH \
 USELEAPCNT USESELECTH USESYSDIRH USETIMEH \
 USESTDARGH USEMKDEVH USEMKNODH USELOCKFH \
 USESGTTY USETERMIO USETERMIOS HAVECLINE USEDEVPTMX USEDEVPTY \
 USEDIRECT SYSVDIRENT NODNAMLEN NODRECLEN DNAMESIZE \
-HAVETIMEZONE NOTMGMTOFF NOSTBLKSIZE USEINSYSTMH NOHADDRLIST \
+HAVETIMEZONE NOTMGMTOFF NOSTBLKSIZE NOFTPH USEINSYSTMH NOHADDRLIST \
 USESTATVFSH USESTATFSH USEVFSH USEMOUNTH USEFSDATA \
 USEFFSIZE NOFBLOCKS NOFBFREE NOFFILES \
 USESTATVFS_T STATFSARGS USEFSTATFS \
 USEMNTENTH USEMNTTABH USEGETFSSTAT USEGETVFSTAT USEMNTCTL \
-USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT \
-USEVFCNAME USEFFSTYPE \
+USEMNTINFOR USEMNTINFO USEGETMNT USEGETFSENT USEREADMTAB \
+USEPROCMNT USEVFCNAME USEFFSTYPE \
 USERE_COMP USEREGCOMP USEREGCMP \
 USERAND48 USESETENV NOSELECT DEFFDSETSIZE SELECTRWONLY NOVSPRINTF NOTERMVAR \
 USEUTIME USEGETWD ULONGIOCTL \
@@ -198,9 +198,10 @@ NOFTRUNCATE USEFCNTLOCK USELOCKF NOFLOCK NOSYSLOG \
 USETIMELOCAL USEMKTIME USESYSCONF USELLSEEK USEUNAME \
 NOKILLPG USEWAITPID USESIGACTION USESIGPMASK \
 USERESOURCEH USEULIMITH USEGETRUSAGE USETIMES \
-GETPGRPVOID USESETPGID USESETVBUF SIGARGINT SIGFNCINT \
-USESTRERROR GETTODARGS USESETSID USEMMAP \
-USESOCKLEN USEINETATON USEINETPTON \
+GETPGRPVOID USESETPGID NOSETPGRP USESETVBUF SIGARGINT SIGFNCINT \
+USESTRERROR GETTODARGS GETTODNULL USESETSID USEMMAP \
+NOGETPASS USESOCKLEN NOSENDFLAGS USEINETATON USEINETPTON \
+NOGETPWENT NOGETGRENT \
 USESETREUID USESETRESUID USESETREGID USESETRESGID USEGETGROUPS
 do
 	echo "#undef	$i"
@@ -382,6 +383,9 @@ fi
 if noexist "void *p;"; then
 	echo "#define	NOVOID"
 fi
+if noexist "u_int ui;"; then
+	echo "#define	NOUINT"
+fi
 if isexist "long long n;"; then
 	if [ -z "$STDC" ]; then
 		echo "#define	HAVELONGLONG"
@@ -500,6 +504,9 @@ fi
 if noexist "s.st_blksize" "sys/types sys/stat" "struct stat s;"; then
 	echo "#define	NOSTBLKSIZE"
 fi
+if noheader arpa/ftp; then
+	echo "#define	NOFTPH"
+fi
 if useheader netinet/in_systm; then
 	echo "#define	USEINSYSTMH"
 fi
@@ -578,6 +585,12 @@ elif isexist "getmnt(0,0,0,0,0)"; then
 elif isexist "getfsent()" \
 && inheader "char.*[^a-zA-Z0-9_]fs_mntops[^a-zA-Z0-9_]" fstab; then
 	echo "#define	USEGETFSENT"
+elif [ -e /etc/mtab -o -e /proc/mounts ]; then
+	echo "#define	USEREADMTAB"
+fi
+
+if [ -e /proc/mounts -a ! -e /etc/mtab -a ! -e /etc/mnttab ]; then
+	echo "#define	USEPROCMNT"
 fi
 
 if [ -z "$statfs" ]; then
@@ -702,6 +715,8 @@ if noexist "getpgrp(0)" && isexist "getpgrp()"; then
 fi
 if isexist "setpgid(0,0)"; then
 	echo "#define	USESETPGID"
+elif noexist "setpgrp(0,0)"; then
+	echo "#define	NOSETPGRP"
 fi
 if isexist "setvbuf(0,0,0,0)" stdio; then
 	echo "#define	USESETVBUF"
@@ -716,12 +731,16 @@ fi
 if isexist "strerror(0)" string; then
 	echo "#define	USESTRERROR"
 fi
-if noexist "gettimeofday(0,0)" "sys/time time" \
-&& isexist "gettimeofday(0)" "sys/time time"; then
+if isexist "gettimeofday(0,0)" "sys/time time"; then
+	:
+elif isexist "gettimeofday(0)" "sys/time time"; then
 	echo "#define	GETTODARGS	1"
 fi
 if isexist "setsid()"; then
 	echo "#define	USESETSID"
+fi
+if noexist "getpass(0)"; then
+	echo "#define	NOGETPASS"
 fi
 if inheader socklen_t "sys/types sys/socket"; then
 	echo "#define	USESOCKLEN"
@@ -733,6 +752,12 @@ if isexist "inet_aton(0,0)" "sys/socket netinet/in arpa/inet"; then
 	echo "#define	USEINETATON"
 elif isexist "inet_pton(0,0,0)" "sys/socket netinet/in arpa/inet"; then
 	echo "#define	USEINETPTON"
+fi
+if noexist "getpwent()" "sys/types pwd"; then
+	echo "#define	NOGETPWENT"
+fi
+if noexist "getgrent()" "sys/types grp"; then
+	echo "#define	NOGETGRENT"
 fi
 if isexist "seteuid(0)"; then
 	:

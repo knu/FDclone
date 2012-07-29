@@ -29,6 +29,19 @@ CODEEUC	漢字コードとして、EUC (Extended Unix Code) 漢字を用
 	ルト値に影響します。
 	入出力やファイル名に用いる漢字コードに関しては、コン
 	パイル後に動的に変更可能です。
+DEFKCODE
+	OS 標準で用いる漢字コードを示す文字列を指定します。
+	定義された場合には、漢字コードに関する各種内部変数の
+	初期値として用いられます。
+UTF8DOC	ドキュメントの漢字コードとして UTF-8 を用います。未
+	定義の場合は CODEEUC の定義に従います。DEFKCODE の値
+	が「utf8-mac」もしくは「utf8-iconv」の場合は、その指
+	定による UNICODE マッピングを用います。
+UTF8LANG
+	環境変数 LANG に「UTF」が含まれている場合に、OS 標準
+	で用いる漢字コード及びドキュメントの漢字コードとして
+	用いる文字列を指定します。LANG が「UTF」を含まない場
+	合には意味を持ちません。
 NOMULTIKANJI
 	複数の漢字コードが共存する環境を考慮する必要がありま
 	せん。
@@ -60,6 +73,11 @@ USEMANLANG
 	man(1) の参照する検索パス名が、/usr/man/ja_JP.SJIS/
 	のように環境変数 LANG で示される文字列を含み、多国語
 	対応されています。
+LANGWIDTH
+	USEMANLANG が設定されている場合に、環境変数 LANG で
+	示される文字列の先頭から man(1) の検索パス名に用いる
+	文字数	を指定します。一般的な NLS (Native Language
+	System)	では 2 文字または 5 文字になります。
 USEDATADIR
 	UNICODE 変換テーブル fd-unicd.tbl や日本語入力用かな
 	漢字変換テーブル fd-dict.tbl を、fd の起動ディレクト
@@ -94,6 +112,9 @@ TARFROMPAX
 BUGGYMAKE
 	make(1) が、1 秒以内に連続して作成されたファイルの依
 	存関係を正しく判断できません。
+BUGGYSIGNALH
+	<signal.h> をインクルードするとモジュール毎に同一の
+	実体を生成してしまい、リンク時にエラーになります。
 CPP7BIT	cpp(1) が、漢字などの 8bit 文字を通すことができませ
 	ん。
 OLDARGINT
@@ -163,6 +184,7 @@ NOSTDC	__STDC__ がプリデファインされているけれども、K&R の
 NOCONST	__STDC__ がプリデファインされているけれども、修飾子
 	const に対応していない場合に定義します。
 NOVOID	void 型を用いることができません。
+NOUINT	u_int 型を用いることができません。
 NOLONGLONG
 	long long 型を使うことができません。
 HAVELONGLONG
@@ -251,6 +273,8 @@ NOTMGMTOFF
 	構造体 tm がメンバ tm_gmtoff を持ちません。
 NOSTBLKSIZE
 	構造体 stat がメンバ st_blksize を持ちません。
+NOFTPH
+	<arpa/ftp.h> が存在しません。
 USEINSYSTMH
 	<netinet/in_systm.h> が <netinet/ip.h> を使用するた
 	めに必要です。
@@ -296,7 +320,7 @@ USEFSTATFS
 	ファイルシステム情報取得関数として statfs(2) を用い
 	られず、代わりに fstatfs(2) を用います。
 
-(以下の 9 つは排他的です。同時に複数定義できません。)
+(以下の 10 つは排他的です。同時に複数定義できません。)
 USEMNTENTH
 	マウント情報を得るために、<mntent.h> で宣言されてい
 	る関数群を用います。
@@ -312,7 +336,7 @@ USEGETVFSTAT
 USEMNTCTL
 	マウント情報を得るために、関数 mntctl(3) を用います。
 USEMNTINFOR
-	マウント情報を得るために、関数 germntinfo_r(3) を用
+	マウント情報を得るために、関数 getmntinfo_r(3) を用
 	います。
 USEMNTINFO
 	マウント情報を得るために、関数 getmntinfo(3) を用い
@@ -324,6 +348,14 @@ USEGETFSENT
 	す。
 	(この手法はマウント前の情報を取得してしまうのでお奨
 	めできません。窮余の策だと思って下さい。)
+USEREADMTAB
+	マウント情報を得るために、/etc/mtab を直接読みます。
+
+USEPROCMNT
+	マウント情報ファイルとして /proc/mounts を使用します。
+	(この手法は mount(8) ではなくカーネルからの情報を取
+	得してしまうのでお奨めできません。窮余の策だと思って
+	下さい。)
 
 (以下の 2 つは排他的です。同時に複数定義できません。上記の 8
 つの選択肢のうち USEMNTINFO 以外を定義した場合は意味を持ちま
@@ -431,6 +463,9 @@ GETPGRPVOID
 USESETPGID
 	プロセスグループ設定関数 setpgid(2) を setpgrp(2) の
 	代わりに用います。
+NOSETPGRP
+	プロセスグループ設定関数 setpgrp(2) を使うことができ
+	ません。
 USETCGETPGRP
 	制御端末用関数として ioctl(2) ではなく tcgetpgrp(3)
 	及び tcsetpgrp(3) を用います。
@@ -449,19 +484,33 @@ USESTRERROR
 GETTODARGS
 	時刻取得関数 gettimeofday(2) の用いる引数の数を指定
 	します。デフォルトは 2 です。
+GETTODNULL
+	時刻取得関数 gettimeofday(2) の第 2 引数が NULL でな
+	くてはなりません。
 USESETSID
 	セッション制御関数 setsid(2) を用いることができます。
 USEMMAP
 	ファイルマップ関数 mmap(2) を用いることができます。
+NOGETPASS
+	パスワード入力関数 getpass(3) を使うことができません。
 USESOCKLEN
 	ソケット関数 bind(2)/connect(2)/accept(2) の第 3 引
 	数として socklen_t 型を用います。
+NOSENDFLAGS
+	ソケット関数 send(2) の第 4 引数にフラグを使うことが
+	できません。
 USEINETATON
 	アドレス操作関数 inet_aton(3) を inet_addr(3) の代わ
 	りに用います。
 USEINETPTON
 	アドレス操作関数 inet_pton(3) を inet_addr(3) の代わ
 	りに用います。
+NOGETPWENT
+	ユーザ ID 取得関数 getpwent(3) を使うことができませ
+	ん。
+NOGETGRENT
+	グループ ID 取得関数 getgrent(3) を使うことができま
+	せん。
 USESETREUID
 	ユーザ ID 設定関数 setreuid(2) を seteuid(2) の代わ
 	りに用います。
@@ -992,6 +1041,8 @@ NWS-3400:
 	_NOSOCKREDIR	ソケットを用いたリダイレクト機能が使用不能
 	_NOFTP		FTP 接続機能が使用不能
 	_NOHTTP		HTTP 接続機能が使用不能
+	_NOUNICDTBL	fd-unicd.tbl が使用不能 (代わりに埋込み)
+	_NODICTTBL	fd-dict.tbl が使用不能 (代わりに埋込み)
 
 　config.hin を編集してこれらの識別子の定義を追加しておけば、
 機能を縮小してサイズを小さくしたり、エンドユーザに使用させた

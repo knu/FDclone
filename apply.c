@@ -13,6 +13,16 @@
 
 #define	MAXTIMESTR		8
 #define	ATTRWIDTH		10
+#define	AT_MODE			0
+#define	AT_FLAG			1
+#define	AT_DATE			2
+#define	AT_TIME			3
+#define	AW_FILENAME		16
+#define	AW_OMITNAME		12
+#define	AW_MODE			(WMODE - 1)
+#define	AW_FLAG			8
+#define	AW_DATE			8
+#define	AW_TIME			8
 #if	MSDOS
 #define	DIRENTSIZ(s)		DOSDIRENT
 #else
@@ -43,7 +53,7 @@ typedef struct _attrib_t {
 	char timestr[2][MAXTIMESTR + 1];
 } attrib_t;
 
-extern reg_t *findregexp;
+extern reg_ex_t *findregexp;
 extern int subwindow;
 extern int win_x;
 extern int win_y;
@@ -68,7 +78,7 @@ static int NEAR checkdupl __P_((CONST char *, char *,
 static int NEAR checkrmv __P_((CONST char *, int));
 #ifndef	_NOEXTRACOPY
 static int NEAR isxdev __P_((CONST char *, struct stat *));
-static VOID NEAR addcopysize __P_((off_t));
+static VOID NEAR addcopysize __P_((off_t *));
 static VOID NEAR _showprogress __P_((int));
 static int countcopysize __P_((CONST char *));
 static int countmovesize __P_((CONST char *));
@@ -86,6 +96,8 @@ static int mvdir2 __P_((CONST char *));
 static int countremovesize __P_((CONST char *));
 #endif
 static VOID NEAR showmode __P_((attrib_t *, int, int));
+static int NEAR getattrcolumn __P_((int *));
+static int NEAR getattrtype __P_((int, int *));
 static VOID NEAR showattr __P_((namelist *, attrib_t *, int));
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 static int NEAR inputuid __P_((attrib_t *, int));
@@ -589,12 +601,12 @@ struct stat *stp;
 	return(0);
 }
 
-static VOID NEAR addcopysize(size)
-off_t size;
+static VOID NEAR addcopysize(sizep)
+off_t *sizep;
 {
-	if (size <= MAXTYPE(off_t) - maxcopysize) maxcopysize += size;
+	if (*sizep <= MAXTYPE(off_t) - maxcopysize) maxcopysize += *sizep;
 	else {
-		maxcopysize -= MAXTYPE(off_t) - size;
+		maxcopysize -= MAXTYPE(off_t) - *sizep;
 		maxcopyunit++;
 	}
 }
@@ -614,14 +626,16 @@ int n;
 	errno = duperrno;
 }
 
-VOID showprogress(size)
-off_t size;
+VOID showprogress(sizep)
+off_t *sizep;
 {
+	off_t size;
 	long unit;
 	int n, max;
 
 	if (!maxcopysize && !maxcopyunit) return;
 
+	size = *sizep;
 	max = n_column - 1;
 	for (n = 0; n < max; n++) {
 		if (size <= MAXTYPE(off_t) - copysize) copysize += size;
@@ -651,9 +665,11 @@ VOID fshowprogress(path)
 CONST char *path;
 {
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	showprogress(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	showprogress(&size);
 }
 
 static int countcopysize(path)
@@ -661,11 +677,14 @@ CONST char *path;
 {
 	struct stat st;
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 	if (Xlstat(path, &st) < 0) return(APL_ERROR);
-	addcopysize(st.st_size);
+	size = (off_t)(st.st_size);
+	addcopysize(&size);
 
 	return(APL_OK);
 }
@@ -674,13 +693,18 @@ static int countmovesize(path)
 CONST char *path;
 {
 	struct stat st;
-	int n;
 	CONST char *cp;
+	off_t size;
+	int n;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 	if ((n = isxdev(path, &st)) < 0) return(APL_ERROR);
-	else if (n && !s_isdir(&st)) addcopysize(st.st_size);
+	else if (n && !s_isdir(&st)) {
+		size = (off_t)(st.st_size);
+		addcopysize(&size);
+	}
 
 	return(APL_OK);
 }
@@ -899,9 +923,11 @@ static int countremovesize(path)
 CONST char *path;
 {
 	CONST char *cp;
+	off_t size;
 
 	if (!(cp = strrdelim(path, 1))) cp = path;
-	addcopysize(DIRENTSIZ(cp));
+	size = (off_t)DIRENTSIZ(cp);
+	addcopysize(&size);
 
 	return(APL_OK);
 }
@@ -1014,6 +1040,57 @@ int x, y;
 	XXcputs(buf);
 }
 
+static int NEAR getattrcolumn(xp)
+int *xp;
+{
+	int x1, x2;
+
+	x1 = n_column / 2 - 20;
+	x2 = n_column / 2;
+
+	if (isbestomit()) {
+		x1 += AW_FILENAME - AW_OMITNAME;
+		x2 -= 3;
+	}
+#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
+	else if (iswellomit()) {
+		x1 -= WOWNER / 2;
+		x2 -= WOWNER / 2;
+	}
+#endif
+	if (xp) *xp = x1;
+
+	return(x2);
+}
+
+static int NEAR getattrtype(y, wp)
+int y, *wp;
+{
+	int typ, w;
+
+	if (!y) {
+		typ = AT_MODE;
+		w = AW_MODE;
+	}
+#ifdef	HAVEFLAGS
+	else if (y == WMODELINE - 1) {
+		typ = AT_FLAG;
+		w = AW_FLAG;
+	}
+#endif
+	else if (y == WMODELINE) {
+		typ = AT_DATE;
+		w = AW_DATE;
+	}
+	else {
+		typ = AT_TIME;
+		w = AW_TIME;
+	}
+	if (wp) *wp = w;
+
+	return(typ);
+}
+
 static VOID NEAR showattr(namep, attr, yy)
 namelist *namep;
 attrib_t *attr;
@@ -1024,22 +1101,8 @@ int yy;
 	int x1, x2, y, w;
 
 	tm = localtime(&(namep -> st_mtim));
-	if (isbestomit()) {
-		x1 = n_column / 2 - 16;
-		x2 = n_column / 2 - 3;
-		w = 12;
-	}
-	else {
-		x1 = n_column / 2 - 20;
-		x2 = n_column / 2;
-		w = 16;
-#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-		if (iswellomit()) {
-			x1 -= WOWNER / 2;
-			x2 -= WOWNER / 2;
-		}
-#endif
-	}
+	x2 = getattrcolumn(&x1);
+	w = (isbestomit()) ? AW_OMITNAME : AW_FILENAME;
 	y = yy;
 
 	Xlocate(0, y);
@@ -1212,7 +1275,7 @@ int flag;
 	struct tm *tm;
 	time_t t;
 	u_int mask;
-	int ch, x, y, xx, yy, ymin, ymax, dupwin_x, dupwin_y, excl;
+	int ch, x, y, xx, yy, ymin, ymax, typ, w, dupwin_x, dupwin_y, excl;
 
 	dupwin_x = win_x;
 	dupwin_y = win_y;
@@ -1222,7 +1285,7 @@ int flag;
 	yy = filetop(win);
 	while (yy + WMODELINE + 5 > n_line - 1) yy--;
 	if (yy <= L_TITLE) yy = L_TITLE + 1;
-	xx = n_column / 2 + ((isbestomit()) ? 7 : ATTRWIDTH);
+	xx = getattrcolumn(NULL) + ATTRWIDTH;
 
 	excl = (flag & ATR_EXCLUSIVE);
 	attr.nlink = TCH_CHANGE;
@@ -1277,28 +1340,26 @@ int flag;
 			case K_UP:
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 				if (x > ATTRWIDTH) {
-					if (y) y = 0;
-					else y = WMODELINE + 1;
+					y = (y) ? 0 : WMODELINE + 1;
 					break;
 				}
 #endif
 				if (y > ymin) y--;
 				else y = ymax;
-				if (y && x >= 8) x = 7;
-				if (!y && x >= WMODE - 1) x = WMODE - 2;
+				VOID_C getattrtype(y, &w);
+				if (x >= w) x = w - 1;
 				break;
 			case K_DOWN:
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 				if (x > ATTRWIDTH) {
-					if (y) y = 0;
-					else y = WMODELINE + 1;
+					y = (y) ? 0 : WMODELINE + 1;
 					break;
 				}
 #endif
 				if (y < ymax) y++;
 				else y = ymin;
-				if (y && x >= 8) x = 7;
-				if (!y && x >= WMODE - 1) x = WMODE - 2;
+				VOID_C getattrtype(y, &w);
+				if (x >= w) x = w - 1;
 				break;
 			case 'a':
 			case 'A':
@@ -1329,12 +1390,14 @@ int flag;
 			case 'o':
 			case 'O':
 				if (excl && excl != ATR_OWNERONLY) break;
+				if (ishardomit()) break;
 				x = ATTRWIDTH + 1;
 				y = 0;
 				break;
 			case 'g':
 			case 'G':
 				if (excl && excl != ATR_OWNERONLY) break;
+				if (ishardomit()) break;
 				x = ATTRWIDTH + 1;
 				y = WMODELINE + 1;
 				break;
@@ -1355,85 +1418,95 @@ int flag;
 				attr.nlink |= TCH_MTIME;
 /*FALLTHRU*/
 			case K_RIGHT:
-#ifdef	HAVEFLAGS
-				if (y == WMODELINE - 1) {
-					if (x < 7) x++;
-				}
-				else
-#endif
-				if (y) {
-					if (x >= 7) {
-#if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-						if (!excl
-						&& y == WMODELINE + 1) {
-							x = ATTRWIDTH + 1;
+				typ = getattrtype(y, &w);
+				if (x < w - 1) {
+					x++;
+					switch (typ) {
+						case AT_DATE:
+						case AT_TIME:
+							if ((++x) % 3) x--;
 							break;
-						}
-#endif
-						if (y == WMODELINE + 1) break;
+						default:
+							break;
+					}
+				}
+				else switch (typ) {
+					case AT_DATE:
 						y++;
 						x = 0;
-					}
-					else {
-						x++;
-						if (!((x + 1) % 3)) x++;
-					}
-				}
-				else if (x < WMODE - 2) x++;
+						break;
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
-				else if (!excl) x = ATTRWIDTH + 1;
+					case AT_MODE:
+					case AT_TIME:
+						if (excl) break;
+						if (ishardomit()) break;
+						x = ATTRWIDTH + 1;
+						break;
 #endif
+					default:
+						break;
+				}
 				break;
 			case K_BS:
 				if (y < WMODELINE) break;
 /*FALLTHRU*/
 			case K_LEFT:
+				typ = getattrtype(y, &w);
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 				if (x > ATTRWIDTH) {
 					if (excl || ch == K_BS) break;
-					else if (y) x = 7;
-					else x = WMODE - 2;
+					if (ishardomit()) break;
+					x = w - 1;
 				}
 				else
 #endif
-#ifdef	HAVEFLAGS
-				if (y == WMODELINE - 1) {
-					if (x > 0) x--;
+				if (x > 0) {
+					switch (typ) {
+						case AT_DATE:
+						case AT_TIME:
+							if (!(x % 3)) x--;
+							break;
+						default:
+							break;
+					}
+					x--;
 				}
-				else
-#endif
-				if (y) {
-					if (x <= 0) {
-						if (y == WMODELINE) break;
+				else switch (typ) {
+					case AT_TIME:
 						y--;
-						x = 7;
-					}
-					else {
-						if (!(x % 3)) x--;
-						x--;
-					}
+						x = w - 1;
+						break;
+					default:
+						break;
 				}
-				else if (x > 0) x--;
 				break;
 			case K_CTRL('L'):
 				yy = filetop(win);
 				while (yy + WMODELINE + 5 > n_line - 1) yy--;
 				if (yy <= L_TITLE) yy = L_TITLE + 1;
-				xx = n_column / 2
-					+ ((isbestomit()) ? 7 : ATTRWIDTH);
+				xx = getattrcolumn(NULL) + ATTRWIDTH;
 				showattr(namep, &attr, yy);
 				break;
 			case ' ':
+				typ = getattrtype(y, &w);
 #if	!defined (_NOEXTRAATTR) && !defined (NOUID)
 				if (x > ATTRWIDTH) {
-					if (y) inputgid(&attr, yy);
-					else inputuid(&attr, yy);
+					switch (typ) {
+						case AT_MODE:
+							inputuid(&attr, yy);
+							break;
+						case AT_TIME:
+							inputgid(&attr, yy);
+							break;
+						default:
+							break;
+					}
 					showattr(namep, &attr, yy);
 					break;
 				}
 #endif
 #ifdef	HAVEFLAGS
-				if (y == WMODELINE - 1) {
+				if (typ == AT_FLAG) {
 					attr.flags ^= fflaglist[x];
 					Xlocate(xx, yy + y + 2);
 					putflags(buf, attr.flags);
@@ -1442,7 +1515,7 @@ int flag;
 					break;
 				}
 #endif
-				if (y) break;
+				if (typ != AT_MODE) break;
 #if	MSDOS
 				if (x == 2) break;
 #else	/* !MSDOS */
@@ -1485,7 +1558,8 @@ int flag;
 # ifndef	NOUID
 				if (x > ATTRWIDTH) break;
 # endif
-				if (y || !(flag & ATR_MULTIPLE)) break;
+				if (!(flag & ATR_MULTIPLE)) break;
+				if (getattrtype(y, NULL) != AT_MODE) break;
 # if	MSDOS
 				if (x == 2) break;
 # else

@@ -93,10 +93,12 @@
 #undef	DEP_FILECONV
 #undef	DEP_KANJIPATH
 #undef	DEP_UNICODE
+#undef	DEP_EMBEDUNITBL
 #undef	DEP_ORIGSTREAM
 #undef	DEP_ORIGSHELL
 #undef	DEP_PTY
 #undef	DEP_IME
+#undef	DEP_EMBEDDICTTBL
 #undef	DEP_LOGGING
 #undef	DEP_DYNAMICLIST
 #undef	DEP_SOCKET
@@ -143,6 +145,9 @@
 || defined (DEP_DOSDRIVE)
 #define	DEP_UNICODE
 #endif
+#if	defined (DEP_UNICODE) && defined (_NOUNICDTBL)
+#define	DEP_EMBEDUNITBL
+#endif
 #ifndef	MINIMUMSHELL
 #define	DEP_ORIGSTREAM
 #endif
@@ -154,6 +159,9 @@
 #endif
 #if	defined (FD) && FD >= 2 && !defined (_NOIME)
 #define	DEP_IME
+#endif
+#if	defined (DEP_IME) && defined (_NODICTTBL)
+#define	DEP_EMBEDDICTTBL
 #endif
 #if	defined (FD) && FD >= 2 && !defined (_NOLOGGING)
 #define	DEP_LOGGING

@@ -75,7 +75,8 @@ static int NEAR attrkanjiputs2 __P_((CONST char *, int, int));
 #if	FD >= 2
 static VOID NEAR kanjiputs3 __P_((CONST char *, int, int, int, int));
 #else
-#define	kanjiputs3(s,n,l,p,m)	VOID_C kanjiputs2(s, l, p)
+#define	kanjiputs3(s, n, l, p, m) \
+				VOID_C kanjiputs2(s, l, p)
 #endif
 static VOID NEAR putcursor __P_((int, int));
 static VOID NEAR rightcursor __P_((VOID_A));
@@ -158,7 +159,7 @@ int maxcmdline = 0;
 int dumbshell = 0;
 #endif
 #ifdef	DEP_IME
-int imekey = -1;
+int imekey = 0;
 #endif
 #ifdef	DEP_URLPATH
 int hidepasswd = 0;
@@ -1852,17 +1853,21 @@ int comline, cont, h;
 		argc = 1;
 	}
 # ifndef	NOUID
+#  ifndef	NOGETPWENT
 	else if (h == HST_USER) {
 		argv = NULL;
 		n = strlen(cp);
 		argc = completeuser(cp, n, 0, &argv, 0);
 	}
+#  endif
+#  ifndef	NOGETGRENT
 	else if (h == HST_GROUP) {
 		argv = NULL;
 		n = strlen(cp);
 		argc = completegroup(cp, n, 0, &argv);
 	}
-# endif
+#  endif
+# endif	/* !NOUID */
 # ifdef	DEP_ORIGSHELL
 	else if (vartop) {
 		argv = NULL;
@@ -3166,7 +3171,7 @@ int h;
 #ifndef	_NOSPLITWIN
 	if (h == HST_PATH && windows > 1) {
 		if ((i = win - 1) < 0) i = windows - 1;
-		entryhist(winvar[i].v_fullpath, HST_PATH | HST_UNIQ);
+		VOID_C entryhist(winvar[i].v_fullpath, HST_PATH | HST_UNIQ);
 	}
 #endif
 

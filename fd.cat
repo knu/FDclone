@@ -1602,10 +1602,10 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    タスを返り値とします。関数の外では使えません。
 
      ssaavveettttyy [--nn]  現在の端末設定を保存します。保存された端末設定
-                   は以降の EEXXEECCUUTTEE__SSHH コマンド実行時に復元されま
+                   は以降の EEXXEECCUUTTEE_SSHH コマンド実行時に復元されま
                    す。ssttttyy(1) 等で端末設定を変更した場合には、こ
                    のコマンドでその設定を保存しないと以降の
-                   EEXXEECCUUTTEE__SSHH 実行時には設定がリセットされます。
+                   EEXXEECCUUTTEE_SSHH 実行時には設定がリセットされます。
                    また、端末設定の変更とこのコマンドが同じコマン
                    ドラインにないと、リセットされた設定を保存して
                    しまいますので注意して下さい。--nn が指定された
@@ -1863,8 +1863,8 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      wwaaiitt [_p_i_d | _j_o_b]
                    プロセス番号 _p_i_d で表されるプロセスまたは _j_o_b
                    で表されるジョブを待ち、その終了ステータスを返
-                   します。_p_i_d も _j_o_b も指定しない場合はカレント
-                   ジョブを待ちます。((UUNNIIXX))
+                   します。_p_i_d も _j_o_b も指定しない場合は稼働中の
+                   全ジョブを待ちます。((UUNNIIXX))
 
      yyeessnnoo [_p_r_o_m_p_t]
                    端末入力から yy または nn の入力を待ち、yy が入力
@@ -1881,30 +1881,30 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    _C_O_M_M_A_N_D には、各コマンド識別子を記述します。以
                    下の内部コマンドでは、パラメータを引数 _a_r_g と
                    して記述できます。
-                   CCUURR__UUPP
-                   CCUURR__DDOOWWNN
-                   CCUURR__RRIIGGHHTT
-                   CCUURR__LLEEFFTT
-                   RROOLLLL__UUPP
-                   RROOLLLL__DDOOWWNN
-                   WWIIDDEENN__WWIINNDDOOWW
-                   NNAARRRROOWW__WWIINNDDOOWW  行数、桁数またはページ数。
-                   RREENNAAMMEE__FFIILLEE
-                   PPAACCKK__FFIILLEE
-                   BBAACCKKUUPP__TTAAPPEE    ファイル名。
-                   LLOOGG__DDIIRR
-                   MMAAKKEE__DDIIRR
-                   IINNFFOO__FFIILLEESSYYSS
-                   UUNNPPAACCKK__FFIILLEE    ディレクトリ名。
-                   EEXXEECCUUTTEE__SSHH     コマンド文字列。
-                   MMAARRKK__FFIINNDD
-                   FFIINNDD__FFIILLEE
-                   FFIINNDD__DDIIRR       検索文字列。
-                   MMAARRKK__AALLLL       00 で全ファイルのマークを解除、
+                   CCUURR_UUPP
+                   CCUURR_DDOOWWNN
+                   CCUURR_RRIIGGHHTT
+                   CCUURR_LLEEFFTT
+                   RROOLLLL_UUPP
+                   RROOLLLL_DDOOWWNN
+                   WWIIDDEENN_WWIINNDDOOWW
+                   NNAARRRROOWW_WWIINNDDOOWW  行数、桁数またはページ数。
+                   RREENNAAMMEE_FFIILLEE
+                   PPAACCKK_FFIILLEE
+                   BBAACCKKUUPP_TTAAPPEE    ファイル名。
+                   LLOOGG_DDIIRR
+                   MMAAKKEE_DDIIRR
+                   IINNFFOO_FFIILLEESSYYSS
+                   UUNNPPAACCKK_FFIILLEE    ディレクトリ名。
+                   EEXXEECCUUTTEE_SSHH     コマンド文字列。
+                   MMAARRKK_FFIINNDD
+                   FFIINNDD_FFIILLEE
+                   FFIINNDD_DDIIRR       検索文字列。
+                   MMAARRKK_AALLLL       00 で全ファイルのマークを解除、
                                   それ以外で全ファイルにマーク。
-                   SSOORRTT__DDIIRR       内部変数 SSOORRTTTTYYPPEE に使用する数
+                   SSOORRTT_DDIIRR       内部変数 SSOORRTTTTYYPPEE に使用する数
                                   値。
-                   EEDDIITT__CCOONNFFIIGG    編集する内部変数名。
+                   EEDDIITT_CCOONNFFIIGG    編集する内部変数名。
 
      上記の各登録文字列内の ~~ や $$ は展開されますが、"" の代わりに
      '' で括られた文字列内では、これらの展開が抑制されます。
@@ -2909,18 +2909,18 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
                    無視して比較します。00 かナル以外の値であれば、
                    何を定義しても有効です。((UUNNIIXX))
 
+     IIMMEEBBUUFFFFEERR     かな漢字変換テーブルをオンメモリで持ち続けるよ
+                   うにします。かな漢字変換が高速化するので、メモ
+                   リ資源が潤沢にある環境では有用でしょう。但し、
+                   オンメモリで持つのは品詞情報テーブルのみなので、
+                   品詞情報を含まない辞書ファイルを用いている場合
+                   は効果がありません。00 かナル以外の値であれば、
+                   何を定義しても有効です。((UUNNIIXX))
+
      IIMMEEKKEEYY        文字列入力中に、直接入力モードとかな漢字変換入
                    力モードを切替えるためのキーを指定します。設定
                    値には bbiinndd コマンドと同様のキー名を用いること
                    ができます。デフォルト値は未指定です。((UUNNIIXX))
-
-     IIMMEEBBUUFFFFEERR     かな漢字変換テーブルをオンメモリで持ち続けるよ
-                   うにします。漢字変換が高速化するので、メモリ資
-                   源が潤沢にある環境では有用でしょう。但し、オン
-                   メモリで持つのは品詞情報テーブルのみなので、品
-                   詞情報を含まない辞書ファイルを用いている場合は
-                   効果がありません。00 かナル以外の値であれば、何
-                   を定義しても有効です。((UUNNIIXX))
 
      IINNHHEERRIITTCCOOPPYY   CCOOPPYY_FFIILLEE コマンド実行時に、コピー先のタイムス
                    タンプをコピー元のタイムスタンプに合わせます。
@@ -3473,7 +3473,7 @@ FD(1)              UNIX-OS Programmer's Manual              FD(1)
      ~~//..ffddsshhrrcc 個人用の ffddsshh 初期設定ファイル
      ~~//..ffdd_hhiissttoorryy
                コマンド履歴のセーブファイル既定値
-     ~~//..ffdd__ffrreeqq
+     ~~//..ffdd_ffrreeqq
                かな漢字変換学習用のユーザ変換頻度ファイル
      //bbiinn//sshh   環境変数 SSHHEELLLL が未定義だった場合のユーザシェル
      //bbiinn//rrmm   異常終了時に不要ファイルを消去するためのコマンド

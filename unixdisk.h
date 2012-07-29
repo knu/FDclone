@@ -10,6 +10,7 @@
 #include "depend.h"
 #include "termio.h"
 #include "unixemu.h"
+#include "fsinfo.h"
 
 #ifdef	DJGPP
 #define	NOP			0x00
@@ -227,14 +228,6 @@ struct fat32statfs_t {
 	u_long f_real_blocks __attribute__ ((packed));
 	u_char reserved[8] __attribute__ ((packed));
 };
-
-typedef struct _statfs_t {
-	long f_bsize;
-	long f_blocks;
-	long f_bfree;
-	long f_bavail;
-	long f_files;
-} statfs_t;
 
 extern int getcurdrv __P_((VOID_A));
 extern int setcurdrv __P_((int, int));

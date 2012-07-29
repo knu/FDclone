@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2012 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   3.00k 04/21/12
+.\" @(#)fd.1   3.00m 07/27/12
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "April 21, 2012"
+.TH FD 1 "July 27, 2012"
 .de sh
 .br
 .PP
@@ -3280,7 +3280,7 @@ If both
 and
 .I job
 are omitted,
-the current job is waited.
+all running jobs are waited.
 .B (UNIX)
 .IP "\fByesno\fP [\fIprompt\fR]"
 Wait for a input of
@@ -5042,13 +5042,6 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
-.IP "\fBIMEKEY\fP"
-Specify the key to toggle the direct input mode and the Kana-Kanji IME mode when you input some strings.
-You can describe the same key name as
-.B bind
-command.
-The default value is not specified.
-.B (UNIX)
 .IP "\fBIMEBUFFER\fP"
 Hold the Kana-Kanji translation table on memory.
 It will be fast to translate strings from Kana to Kanji.
@@ -5058,6 +5051,13 @@ then you will have no effect when you use the dictionary file with no Hinsi info
 Any value except
 .B 0
 and null effects valid.
+.B (UNIX)
+.IP "\fBIMEKEY\fP"
+Specify the key to toggle the direct input mode and the Kana-Kanji IME mode when you input some strings.
+You can describe the same key name as
+.B bind
+command.
+The default value is not specified.
 .B (UNIX)
 .IP "\fBINHERITCOPY\fP"
 Inherit the destination timestamp from the source timestamp
@@ -5170,7 +5170,7 @@ The same operation can result as an error to output the log in the lower priorit
 Specify the maximum kilobyte size for the log file specified by
 .BR LOGFILE .
 If the size exceeds this value,
-the last log file will be renamed as the file name followed by the extension
+the last log file will be renamed as the filename followed by the extension
 .B .old
 to create another new log file.
 The default value is

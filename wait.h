@@ -17,18 +17,18 @@
 #define	sigmask_t		sigset_t
 #define	Xsigemptyset(m)		sigemptyset(&m)
 #define	Xsigfillset(m)		sigfillset(&m)
-#define	Xsigaddset(m,s)		sigaddset(&m, s)
-#define	Xsigdelset(m,s)		sigdelset(&m, s)
+#define	Xsigaddset(m, s)	sigaddset(&m, s)
+#define	Xsigdelset(m, s)	sigdelset(&m, s)
 #define	Xsigsetmask(m)		sigprocmask(SIG_SETMASK, &m, NULL)
-#define	Xsigblock(o,m)		sigprocmask(SIG_BLOCK, &m, &o)
+#define	Xsigblock(o, m)		sigprocmask(SIG_BLOCK, &m, &o)
 #else	/* !USESIGPMASK */
 typedef int			sigmask_t;
 #define	Xsigemptyset(m)		((m) = 0)
 #define	Xsigfillset(m)		((m) = ~0)
-#define	Xsigaddset(m,s)		((m) |= sigmask(s))
-#define	Xsigdelset(m,s)		((m) &= ~sigmask(s))
+#define	Xsigaddset(m, s)	((m) |= sigmask(s))
+#define	Xsigdelset(m, s)	((m) &= ~sigmask(s))
 #define	Xsigsetmask(m)		sigsetmask(m)
-#define	Xsigblock(o,m)		((o) = sigblock(m))
+#define	Xsigblock(o, m)		((o) = sigblock(m))
 #endif	/* !USESIGPMASK */
 
 #ifdef	NOKILLPG

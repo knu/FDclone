@@ -48,8 +48,8 @@ typedef struct _digest_t {
 #ifdef	DEP_URLPATH
 
 #ifdef	FD
-extern int ttyiomode __P_((int));
-extern int stdiomode __P_((VOID_A));
+extern VOID ttyiomode __P_((int));
+extern VOID stdiomode __P_((VOID_A));
 extern char *inputstr __P_((CONST char *, int, int, CONST char *, int));
 extern char *inputpass __P_((VOID_A));
 #endif
@@ -97,10 +97,16 @@ char *authgetpass(VOID_A)
 
 #ifdef	FD
 	cp = inputpass();
-#else
+#else	/* !FD */
+# ifdef	NOGETPASS
+	VOID_C Xfputs("Password:", Xstderr);
+	VOID_C Xfflush(Xstderr);
+	if (!(cp = Xfgets(Xstdin))) cp = Xstrdup(nullstr);
+# else
 	if (!(cp = getpass("Password:"))) cp = vnullstr;
 	cp = Xstrdup(cp);
-#endif
+# endif
+#endif	/* !FD */
 
 	return(cp);
 }

@@ -16,8 +16,10 @@ extern int sjis2ujis __P_((char *, CONST u_char *, int));
 extern int ujis2sjis __P_((char *, CONST u_char *, int));
 #endif
 #ifdef	DEP_UNICODE
+# ifndef	DEP_EMBEDUNITBL
 extern VOID readunitable __P_((int));
 extern VOID discardunitable __P_((VOID_A));
+# endif
 extern u_int unifysjis __P_((u_int, int));
 extern u_int cnvunicode __P_((u_int, int));
 #endif	/* DEP_UNICODE */

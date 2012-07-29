@@ -193,7 +193,7 @@ CONST char *path;
 #if	MSDOS
 	if (unixrealpath(fullpath, tmp)) Xstrcpy(fullpath, tmp);
 #endif
-	entryhist(fullpath, HST_PATH | HST_UNIQ);
+	VOID_C entryhist(fullpath, HST_PATH | HST_UNIQ);
 #ifdef	DEP_PTY
 	sendparent(TE_CHDIR, fullpath);
 #endif
