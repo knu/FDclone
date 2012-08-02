@@ -28,6 +28,9 @@
 #endif
 
 extern int curcolumns;
+#if	FD >= 3
+extern int widedigit;
+#endif
 extern int mark;
 extern off_t marksize;
 extern off_t blocksize;

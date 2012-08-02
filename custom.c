@@ -107,7 +107,8 @@ typedef struct _envtable {
 #define	T_KEYCODE		22
 #define	T_HELP			23
 #define	T_URLOPT		24
-#define	T_NOVAR			25
+#define	T_IMEBUF		25
+#define	T_NOVAR			26
 
 #ifdef	DEP_FILECONV
 typedef struct _pathtable {
@@ -142,9 +143,16 @@ extern int adjtty;
 extern int hideclock;
 extern int defcolumns;
 extern int minfilename;
+#if	FD >= 3
+extern int widedigit;
+extern int sizeunit;
+#endif
 extern char *histfile[];
 extern short histsize[];
 extern short savehist[];
+#if	FD >= 3
+extern short histumask[];
+#endif
 #ifndef	_NOTREE
 extern int dircountlimit;
 #endif
@@ -162,7 +170,12 @@ extern int helplayout;
 #ifdef	DEP_IME
 extern int imekey;
 extern int imebuffer;
-#endif
+# if	FD >= 3
+extern short imelarning;
+extern short frequmask;
+extern char *freqfile;
+# endif
+#endif	/* DEP_IME */
 #ifdef	DEP_URLPATH
 extern int hidepasswd;
 #endif
@@ -400,6 +413,10 @@ static CONST envtable envlist[] = {
 		DEFVAL(DEFCOLUMNS), CLMN_E, _B_(T_COLUMN)},
 	{"FD_MINFILENAME", &minfilename,
 		DEFVAL(MINFILENAME), MINF_E, T_NATURAL},
+#if	FD >= 3
+	{"FD_WIDEDIGIT", &widedigit, DEFVAL(WIDEDIGIT), WDDGT_E, T_BOOL},
+	{"FD_SIZEUNIT", &sizeunit, DEFVAL(SIZEUNIT), SZUNT_E, T_BOOL},
+#endif
 	{"FD_HISTFILE", &(histfile[0]), DEFVAL(HISTFILE), HSFL_E, T_PATH},
 #if	FD >= 2
 	{"FD_DIRHISTFILE", &(histfile[1]),
@@ -413,6 +430,11 @@ static CONST envtable envlist[] = {
 #if	FD >= 2
 	{"FD_SAVEDIRHIST", &(savehist[1]),
 		DEFVAL(SAVEDIRHIST), SVDH_E, T_SHORT},
+#endif
+#if	FD >= 3
+	{"FD_HISTUMASK", &(histumask[0]), DEFVAL(HISTUMASK), HUMSK_E, T_OCTAL},
+	{"FD_DIRHISTUMASK", &(histumask[1]),
+		DEFVAL(DIRHISTUMASK), DUMSK_E, T_OCTAL},
 #endif
 #ifndef	_NOTREE
 	{"FD_DIRCOUNTLIMIT", &dircountlimit,
@@ -434,8 +456,15 @@ static CONST envtable envlist[] = {
 #endif
 #ifdef	DEP_IME
 	{"FD_IMEKEY", &imekey, DEFVAL(IMEKEY), IMKY_E, T_KEYCODE},
+# if	FD >= 3
+	{"FD_IMEBUFFER", &imebuffer, DEFVAL(IMEBUFFER), IMBF_E, T_IMEBUF},
+	{"FD_IMELARNING", &imelarning, DEFVAL(IMELARNING), IMLRN_E, T_SHORT},
+	{"FD_FREQFILE", &freqfile, DEFVAL(FREQFILE), FRFL_E, T_PATH},
+	{"FD_FREQUMASK", &frequmask, DEFVAL(FREQUMASK), FUMSK_E, T_OCTAL},
+# else
 	{"FD_IMEBUFFER", &imebuffer, DEFVAL(IMEBUFFER), IMBF_E, T_BOOL},
-#endif
+# endif
+#endif	/* DEP_IME */
 #ifndef	_NOCOLOR
 	{"FD_ANSICOLOR", &ansicolor, DEFVAL(ANSICOLOR), ACOL_E, _B_(T_COLOR)},
 # if	FD >= 2
@@ -856,6 +885,12 @@ int no;
 #endif
 #ifndef	_NOCUSTOMIZE
 		case T_NOVAR:
+			break;
+#endif
+#if	defined (DEP_IME) && (FD >= 3)
+		case T_IMEBUF:
+			if ((n = Xatoi(cp)) < 0 || n > 3) n = def_num(no);
+			*((int *)(envlist[no].var)) = n;
 			break;
 #endif
 		default:
@@ -1792,6 +1827,15 @@ int no;
 			cp = new;
 			break;
 # endif	/* DEP_URLPATH */
+#if	defined (DEP_IME) && (FD >= 3)
+		case T_IMEBUF:
+			str[0] = VBOL0_K;
+			str[1] = IMEB1_K;
+			str[2] = IMEB2_K;
+			str[3] = IMEB3_K;
+			cp = str[*((int *)(envlist[no].var))];
+			break;
+#endif
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			break;
@@ -2318,6 +2362,20 @@ int no;
 			cp = (tmp) ? int2str(buf, tmp) : NULL;
 			break;
 # endif	/* DEP_URLPATH */
+#if	defined (DEP_IME) && (FD >= 3)
+		case T_IMEBUF:
+			n = *((int *)(envlist[no].var));
+			str[0] = VBOL0_K;
+			str[1] = IMEB1_K;
+			str[2] = IMEB2_K;
+			str[3] = IMEB3_K;
+			str[4] = VUSET_K;
+			val[4] = -1;
+			envcaption(env);
+			if (noselect(&n, 5, 0, str, val)) return(0);
+			cp = (n >= 0) ? int2str(buf, n) : NULL;
+			break;
+#endif	/* DEP_IME && FD >= 3 */
 		default:
 			if (!(cp = getenv2(fdenv_str(no)))) cp = def_str(no);
 			cp = new = inputcustenvstr(env, 0, cp, -1);

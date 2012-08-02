@@ -239,19 +239,19 @@ typedef struct _partition_t {
 #define	PART_TABLE		0x01be
 #define	PART_NUM		4
 
-#define	PT_FAT12		0x01
-#define	PT_FAT16		0x04
-#define	PT_EXTEND		0x05
-#define	PT_FAT16X		0x06
-#define	PT_NTFS			0x07
-#define	PT_FAT32		0x0b
-#define	PT_FAT32LBA		0x0c
-#define	PT_FAT16XLBA		0x0e
-#define	PT_EXTENDLBA		0x0f
-#define	PT_LINUX		0x83
-#define	PT_386BSD		0xa5
-#define	PT_OPENBSD		0xa6
-#define	PT_NETBSD		0xa9
+#define	PTAT_FAT12		0x01
+#define	PTAT_FAT16		0x04
+#define	PTAT_EXTEND		0x05
+#define	PTAT_FAT16X		0x06
+#define	PTAT_NTFS		0x07
+#define	PTAT_FAT32		0x0b
+#define	PTAT_FAT32LBA		0x0c
+#define	PTAT_FAT16XLBA		0x0e
+#define	PTAT_EXTENDLBA		0x0f
+#define	PTAT_LINUX		0x83
+#define	PTAT_386BSD		0xa5
+#define	PTAT_OPENBSD		0xa6
+#define	PTAT_NETBSD		0xa9
 
 typedef struct _partition98_t {
 	u_char boot __attribute__ ((packed));

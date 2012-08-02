@@ -4,7 +4,7 @@
 
 TITLE	= FD-
 VERMAJ	= 3
-VERSION	= 3.00m
+VERSION	= 3.01
 PREFIX	=
 CONFDIR	=
 BUILD	=
@@ -1351,7 +1351,7 @@ dict$(OBJ): string.h malloc.h termio.h
 dict$(OBJ): roman.h
 dict$(OBJ): hinsi.h func.h sysemu.h dirent.h unixemu.h
 dict$(OBJ): pathname.h typesize.h term.h types.h
-dict$(OBJ): lsparse.h namelist.h dosdisk.h
+dict$(OBJ): lsparse.h namelist.h dosdisk.h parse.h kconv.h
 roman$(OBJ): headers.h machine.h config.h
 roman$(OBJ): depend.h kctype.h
 roman$(OBJ): typesize.h string.h kconv.h roman.h

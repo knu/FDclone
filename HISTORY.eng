@@ -1,3 +1,9 @@
+Ver. 3.01	Add 'WIDEDIGIT', 'SIZEUNIT' internal variables.
+ (08/03/12)	Add 'HISTUMASK', 'DIRHISTUMASK' internal variables.
+		Add 'IMELARNING', 'FREQFILE', 'FREQUMASK' internal variables.
+		Add 'getfreq', 'setfreq' builtins.
+		The object tables of 'IMEBUFFER' internal variable is extended.
+
 Ver. 3.00m	Add the identifier UTF8LANG for compile.
  (07/27/12)	Abortion when save file on customizer with some OS is fixed.
 		Wrong priority with IME translation candidates is fixed.

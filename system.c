@@ -1337,6 +1337,9 @@ static CONST char *adjustvar[] = {
 #  ifdef	FD >= 2
 	"FD_DIRHISTFILE",
 #  endif
+#  if	FD >= 3
+	"FD_FREQFILE",
+#  endif
 	"FD_TMPDIR",
 #  ifndef	_NOROCKRIDGE
 	"FD_RRPATH",

@@ -1715,8 +1715,8 @@ int fd, head, sect, secsiz;
 			pt = (partition_t *)cp;
 			ofs = byte2dword(pt -> f_sect);
 			ofs *= secsiz;
-			if (pt -> filesys == PT_EXTEND
-			|| pt -> filesys == PT_EXTENDLBA) {
+			if (pt -> filesys == PTAT_EXTEND
+			|| pt -> filesys == PTAT_EXTENDLBA) {
 				if (extoffset) ofs += extoffset;
 				else extoffset = ofs;
 
@@ -1747,12 +1747,12 @@ int fd, head, sect, secsiz;
 				free(sp);
 				continue;
 			}
-			else if (pt -> filesys != PT_FAT12
-			&& pt -> filesys != PT_FAT16
-			&& pt -> filesys != PT_FAT16X
-			&& pt -> filesys != PT_FAT32
-			&& pt -> filesys != PT_FAT32LBA
-			&& pt -> filesys != PT_FAT16XLBA)
+			else if (pt -> filesys != PTAT_FAT12
+			&& pt -> filesys != PTAT_FAT16
+			&& pt -> filesys != PTAT_FAT16X
+			&& pt -> filesys != PTAT_FAT32
+			&& pt -> filesys != PTAT_FAT32LBA
+			&& pt -> filesys != PTAT_FAT16XLBA)
 				continue;
 
 			ofs += offset;

@@ -2,9 +2,9 @@
 .\" Copyright (C) 1995-2012 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   3.00m 07/27/12
+.\" @(#)fd.1   3.01 08/03/12
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 27, 2012"
+.TH FD 1 "August 3, 2012"
 .de sh
 .br
 .PP
@@ -2211,6 +2211,23 @@ If
 is omitted,
 the current job is continued in the foreground.
 .RE
+.IP "\fBgetfreq\fP [\fIfile\fR]"
+Output the contents of the translation frequency file,
+specified by
+.IR file ,
+to the standard output for the users Kana-Kanji translation learning.
+The output format provides one record per line,
+which consists of "Yomi-Gana", "word" and "frequency" separated by tab.
+You can use this output as the argument of
+.B setfreq
+to import the frequency information.
+If
+.I file
+is omitted,
+it is regarded as the translation frequency file specified by
+.B FREQFILE
+the internal variable.
+.B (UNIX)
 .IP "\fBgetkey\fP [\fInum\fR]"
 Get the key code sequence for the pushed key.
 It prompts after executed,
@@ -3006,6 +3023,24 @@ You can confirm what drive name is valid by
 .B printdrv
 command.
 But any hard disk is registered as readonly, for security.
+.IP "\fBsetfreq\fP [\fIfile\fR]"
+Append the frequency information inputted from the standard input
+to the translation frequency file,
+specified by
+.IR file ,
+for the users Kana-Kanji translation learning.
+The input format is based on the output format of
+.BR getfreq .
+If you want to replace,
+rather than to append,
+you must remove the translation frequency file in advance.
+If
+.I file
+is omitted,
+it is regarded as the translation frequency file specified by
+.B FREQFILE
+the internal variable.
+.B (UNIX)
 .IP "\fBsetroman\fP [\fB-c\fP] [\fB-r\fP] [\fB-f\fP \fIfile\fR] [\fIroman\fR [\fIkanji\fR]]"
 Setup the Roman-Kana translation table for the Kana-Kanji IME mode.
 It means binding
@@ -4790,6 +4825,16 @@ which can be referred by the directory input line.
 Unless you specify it,
 the directory history is not loaded nor saved.
 The default value is not specified.
+.IP "\fBDIRHISTUMASK\fP"
+Specify the file creation mask with octal expression
+for the directory history file.
+It is used only if no existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
 .IP "\fBDISPLAYMODE\fP"
 Specify the filename display mode of the file list when
 .B fd
@@ -4919,6 +4964,28 @@ etc. among them are the Kanji codes used in Samba.
 default	no convert
 .fi
 .RE
+.IP "\fBFREQFILE\fP"
+Specify the translation frequency file
+for the users Kana-Kanji translation learning.
+If the filename is not defined,
+the frequency information will not be saved nor be referred.
+The default value is
+.BR ~/.fd_freq .
+.B (UNIX)
+.IP "\fBFREQUMASK\fP"
+Specify the file creation mask with octal expression
+for the translation frequency file
+for the users Kana-Kanji translation learning.
+The updated translation frequency file will be rebuilt,
+not be overwritten,
+so that it is used even if existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
+.B (UNIX)
 .IP "\fBFTPADDRESS\fP"
 Specify the mail address used as the password for anonymous FTP,
 when the URL drive connects the FTP host.
@@ -4995,6 +5062,16 @@ The default value is
 If this value is
 .BR 0 ,
 you can refer to no command history.
+.IP "\fBHISTUMASK\fP"
+Specify the file creation mask with octal expression
+for the command history file.
+It is used only if no existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
 .IP "\fBHOME\fP\(**"
 Specify the default value
 when no argument of
@@ -5043,14 +5120,30 @@ Any value except
 and null effects valid.
 .B (UNIX)
 .IP "\fBIMEBUFFER\fP"
-Hold the Kana-Kanji translation table on memory.
+Specify whether if the Kana-Kanji translation table is held on memory or not.
 It will be fast to translate strings from Kana to Kanji.
 You should set this if you have enough memory.
-The table held on memory is only the Hinsi information table,
-then you will have no effect when you use the dictionary file with no Hinsi information.
-Any value except
-.B 0
-and null effects valid.
+The following are specifiable values.
+.B (UNIX)
+.RS 18
+.ta 0.5i 1i
+.nf
+\fB0\fP	not hold on memory
+\fB1\fP	only the Hinsi information table
+\fB2\fP	also includes the index tables
+\fB3\fP	hold all tables
+.fi
+.RE
+.IP "\fBIMELARNING\fP"
+Specify the learning level with the translation frequency file
+for the users Kana-Kanji translation learning.
+The larger value will increase the importance of the frequency information.
+If the value is
+.BR 0 ,
+the frequency information is only saved,
+without any reference.
+The default value is
+.BR 16 .
 .B (UNIX)
 .IP "\fBIMEKEY\fP"
 Specify the key to toggle the direct input mode and the Kana-Kanji IME mode when you input some strings.
@@ -5507,6 +5600,13 @@ but the sum of disk block size occupied actually.
 Any value except
 .B 0
 and null effects valid.
+.IP "\fBSIZEUNIT\fP"
+Represent the huge file size which overflows the displayed digit
+with the prefix of the SI unit,
+as "KB", "MB" and so on.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBSORTTREE\fP"
 Sort directories in the tree screen.
 The sorted type specified by
@@ -5750,6 +5850,21 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
+.IP "\fBWIDEDIGIT\fP"
+Widen the displayed digits for the number of pages and files.
+The standard displayed digits for the number of pages and files are
+.B 2
+and
+.B 4
+respectively.
+This expands them into
+.B 4
+and
+.B 5
+respectively.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBWRITEFS\fP"
 Forbid use of
 .B WRITE_DIR
@@ -5856,7 +5971,8 @@ The individual initial configuration file for
 The command history file by default
 .TP
 .B ~/.fd_freq
-The translation frequency file for the users Kana-Kanji translation learning
+The translation frequency file by default
+for the users Kana-Kanji translation learning
 .TP
 .B /bin/sh
 The user shell when

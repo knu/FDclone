@@ -247,6 +247,12 @@
 #define	MINF_E	meslist( \
 		"ファイル名表示領域の最小文字数を設定します.", \
 		"Set the minimum columns of filename field.")
+#define	WDDGT_E	meslist( \
+		"ページ数とファイル数の表示桁数を増やします.", \
+		"Widen the displayed digit for the number of pages and files.")
+#define	SZUNT_E	meslist( \
+		"大きなファイルサイズを SI 接頭子 (KB, MB, ...) で表現します.", \
+		"Describe the huge file size with the SI prefix (KB, MB, ...).")
 #define	HSFL_E	meslist( \
 		"コマンド履歴のセーブファイルを設定します.", \
 		"Define the name of command history file.")
@@ -265,6 +271,12 @@
 #define	SVDH_E	meslist( \
 		"ディレクトリ履歴のセーブファイル保存数を設定します.", \
 		"Define the maximum size of saved directory history.")
+#define	HUMSK_E	meslist( \
+		"コマンド履歴セーブ用のファイル生成マスク値を指定します.", \
+		"Define the file creation mask for command history.")
+#define	DUMSK_E	meslist( \
+		"ディレクトリ履歴セーブ用のファイル生成マスク値を指定します.", \
+		"Define the file creation mask for directory history.")
 #define	DCLM_E	meslist( \
 		"ツリー表示画面の表示ファイル数を設定します.", \
 		"Define the limit of displayed files, on tree mode.")
@@ -292,6 +304,15 @@
 #define	IMBF_E	meslist( \
 		"かな漢字変換テーブルをオンメモリで持ち続けます.", \
 		"Hold the Kana-Kanji translation table on memory.")
+#define	IMLRN_E	meslist( \
+		"かな漢字変換の学習レベルを指定します.", \
+		"Define the larning level for the Kana-Kanji translation.")
+#define	FRFL_E	meslist( \
+		"ユーザ変換頻度のセーブファイルを指定します.", \
+		"Define the name of user translation frequency file.")
+#define	FUMSK_E	meslist( \
+		"ユーザ変換頻度用のファイル生成マスク値を指定します.", \
+		"Define the file creation mask for user translation frequency.")
 #define	ACOL_E	meslist( \
 		"ファイル表示をカラー化します.", \
 		"Display with the ANSI color escape sequence.")
@@ -567,6 +588,9 @@
 #define	UOP5B_K	mesconv("HTTP詳細情報", "HTTPdetail")
 #define	UOP50_K	mesconv("簡略", "Round")
 #define	UOP51_K	mesconv("詳細", "Detail")
+#define	IMEB1_K	mesconv("品詞情報のみ", "onlyHinsi")
+#define	IMEB2_K	mesconv("含インデックス", "includeIndex")
+#define	IMEB3_K	mesconv("全て", "Whole")
 #define	VKYCD_K	mesconv("内部変数 %s に設定するキーを押して下さい:", \
 			"Push the key which you set to the variable %s:")
 #define	VKYOK_K	mesconv("[%s]を内部変数 %s に設定してよろしいですか ?", \

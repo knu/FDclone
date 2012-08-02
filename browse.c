@@ -65,7 +65,7 @@ static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
 static VOID NEAR cputbytes __P_((off_t, off_t, int));
 static VOID NEAR sizebar __P_((VOID_A));
-static int NEAR putsize __P_((char *, off_t, int, int));
+static int NEAR putsize __P_((char *, off_t, int, int, int));
 static int NEAR putsize2 __P_((char *, namelist *, int));
 static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
@@ -87,6 +87,8 @@ static VOID NEAR initcwd __P_((CONST char *, int));
 int curcolumns = 0;
 int defcolumns = 0;
 int minfilename = 0;
+int widedigit = 0;
+int sizeunit = 0;
 int mark = 0;
 int fnameofs = 0;
 int displaymode = 0;
@@ -277,6 +279,10 @@ static VOID NEAR pathbar(VOID_A)
 		Xlocate(TC_MARK, TL_PATH);
 		VOID_C XXcprintf("%<*d", TD_MARK, mark);
 		Xattrputs(TS_MARK, 1);
+# if	FD >= 3
+		if (sizeunit) VOID_C XXcprintf("%>'*qd", TD_SIZE, marksize);
+		else
+# endif
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
@@ -384,6 +390,10 @@ static VOID NEAR statusbar(VOID_A)
 		Xlocate(TC_SIZE, TL_STATUS);
 		VOID_C XXcprintf("%<*d", TD_MARK, maxfile);
 		Xattrputs(TS_SIZE, 1);
+# if	FD >= 3
+		if (sizeunit) VOID_C XXcprintf("%>'*qd", TD_SIZE, totalsize);
+		else
+# endif
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, totalsize);
 
 		return;
@@ -545,6 +555,12 @@ static VOID NEAR sizebar(VOID_A)
 
 	Xlocate(C_SIZE, L_SIZE);
 	Xattrputs(S_SIZE, 1);
+#if	FD >= 3
+	if (sizeunit)
+		VOID_C XXcprintf("%>'*qd/%>'*qd",
+			D_SIZE, marksize, D_SIZE, totalsize);
+	else
+#endif
 	VOID_C XXcprintf("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
@@ -646,15 +662,21 @@ g_id_t gid;
 }
 #endif	/* !NOUID */
 
-static int NEAR putsize(buf, n, width, max)
+/*ARGSUSED*/
+static int NEAR putsize(buf, n, width, max, sz)
 char *buf;
 off_t n;
-int width, max;
+int width, max, sz;
 {
 	char tmp[MAXLONGWIDTH + 1];
 	int i, len;
 
 	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
+#if	FD >= 3
+	if (sz && sizeunit)
+		VOID_C Xsnprintf(tmp, sizeof(tmp), "%>*qd", max, n);
+	else
+#endif
 	VOID_C Xsnprintf(tmp, sizeof(tmp), "%<*qd", max, n);
 	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
@@ -689,6 +711,11 @@ int width;
 			width - (width / 2) - 1,
 			(u_long)minor((u_long)(namep -> st_size)));
 #endif	/* !MSDOS */
+#if	FD >= 3
+	else if (sizeunit)
+		VOID_C Xsnprintf(buf, width + 1,
+			"%>*qd", width, namep -> st_size);
+#endif
 	else VOID_C Xsnprintf(buf, width + 1,
 		"%<*qd", width, namep -> st_size);
 
@@ -871,17 +898,17 @@ static VOID NEAR infobar(VOID_A)
 	if (isdev(&(filelist[filepos]))) {
 		len += putsize(&(buf[len]),
 			(off_t)major((u_long)(filelist[filepos].st_size)),
-			3, n_lastcolumn - len);
+			3, n_lastcolumn - len, 0);
 		buf[len++] = ',';
 		buf[len++] = ' ';
 		len += putsize(&(buf[len]),
 			(off_t)minor((u_long)(filelist[filepos].st_size)),
-			3, n_lastcolumn - len);
+			3, n_lastcolumn - len, 0);
 	}
 	else
 #endif
 	len += putsize(&(buf[len]),
-		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len);
+		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len, 1);
 	buf[len++] = ' ';
 
 	VOID_C Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
