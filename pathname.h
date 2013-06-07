@@ -237,6 +237,11 @@ extern int strcatpath __P_((char *, char *, CONST char *));
 extern int strpathcmp2 __P_((CONST char *, CONST char *));
 extern int strnpathcmp2 __P_((CONST char *, CONST char *, int));
 #endif
+#ifdef	_NOVERSCMP
+#define	strverscmp2		strpathcmp2
+#else
+extern int strverscmp2 __P_((CONST char *, CONST char *));
+#endif
 #ifdef	COMMNOCASE
 #define	strcommcmp		Xstrcasecmp
 #define	strncommcmp		Xstrncasecmp
@@ -341,6 +346,9 @@ extern char *(*posixsubstfunc)__P_((CONST char *, int *));
 #endif
 #ifndef	PATHNOCASE
 extern int pathignorecase;
+#endif
+#ifndef	_NOVERSCMP
+extern int versioncomp;
 #endif
 
 #endif	/* !__PATHNAME_H_ */

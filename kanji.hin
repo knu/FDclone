@@ -226,6 +226,9 @@
 #define	IGNC_E	meslist( \
 		"ファイル名比較時に大文字小文字を無視します.", \
 		"Ignore uppercase or lowercase in filename comparison.")
+#define	VCMP_E	meslist( \
+		"ファイル名比較時に数字をバージョン番号として比較します.", \
+		"Regard numeric characters as the version in filename comparison.")
 #define	IHTM_E	meslist( \
 		"ファイルのコピー時にタイムスタンプを継承します.", \
 		"Inherit the timestamp on copying files.")
@@ -306,7 +309,7 @@
 		"Hold the Kana-Kanji translation table on memory.")
 #define	IMLRN_E	meslist( \
 		"かな漢字変換の学習レベルを指定します.", \
-		"Define the larning level for the Kana-Kanji translation.")
+		"Define the learning level for the Kana-Kanji translation.")
 #define	FRFL_E	meslist( \
 		"ユーザ変換頻度のセーブファイルを指定します.", \
 		"Define the name of user translation frequency file.")

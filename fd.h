@@ -39,6 +39,7 @@
 #define	_NOSOCKREDIR
 #define	_NOFTP
 #define	_NOHTTP
+#define	_NOVERSCMP
 #endif	/* FD < 3 */
 
 #ifdef	DEBUG
@@ -108,6 +109,7 @@ extern char *_mtrace_file;
 #define	SORTTREE		0
 #define	WRITEFS			0
 #define	IGNORECASE		0
+#define	VERSIONCOMP		0
 #define	INHERITCOPY		0
 #define	PROGRESSBAR		0
 #define	PRECOPYMENU		0
@@ -142,7 +144,7 @@ extern char *_mtrace_file;
 #define	FUNCLAYOUT		1005
 #define	IMEKEY			-1
 #define	IMEBUFFER		0
-#define	IMELARNING		16
+#define	IMELEARNING		16
 #if	MSDOS
 # ifdef	BSPATHDELIM
 # define	FREQFILE	"~\\fd.frq"

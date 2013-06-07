@@ -41,6 +41,7 @@ extern CONST functable funclist[];
 extern int writefs;
 #endif
 extern char *curfilename;
+extern int lostcount;
 extern char *origpath;
 #ifndef	_NOARCHIVE
 extern char archivedir[];
@@ -61,6 +62,7 @@ static int NEAR getcolor __P_((int));
 #endif
 static VOID NEAR pathbar __P_((VOID_A));
 static CONST char *NEAR skipstr __P_((CONST char *, int));
+static VOID NEAR putsorttype __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
 static VOID NEAR cputbytes __P_((off_t, off_t, int));
@@ -375,10 +377,34 @@ int n;
 	return(s);
 }
 
+static VOID NEAR putsorttype(VOID_A)
+{
+	CONST char *str[MAXSORTTYPE + 1];
+
+#ifndef	_NOPRECEDE
+	if (haste) {
+		VOID_C Xkanjiputs(OMIT_K);
+		return;
+	}
+#endif
+
+	str[0] = ORAW_K;
+	str[SRT_FILENAME] = ONAME_K;
+	str[SRT_EXTENSION] = OEXT_K;
+	str[SRT_SIZE] = OSIZE_K;
+	str[SRT_DATE] = ODATE_K;
+	str[SRT_LENGTH] = OLEN_K;
+	VOID_C Xkanjiputs(skipstr(str[sorton & SRT_TYPE], 3));
+
+	if (!(sorton & SRT_TYPE)) return;
+
+	str[0] = OINC_K;
+	str[1] = ODEC_K;
+	VOID_C XXcprintf("(%k)", skipstr(str[(sorton & SRT_DESC) ? 1 : 0], 3));
+}
+
 static VOID NEAR statusbar(VOID_A)
 {
-	CONST char *str[6];
-
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
 		Xlocate(0, TL_STATUS);
@@ -416,24 +442,7 @@ static VOID NEAR statusbar(VOID_A)
 	if (!ishardomit()) {
 		Xlocate(C_SORT, L_STATUS);
 		Xattrputs(S_SORT, 1);
-
-#ifndef	_NOPRECEDE
-		if (haste) VOID_C Xkanjiputs(OMIT_K);
-		else
-#endif
-		if (!(sorton & 7)) VOID_C Xkanjiputs(skipstr(ORAW_K, 3));
-		else {
-			str[0] = ONAME_K;
-			str[1] = OEXT_K;
-			str[2] = OSIZE_K;
-			str[3] = ODATE_K;
-			str[4] = OLEN_K;
-			VOID_C Xkanjiputs(skipstr(str[(sorton & 7) - 1], 3));
-
-			str[0] = OINC_K;
-			str[1] = ODEC_K;
-			VOID_C XXcprintf("(%k)", skipstr(str[sorton / 8], 3));
-		}
+		putsorttype();
 	}
 
 	Xlocate(C_FIND, L_STATUS);
@@ -1788,6 +1797,7 @@ static int NEAR browsedir(VOID_A)
 
 		curfilename = filelist[filepos].name;
 		setlastfile(NULL);
+		lostcount = 0;
 		no = dointernal(getfuncno(ch),
 			filelist[filepos].name, ICM_BINDKEY, &funcstat);
 
@@ -1804,6 +1814,7 @@ static int NEAR browsedir(VOID_A)
 		if (sorton) haste = 0;
 #endif
 		if (no < FNC_NONE || no >= FNC_EFFECT) break;
+		if (no == FNC_CANCEL && lostcount > 0) break;
 		if (no == FNC_CANCEL || no == FNC_HELPSPOT) helpbar();
 		if (no < FNC_UPDATE) {
 			funcstat = 0;
@@ -1833,11 +1844,10 @@ static int NEAR browsedir(VOID_A)
 #endif
 
 #ifndef	_NOARCHIVE
-	if (archivefile) i = 0;
+	if (archivefile) /*EMPTY*/;
 	else
 #endif
-	i = maxfile;
-	while (i-- > 0) {
+	for (i = 0; i < maxfile; i++) {
 		Xfree(filelist[i].name);
 		filelist[i].name = NULL;
 	}

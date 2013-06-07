@@ -171,7 +171,7 @@ extern int helplayout;
 extern int imekey;
 extern int imebuffer;
 # if	FD >= 3
-extern short imelarning;
+extern short imelearning;
 extern short frequmask;
 extern char *freqfile;
 # endif
@@ -395,6 +395,9 @@ static CONST envtable envlist[] = {
 #if	!defined (PATHNOCASE) && (FD >= 2)
 	{"FD_IGNORECASE", &pathignorecase, DEFVAL(IGNORECASE), IGNC_E, T_BOOL},
 #endif
+#ifndef	_NOVERSCMP
+	{"FD_VERSIONCOMP", &versioncomp, DEFVAL(VERSIONCOMP), VCMP_E, T_BOOL},
+#endif
 #if	!defined (_USEDOSCOPY) && !defined (_NOEXTRACOPY)
 	{"FD_INHERITCOPY", &inheritcopy, DEFVAL(INHERITCOPY), IHTM_E, T_BOOL},
 #endif
@@ -458,7 +461,8 @@ static CONST envtable envlist[] = {
 	{"FD_IMEKEY", &imekey, DEFVAL(IMEKEY), IMKY_E, T_KEYCODE},
 # if	FD >= 3
 	{"FD_IMEBUFFER", &imebuffer, DEFVAL(IMEBUFFER), IMBF_E, T_IMEBUF},
-	{"FD_IMELARNING", &imelarning, DEFVAL(IMELARNING), IMLRN_E, T_SHORT},
+	{"FD_IMELEARNING", &imelearning,
+		DEFVAL(IMELEARNING), IMLRN_E, T_SHORT},
 	{"FD_FREQFILE", &freqfile, DEFVAL(FREQFILE), FRFL_E, T_PATH},
 	{"FD_FREQUMASK", &frequmask, DEFVAL(FREQUMASK), FUMSK_E, T_OCTAL},
 # else
@@ -789,7 +793,8 @@ int no;
 			break;
 		case T_SORT:
 			if ((n = Xatoi(cp)) < 0 || (n / 100) > MAXSORTINHERIT
-			|| ((n % 100) & ~15) || ((n % 100) & 7) > MAXSORTTYPE)
+			|| ((n % 100) & ~(SRT_TYPE | SRT_DESC))
+			|| ((n % 100) & SRT_TYPE) > MAXSORTTYPE)
 				n = def_num(no);
 			*((int *)(envlist[no].var)) = n;
 			sorton = n % 100;
@@ -2633,7 +2638,7 @@ CONST char *prompt;
 	mes[i] = NULL;
 
 	dupsorton = sorton;
-	sorton = 1;
+	sorton = SRT_FILENAME;
 	qsort(list, FUNCLISTSIZ, sizeof(namelist), cmplist);
 	sorton = dupsorton;
 	for (i = 0; i < FUNCLISTSIZ; i++)

@@ -102,9 +102,9 @@ int imebuffer = 0;
 short frequmask = (short)0;
 # if	FD >= 3
 char *freqfile = NULL;
-short imelarning = 0;
+short imelearning = 0;
 # else
-# define	imelarning	IMELARNING
+# define	imelearning	IMELEARNING
 # endif
 
 static kanjitable *kanjilist = NULL;
@@ -943,7 +943,7 @@ int fd;
 	}
 
 # if	FD >= 3
-	if (imelarning <= 0) return(0);
+	if (imelearning <= 0) return(0);
 # endif
 
 	tmp.kana.buf = kp1 -> k.buf;
@@ -951,7 +951,7 @@ int fd;
 	tmp.kanji.buf = kp2 -> k.buf;
 	tmp.kanji.max = kp2 -> len;
 	if (findfreq(&tmp, NULL) <= 0 || tmp.freq <= 0) return(0);
-	freq = ((long)(tmp.freq) + imelarning) * imelarning;
+	freq = ((long)(tmp.freq) + imelearning) * imelearning;
 	freq += kp1 -> freq;
 	if (freq > MAXUTYPE(u_short)) freq = MAXUTYPE(u_short);
 	kp1 -> freq = (u_short)freq;

@@ -939,7 +939,7 @@ VOID title(VOID_A)
 		VOID_C XXputch('#');
 		n++;
 	}
-	cp = (iswellomit()) ? nullstr : " (c)1995-2012 T.Shirai  ";
+	cp = (iswellomit()) ? nullstr : " (c)1995-2013 T.Shirai  ";
 	XXcputs(cp);
 	n = n_column - len - strlen2(cp) - n;
 	while (n-- > 0) VOID_C XXputch(' ');

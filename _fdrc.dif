@@ -184,9 +184,9 @@
 +#	3: hold all tables
 +#IMEBUFFER=0
 +
-+# larning level for the Kana-Kanji translation
++# learning level for the Kana-Kanji translation
 +#	default: 16
-+#IMELARNING=16
++#IMELEARNING=16
 +
 +# file creation mask for the Kana-Kanji translation frequency
 +#	Default: 022

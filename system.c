@@ -4699,7 +4699,7 @@ CONST VOID_P vp2;
 	fp1 = (shfunctable *)vp1;
 	fp2 = (shfunctable *)vp2;
 
-	return(strpathcmp2(fp1 -> ident, fp2 -> ident));
+	return(strverscmp2(fp1 -> ident, fp2 -> ident));
 }
 
 static char *NEAR getifs(VOID_A)

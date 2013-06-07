@@ -518,7 +518,7 @@ CONST VOID_P vp2;
 	ap1 = (shaliastable *)vp1;
 	ap2 = (shaliastable *)vp2;
 
-	return(strpathcmp2(ap1 -> ident, ap2 -> ident));
+	return(strverscmp2(ap1 -> ident, ap2 -> ident));
 }
 
 int checkalias(trp, ident, len, delim)

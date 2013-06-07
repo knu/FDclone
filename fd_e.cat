@@ -95,7 +95,7 @@ DDEESSCCRRIIPPTTIIOONN
      11         The title line.  The clock at the right end is
                updated every 1100 seconds.
 
-     22         The information line.  It displays informations in
+     22         The information line.  It displays information in
                this order: the current page (and the total
                pages), the number of marks (ant the total marks),
                the sorted type, the pattern string for file
@@ -650,7 +650,7 @@ DDEESSCCRRIIPPTTIIOONN
         SSwwiittcchh ffiillee ttyyppee ssyymmbbooll mmooddee
              Switch to display the symbol which means the file
              type after the filename in the file list, like as
-             the display in -F option of llss(1).  It is toggle to
+             the display in --FF option of llss(1).  It is toggle to
              switch if display the symbol or not.  The each sym-
              bol means the following.
                   //    directory
@@ -1800,7 +1800,7 @@ DDEESSCCRRIIPPTTIIOONN
                         minated, its status report will be
                         displayed immediately.  there is no
                         effect when the job control is not
-                        enable.
+                        enabled.
                    --CC   Prevent overwriting to any existent files
                         in redirection.
                    --ee   Exit immediately when any command returns
@@ -2313,7 +2313,7 @@ DDEESSCCRRIIPPTTIIOONN
      TCP port number as _p_o_r_t.  If _p_o_r_t is omitted, the default
      port number is used.  The default port number for ffttpp is 2211,
      and the default port number for hhttttpp is 8800.  You can specify
-     account informations to connect the remote host as _u_s_e_r and
+     account information to connect the remote host as _u_s_e_r and
      _p_a_s_s_w_o_r_d.  If _u_s_e_r is omitted, the anonymous FTP connection
      will be used with ffttpp, or you will be queried as needed with
      hhttttpp.  If _p_a_s_s_w_o_r_d is omitted, you will be queried as needed.
@@ -2753,7 +2753,7 @@ DDEESSCCRRIIPPTTIIOONN
      cuting command, or when %%NN macro is specified.
 
      CCuussttoommiizzee
-     You can customize as the following ways.  If you specify
+     You can customize ffdd as the following ways.  If you specify
      some configuration in multiple ways overlapped, it is prior
      in this order.
 
@@ -3189,7 +3189,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    the URL drive connects the FTP host.  The URL
                    format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
                    _p_o_r_t].  You can specify ffttpp or hhttttpp as _s_c_h_e_m_e.
-                   You can specify account informations to con-
+                   You can specify account information to con-
                    nect the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.
                    The default value is not specified.  ((UUNNIIXX))
 
@@ -3253,7 +3253,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    the URL drive connects the HTTP host.  The URL
                    format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
                    _p_o_r_t].  You can specify hhttttpp as _s_c_h_e_m_e.  You
-                   can specify account informations to connect
+                   can specify account information to connect
                    the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.  The
                    default value is not specified.  ((UUNNIIXX))
 
@@ -3276,7 +3276,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        22    also includes the index tables
                        33    hold all tables
 
-     IIMMEELLAARRNNIINNGG    Specify the learning level with the trans-
+     IIMMEELLEEAARRNNIINNGG   Specify the learning level with the trans-
                    lation frequency file for the users Kana-Kanji
                    translation learning.  The larger value will
                    increase the importance of the frequency infor-
@@ -3418,7 +3418,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
                    filename display area in the file list.  When
                    the area enough to be specified here cannot be
-                   obtained, the informations are reduced in the
+                   obtained, the information is reduced in the
                    order of UID, GID, timestamp, size.  The
                    default value is 1122 characters.
 
@@ -3440,7 +3440,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      PPRREECCEEDDEEPPAATTHH   Specify the file preceding function, which
                    displays only filenames before obtaining their
-                   file informations, for the directory which has
+                   file information, for the directory which has
                    a lot of files like as /dev.  You can specify
                    multiple pathnames separating with '::'.  You
                    are enough to specify only the top directory
@@ -3449,7 +3449,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    valid in all of the directories under that
                    directory.  When the file preceding function
                    is effective, any files are not sorted in that
-                   directory, and file informations are obtained
+                   directory, and file information is obtained
                    file by file while waiting the key input.  No
                    pathname is specified by default.
 
@@ -3750,10 +3750,10 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    lect individually whether if PASV, PORT, MDTM,
                    FEAT each commands for the FTP communication
                    are limited or not, or whether if the exact
-                   file informations are need or not.  On the
+                   file information is need or not.  On the
                    HTTP protocol, you will get the timestamp and
                    size of files with some rounding error in bulk.
-                   If you need the exact informations, the opera-
+                   If you need the exact information, the opera-
                    tions by file will spend the more communica-
                    tion time.  The default value is 00.  The fol-
                    lowing are specifiable values.  ((UUNNIIXX))
@@ -3949,4 +3949,4 @@ BBUUGGSS
      The user interface is cheap.
 
 CCOOPPYYRRIIGGHHTT
-     Copyright (C) 1995-2012 by Takashi SHIRAI
+     Copyright (C) 1995-2013 by Takashi SHIRAI

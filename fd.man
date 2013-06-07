@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (C) 1995-2012 Takashi SHIRAI
+.\" Copyright (C) 1995-2013 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   3.01 08/03/12
+.\" @(#)fd.1   3.01a 06/08/13
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "August 3, 2012"
+.TH FD 1 "June 8, 2013"
 .de sh
 .br
 .PP
@@ -764,7 +764,9 @@ symbolic リンクファイルの場合には、
 と表示されます。
 .IP "\fBファイルタイプシンボル表示の切替え\fP"
 .BR ls (1)
-の -F オプションでの表示と同様に、
+の
+.B \-F
+オプションでの表示と同様に、
 ファイル一覧リストのファイル名の欄に、
 そのファイルのタイプを表すシンボル文字を付加して表示します。
 トグルスイッチでシンボルの表示非表示を切替えます。
@@ -4913,7 +4915,7 @@ URL の書式は \fIscheme\fR\fB://\fP[\fIuser\fR[\fB:\fP\fIpassword\fR]\fB@\f
 \fB3\fP	全テーブルをオンメモリで持つ
 .fi
 .RE
-.IP "\fBIMELARNING\fP"
+.IP "\fBIMELEARNING\fP"
 かな漢字変換学習用のユーザ変換頻度ファイルによる学習レベルを指定します。
 値が大きいほど頻度情報を重視します。
 値が
@@ -5816,4 +5818,4 @@ MS-DOS 版でのコマンド履歴のセーブファイル既定値
 
 ユーザインタフェースが稚拙です。
 .SH 著作権
-Copyright (C) 1995-2012 by Takashi SHIRAI
+Copyright (C) 1995-2013 by Takashi SHIRAI
