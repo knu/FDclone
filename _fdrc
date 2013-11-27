@@ -555,38 +555,49 @@ tar="tar"
 tar_format="%a %u/%g %s %m %d %t %y %f"
 
 for ext in /.tar .gem; do
-  launch "$ext"		"$tar tvf"		"$tar_format"
+  launch "$ext"	"$tar tvf"			"$tar_format"
+  arch	 "$ext"	"$tar cf %C %T"			"$tar xf %C %TA"
 done
 
 for ext in .tar.Z .taZ .TAZ; do
-  launch "$ext"		"$tar Ztvf %C"		"$tar_format"
+  launch "$ext"	"$tar Ztvf %C"			"$tar_format"
+  arch   "$ext"	"$tar Zcf %C %T"		"$tar Zxf %C %TA"
 done
 
 for ext in .tar.gz .tar.z /.tgz .taz; do
-  launch "$ext"		"$tar ztvf %C"		"$tar_format"
+  launch "$ext"	"$tar ztvf %C"			"$tar_format"
+  arch   "$ext"	"$tar cf - %T | gzip -9c > %C"	"$tar zxf %C %TA"
 done
 
 for ext in .tar.bz2 .tbz2 /.tbz; do
-  launch "$ext"		"$tar jtvf %C"		"$tar_format"
+  launch "$ext"	"$tar jtvf %C"			"$tar_format"
+  arch   "$ext"	"$tar cf - %T | bzip2 -9c > %C"	"$tar jxf %C %TA"
 done
 
 for ext in .tar.xz /.txz; do
-#  launch "$ext"		"$tar Jtvf %C"		"$tar_format"
-  launch "$ext"		"xz -cd %C | $tar tvf -"	"$tar_format"
+# launch "$ext"	"$tar Jtvf %C"			"$tar_format"
+  launch "$ext"	"xz -cd %C | $tar tvf -"	"$tar_format"
+# arch	 "$ext"	"$tar cf - %T | xz -9c > %C"	"$tar Jxf %C %TA"
+  arch	 "$ext"	"$tar cf - %T | xz -9c > %C"	"xz -cd %C | $tar xf - %TA"
 done
 
-launch "/.lzh"		"lha -lq"		"%a %u/%g %s %x %m %d %{yt} %f"
+launch "/.lzh"	"lha -lq"			"%a %u/%g %s %x %m %d %{yt} %f"
+arch   "/.lzh"	"lha aq %C %TA"			"lha xq %C %TA"
 
 for ext in /.zip /.jar; do
-  launch "$ext"	"unzip -lqq"		" %s %m-%d-%y %t %f"
+  launch "$ext"	"unzip -lqq"			" %s %m-%d-%y %t %f"
+  arch   "$ext"	"zip -qr %C %TA"		"unzip -q %C %TA"
 done
 
-for ext in .Z /.gz; do
-  launch "$ext"	"zcat %C | $PAGER"
-done
+launch	".Z"	"zcat %C | $PAGER"
+arch	".Z"	"compress %M"			"uncompress %C"
+launch	"/.gz"	"zcat %C | $PAGER"
+arch	"/.gz"	"gzip -9 %M"			"gzip -d %C"
+launch  "/.bz2"	"bzip2 -cd %C | $PAGER"
+arch	"/.bz2"	"bzip2 -9 %M"			"bzip2 -d %C"
+launch  "/.xz"	"xz -cd %C | $PAGER"
+arch	"/.xz"	"xz -9 %M"			"xz -d %C"
 
-launch "/.bz2"		"bzip2 -cd %C | $PAGER"
-launch "/.xz"		"xz -cd %C | $PAGER"
 
 # RCS/CVS files
 launch ",v"		"rlog %C | $PAGER"
@@ -715,38 +726,6 @@ arch	"/.aa"	"echo ERROR"			"cat %X.?? | $tar zxf - %TA"
 #launch ".zip"	"pkunzip -vb %S"	" %s %x %x %x %y-%m-%d %t %*f" 14 2
 
 # archiver definition
-
-for ext in /.tar; do
-  arch	"$ext"	"$tar cf %C %T"			"$tar xf %C %TA"
-done
-
-for ext in .tar.Z .taZ .TAZ; do
-  arch	"$ext"	"$tar Zcf %C %T"		"$tar Zxf %C %TA"
-done
-
-for ext in .tar.gz .tar.z /.tgz .taz; do
-  arch	"$ext"	"$tar cf - %T | gzip -9c > %C"	"$tar zxf %C %TA"
-done
-
-for ext in .tar.bz2 .tbz2 /.tbz; do
-  arch	"$ext"	"$tar cf - %T | bzip2 -9c > %C"	"$tar jxf %C %TA"
-done
-
-for ext in .tar.xz /.txz; do
-#  arch	"$ext"	"$tar cf - %T | xz -9c > %C"	"$tar Jxf %C %TA"
-  arch	"$ext"	"$tar cf - %T | xz -9c > %C"	"xz -cd %C | $tar xf - %TA"
-done
-
-arch	".Z"	"compress %M"			"uncompress %C"
-arch	"/.gz"	"gzip -9 %M"			"gzip -d %C"
-arch	"/.bz2"	"bzip2 -9 %M"			"bzip2 -d %C"
-arch	"/.xz"	"xz -9 %M"			"xz -d %C"
-
-arch	"/.lzh"	"lha aq %C %TA"			"lha xq %C %TA"
-
-for ext in /.zip /.jar; do
-  arch	"$ext"	"zip -qr %C %TA"		"unzip -q %C %TA"
-done
 
 _uuencode() {
   uu=$1
