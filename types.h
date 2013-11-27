@@ -309,6 +309,14 @@ typedef char **			orighelpindex_t;
 #define	ORD_LOWER		2
 #define	ORD_NOPREDIR		3
 
+#define	SRT_TYPE		0007
+#define	SRT_FILENAME		0001
+#define	SRT_EXTENSION		0002
+#define	SRT_SIZE		0003
+#define	SRT_DATE		0004
+#define	SRT_LENGTH		0005
+#define	SRT_DESC		0010
+
 #define	HST_TYPE		0007
 #define	HST_COMM		0000
 #define	HST_PATH		0001

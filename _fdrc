@@ -86,6 +86,16 @@ FD_DEFCOLUMNS=1
 #	Default: 12
 #MINFILENAME=12
 
+# widen digit for the number of pages & files
+#	0: not widen (Default)
+#	>= 1: widen
+#WIDEDIGIT=0
+
+# use SI unit with huge file size
+#	0: not use SI unit (Default)
+#	>= 1: use SI unit
+#SIZEUNIT=0
+
 # history file of sh mode
 #	Default: ~/.fd_history
 #HISTFILE=~/.fd_history
@@ -109,6 +119,14 @@ FD_DEFCOLUMNS=1
 # size of saved directory history
 #	Default: 50
 #SAVEDIRHIST=50
+
+# file creation mask for command history
+#	Default: 022
+#HISTUMASK=022
+
+# file creation mask for directory history
+#	Default: 022
+#DIRHISTUMASK=022
 
 # limit of counting files in directory, on tree mode
 #	Default: 50
@@ -152,8 +170,18 @@ FD_DEFCOLUMNS=1
 
 # whether if hold the Kana-Kanji translation table on memory
 #	0: not hold (Default)
-#	>= 1: hold
+#	1: only Hinsi info. table
+#	2: also includes index table
+#	3: hold all tables
 #IMEBUFFER=0
+
+# learning level for the Kana-Kanji translation
+#	default: 16
+#IMELEARNING=16
+
+# file creation mask for the Kana-Kanji translation frequency
+#	Default: 022
+#FREQUMASK=022
 
 # whether if support ANSI color escape sequence
 #	0: monochrome (Default)

@@ -18,21 +18,6 @@
 
 #define	KEYWID			7
 
-#if	MSDOS
-# ifdef	PC98
-# define	PT_FAT12	0x81	/* 0x80 | 0x01 */
-# define	PT_FAT16	0x91	/* 0x80 | 0x11 */
-# define	PT_FAT32	0xa0	/* 0x80 | 0x20 */
-# define	PT_FAT16X	0xa1	/* 0x80 | 0x21 */
-# else
-# define	PT_FAT12	0x01
-# define	PT_FAT16	0x04
-# define	PT_FAT16X	0x06
-# define	PT_FAT32	0x0b
-# define	PT_FAT32LBA	0x0c
-# endif
-#endif	/* MSDOS */
-
 #ifdef	LINUX
 #define	SFN_MSDOSFS
 #endif

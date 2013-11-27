@@ -39,6 +39,7 @@
 #define	_NOSOCKREDIR
 #define	_NOFTP
 #define	_NOHTTP
+#define	_NOVERSCMP
 #endif	/* FD < 3 */
 
 #ifdef	DEBUG
@@ -49,14 +50,12 @@ extern char *_mtrace_file;
 
 #if	MSDOS
 # ifdef	BSPATHDELIM
-# define	FREQFILE	"~\\fd.frq"
 #  if	FD >= 2
 #  define	FD_RCFILE	"~\\fd2.rc"
 #  else
 #  define	FD_RCFILE	"~\\fd.rc"
 #  endif
 # else	/* !BSPATHDELIM */
-# define	FREQFILE	"~/fd.frq"
 #  if	FD >= 2
 #  define	FD_RCFILE	"~/fd2.rc"
 #  else
@@ -67,7 +66,6 @@ extern char *_mtrace_file;
 #define	ARCHTMPPREFIX		"AR"
 #define	DOSTMPPREFIX		'D'
 #else	/* !MSDOS */
-#define	FREQFILE		"~/.fd_freq"
 # if	FD >= 2
 # define	FD_RCFILE	"~/.fd2rc"
 # else
@@ -111,6 +109,7 @@ extern char *_mtrace_file;
 #define	SORTTREE		0
 #define	WRITEFS			0
 #define	IGNORECASE		0
+#define	VERSIONCOMP		0
 #define	INHERITCOPY		0
 #define	PROGRESSBAR		0
 #define	PRECOPYMENU		0
@@ -118,6 +117,8 @@ extern char *_mtrace_file;
 #define	USEGETCURSOR		0
 #define	DEFCOLUMNS		2
 #define	MINFILENAME		12
+#define	WIDEDIGIT		0
+#define	SIZEUNIT		0
 #if	MSDOS
 # ifdef	BSPATHDELIM
 # define	HISTFILE	"~\\fd.hst"
@@ -132,6 +133,8 @@ extern char *_mtrace_file;
 #define	DIRHIST			50
 #define	SAVEHIST		50
 #define	SAVEDIRHIST		50
+#define	HISTUMASK		022
+#define	DIRHISTUMASK		022
 #define	DIRCOUNTLIMIT		50
 #define	DOSDRIVE		0
 #define	SECOND			0
@@ -141,6 +144,17 @@ extern char *_mtrace_file;
 #define	FUNCLAYOUT		1005
 #define	IMEKEY			-1
 #define	IMEBUFFER		0
+#define	IMELEARNING		16
+#if	MSDOS
+# ifdef	BSPATHDELIM
+# define	FREQFILE	"~\\fd.frq"
+# else
+# define	FREQFILE	"~/fd.frq"
+# endif
+#else	/* !MSDOS */
+#define	FREQFILE		"~/.fd_freq"
+#endif	/* !MSDOS */
+#define	FREQUMASK		022
 #define	ANSICOLOR		0
 #define	ANSIPALETTE		""
 #define	EDITMODE		"emacs"
@@ -335,8 +349,13 @@ extern char *_mtrace_file;
 #define	TW_TOTAL		strsize(TS_TOTAL)
 #define	TW_USED			strsize(TS_USED)
 #define	TW_FREE			strsize(TS_FREE)
+#if	FD >= 3
+#define	D_PAGE			(widedigit ? 4 : 2)
+#define	D_MARK			(widedigit ? 5 : 4)
+#else
 #define	D_PAGE			2
 #define	D_MARK			4
+#endif
 #define	D_INFO			0
 #define	D_SORT			14
 #define	D_FIND			(n_column - C_FIND - W_FIND)
@@ -347,8 +366,15 @@ extern char *_mtrace_file;
 #define	D_TOTAL			15
 #define	D_USED			0
 #define	D_FREE			15
+#if	FD >= 3
+#define	TW_GAP			(widedigit ? 1 : 3)
+#define	TD_PAGE			(widedigit ? 4 : 2)
+#define	TD_MARK			(widedigit ? 5 : 4)
+#else
+#define	TW_GAP			3
 #define	TD_PAGE			2
 #define	TD_MARK			4
+#endif
 #define	TD_INFO			(TC_SIZE - TC_INFO - TW_INFO)
 #define	TD_SORT			0
 #define	TD_FIND			0
@@ -377,9 +403,10 @@ extern char *_mtrace_file;
 #define	TC_FIND			-1
 #define	TC_PATH			2
 #define	TC_SIZE			(n_column - TD_MARK - TW_SIZE - TD_SIZE - 2)
-#define	TC_TOTAL		(TC_PAGE + TW_PAGE + TD_PAGE + 1 + TD_PAGE + 3)
-#define	TC_USED			(TC_TOTAL + TW_TOTAL + TD_TOTAL + 3)
-#define	TC_FREE			(TC_USED + TW_USED + TD_USED + 3)
+#define	TC_TOTAL		(TC_PAGE + TW_PAGE + TD_PAGE + 1 + TD_PAGE \
+				+ TW_GAP)
+#define	TC_USED			(TC_TOTAL + TW_TOTAL + TD_TOTAL + TW_GAP)
+#define	TC_FREE			(TC_USED + TW_USED + TD_USED + TW_GAP)
 
 #define	WSIZE			9
 #define	WSIZE2			8

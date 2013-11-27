@@ -151,6 +151,9 @@ char *(*posixsubstfunc)__P_((CONST char *, int *)) = NULL;
 #ifndef	PATHNOCASE
 int pathignorecase = 0;
 #endif
+#ifndef	_NOVERSCMP
+int versioncomp = 0;
+#endif
 
 static int skipdotfile = 0;
 #if	!defined (USEREGCMP) && !defined (USEREGCOMP) && !defined (USERE_COMP)
@@ -484,6 +487,16 @@ int n;
 	return(strncmp(s1, s2, n));
 }
 #endif	/* !PATHNOCASE */
+
+#ifndef	_NOVERSCMP
+int strverscmp2(s1, s2)
+CONST char *s1, *s2;
+{
+	if (versioncomp) return(Xstrverscmp(s1, s2, pathignorecase));
+
+	return(strpathcmp2(s1, s2));
+}
+#endif	/* !_NOVERSCMP */
 
 #ifdef	FD
 char *underpath(path, dir, len)
@@ -1382,7 +1395,7 @@ int cmppath(vp1, vp2)
 CONST VOID_P vp1;
 CONST VOID_P vp2;
 {
-	return(strpathcmp2(*((char **)vp1), *((char **)vp2)));
+	return(strverscmp2(*((char **)vp1), *((char **)vp2)));
 }
 
 char **evalwild(s, flags)
@@ -1429,7 +1442,7 @@ CONST char *s;
 	u_int n;
 	int i;
 
-	for (i = n = 0; s[i]; i++) n += (u_char)(s[i]);
+	for (i = n = 0; s[i]; i++) n = n * 12345 + (u_char)(s[i]);
 
 	return(n % MAXHASH);
 }

@@ -10,11 +10,15 @@
 #include "hinsi.h"
 #include "func.h"
 
+#if	FD >= 3
+#include "parse.h"
+#include "kconv.h"
+#endif
+
 #define	DICTTBL			"fd-dict.tbl"
 #define	MAXHINSI		16
 #define	FREQMAGIC		0x4446
 #define	FREQVERSION		0x0100
-#define	USERFREQBIAS		16
 #define	dictoffset(n)		((off_t)4 + (off_t)(n) * 4)
 #define	freqoffset(n)		((off_t)2 + 2 + 4 + (off_t)(n) * 4)
 #define	getword(s, n)		(((u_short)((s)[(n) + 1]) << 8) | (s)[n])
@@ -88,9 +92,20 @@ static off_t NEAR nextofs __P_((off_t, int));
 static int NEAR finddict __P_((jisbuf *, int, long *));
 static long NEAR _searchdict __P_((long, kanjitable **, kanjitable *, int));
 static long NEAR uniqkanji __P_((long, kanjitable *));
+# if	FD >= 3
+static VOID NEAR fgetjis __P_((jisbuf *, XFILE *));
+static CONST char *parsejis __P_((jisbuf *, CONST char *));
+# endif
 
 char *dicttblpath = NULL;
 int imebuffer = 0;
+short frequmask = (short)0;
+# if	FD >= 3
+char *freqfile = NULL;
+short imelearning = 0;
+# else
+# define	imelearning	IMELEARNING
+# endif
 
 static kanjitable *kanjilist = NULL;
 static long freqtblent = 0L;
@@ -599,7 +614,7 @@ int flags;
 	if (lck) return(lck);
 
 	freqtblent = 0L;
-	lck = lockopen(file, flags, 0666);
+	lck = lockopen(file, flags, 0666 & ~frequmask);
 	if (!lck || lck -> fd < 0) /*EMPTY*/;
 	else if (fgetword(&w, lck -> fd) < 0 || w != FREQMAGIC
 	|| fgetword(&w, lck -> fd) < 0 || w != FREQVERSION
@@ -623,17 +638,23 @@ static int NEAR findfreq(frp, ofsp)
 freq_t *frp;
 long *ofsp;
 {
+# if	FD < 3
 	char *freqfile;
+# endif
 	freq_t tmp;
 	lockbuf_t *lck;
 	long ofs, min, max;
 	int n;
 
 	if (ofsp) *ofsp = -1L;
+# if	FD < 3
 	freqfile = evalpath(Xstrdup(FREQFILE), 0);
+# endif
 	if (!freqfile || !*freqfile) return(0);
 	lck = openfreqtbl(freqfile, O_BINARY | O_RDONLY);
+# if	FD < 3
 	Xfree(freqfile);
+# endif
 	if (lck -> fd < 0) return(0);
 
 	min = -1L;
@@ -754,11 +775,13 @@ freq_t *frp;
 	VOID_C openfreqtbl(NULL, 0);
 	if (!(lck = openfreqtbl(file, O_BINARY | O_RDWR))) return(-1);
 	Xstrcpy(path, file);
-	if ((fdin = lck -> fd) >= 0) fdout = opentmpfile(path, 0666);
+	if ((fdin = lck -> fd) >= 0)
+		fdout = opentmpfile(path, 0666 & ~frequmask);
 	else {
 		VOID_C openfreqtbl(NULL, 0);
 		lck = lockopen(path,
-			O_BINARY | O_WRONLY | O_CREAT | O_EXCL, 0666);
+			O_BINARY | O_WRONLY | O_CREAT | O_EXCL,
+			0666 & ~frequmask);
 		fdout = (lck) ? lck -> fd : -1;
 	}
 
@@ -806,7 +829,9 @@ freq_t *frp;
 VOID saveuserfreq(kana, kbuf)
 CONST u_short *kana, *kbuf;
 {
+# if	FD < 3
 	char *freqfile;
+# endif
 	freq_t tmp;
 	long argc;
 
@@ -822,10 +847,14 @@ CONST u_short *kana, *kbuf;
 	tmp.kanji.max = kanjilist[argc].kmatch;
 	tmp.freq = (u_short)1;
 
+# if	FD < 3
 	freqfile = evalpath(Xstrdup(FREQFILE), 0);
+# endif
 	if (!freqfile || !*freqfile) return;
 	VOID_C adduserfreq(freqfile, &tmp);
+# if	FD < 3
 	Xfree(freqfile);
+# endif
 }
 
 static int cmpjis(jp1, jp2)
@@ -913,12 +942,16 @@ int fd;
 		return(-1);
 	}
 
+# if	FD >= 3
+	if (imelearning <= 0) return(0);
+# endif
+
 	tmp.kana.buf = kp1 -> k.buf;
 	tmp.kana.max = kp1 -> k.max;
 	tmp.kanji.buf = kp2 -> k.buf;
 	tmp.kanji.max = kp2 -> len;
 	if (findfreq(&tmp, NULL) <= 0 || tmp.freq <= 0) return(0);
-	freq = ((long)(tmp.freq) + USERFREQBIAS) * USERFREQBIAS;
+	freq = ((long)(tmp.freq) + imelearning) * imelearning;
 	freq += kp1 -> freq;
 	if (freq > MAXUTYPE(u_short)) freq = MAXUTYPE(u_short);
 	kp1 -> freq = (u_short)freq;
@@ -1269,4 +1302,109 @@ int len;
 
 	return(list);
 }
+
+# if	FD >= 3
+static NEAR VOID fgetjis(jp, fp)
+jisbuf *jp;
+XFILE *fp;
+{
+	char buf[MAXKLEN * R_MAXKANA + 1];
+	int n;
+
+	for (n = 0; n < jp -> max; n++) {
+		VOID_C jis2str(buf, jp -> buf[n]);
+		kanjifputs(buf, fp);
+	}
+}
+
+int fgetuserfreq(path, fp)
+CONST char *path;
+XFILE *fp;
+{
+	freq_t tmp;
+	lockbuf_t *lck;
+	long n;
+
+	VOID_C openfreqtbl(NULL, 0);
+	if (!(lck = openfreqtbl(path, O_BINARY | O_RDONLY))) return(-1);
+	if (lck -> fd < 0) {
+		VOID_C openfreqtbl(NULL, 0);
+		errno = ENOENT;
+		return(-1);
+	}
+
+	for (n = 0; n < freqtblent; n++) {
+		if (fseekfreq(n, lck -> fd) < 0) break;
+		if (fgetfreqbuf(&tmp, lck -> fd) < 0) break;
+
+		fgetjis(&(tmp.kana), fp);
+		Xfree(tmp.kana.buf);
+		Xfputc('\t', fp);
+		fgetjis(&(tmp.kanji), fp);
+		Xfree(tmp.kanji.buf);
+		Xfprintf(fp, "\t%d\n", tmp.freq);
+	}
+	VOID_C openfreqtbl(NULL, 0);
+
+	return((n < freqtblent) ? -1 : 0);
+}
+
+static CONST char *parsejis(jp, s)
+jisbuf *jp;
+CONST char *s;
+{
+	u_short *kbuf;
+	char *cp;
+	int n;
+
+	for (n = 0; s[n] && s[n] != '\t'; n++) /*EMPTY*/;
+	if (n <= 0) return(NULL);
+
+	cp = Xstrndup(s, n);
+	for (s += n; *s == '\t'; s++) /*EMPTY*/;
+
+	renewkanjiconv(&cp, defaultkcode, DEFCODE, L_INPUT);
+	n = strlen(cp);
+	kbuf = (u_short *)Xmalloc(n * sizeof(u_short));
+	n = str2jis(kbuf, n, cp);
+	Xfree(cp);
+	jp -> buf = kbuf;
+	jp -> max = n;
+
+	return(s);
+}
+
+int fputuserfreq(path, fp)
+CONST char *path;
+XFILE *fp;
+{
+	freq_t tmp;
+	CONST char *cp;
+	char *line;
+	int n, freq;
+
+	VOID_C openfreqtbl(NULL, 0);
+	n = 0;
+	while ((line = Xfgets(fp))) {
+		tmp.kana.buf = tmp.kanji.buf = NULL;
+		for (cp = line; *cp == '\t'; cp++) /*EMPTY*/;
+		if ((cp = parsejis(&(tmp.kana), cp))
+		&& (cp = parsejis(&(tmp.kanji), cp))
+		&& (freq = Xatoi(cp)) >= 0) {
+			if (freq > MAXUTYPE(u_short)) freq = MAXUTYPE(u_short);
+			tmp.freq = (u_short)freq;
+			n = adduserfreq(path, &tmp);
+		}
+
+		Xfree(tmp.kana.buf);
+		Xfree(tmp.kanji.buf);
+		Xfree(line);
+
+		if (n < 0) break;
+	}
+	VOID_C openfreqtbl(NULL, 0);
+
+	return(n);
+}
+# endif	/* FD >= 3 */
 #endif	/* DEP_IME */

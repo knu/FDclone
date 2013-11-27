@@ -329,6 +329,8 @@ extern VOID freedefine __P_((VOID_A));
 #define	BL_CHECKID		"checkid"
 #define	BL_EVALMACRO		"evalmacro"
 #define	BL_KCONV		"kconv"
+#define	BL_GETFREQ		"getfreq"
+#define	BL_SETFREQ		"setfreq"
 #define	BL_READLINE		"readline"
 #define	BL_YESNO		"yesno"
 #define	BL_SAVETTY		"savetty"
@@ -406,7 +408,11 @@ extern VOID discarddicttable __P_((VOID_A));
 extern VOID saveuserfreq __P_((CONST u_short *, CONST u_short *));
 extern VOID freekanjilist __P_((u_short **));
 extern u_short **searchdict __P_((u_short *, int));
-#endif
+# if	FD >= 3
+extern int fgetuserfreq __P_((CONST char *, XFILE *));
+extern int fputuserfreq __P_((CONST char *, XFILE *));
+# endif
+#endif	/* DEP_IME */
 
 /* info.c */
 extern VOID help __P_((int));

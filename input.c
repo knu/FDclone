@@ -1643,7 +1643,7 @@ char *CONST *argv;
 			if (maxlen < len) maxlen = len;
 		}
 		i = sorton;
-		sorton = 1;
+		sorton = SRT_FILENAME;
 		qsort(selectlist, argc, sizeof(namelist), cmplist);
 		sorton = i;
 

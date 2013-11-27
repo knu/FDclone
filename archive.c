@@ -23,6 +23,9 @@
 extern char *unixgetcurdir __P_((char *, int));
 #endif
 
+#if	FD >= 3
+extern int widedigit;
+#endif
 extern int mark;
 #if	FD >= 2
 extern int sorttype;

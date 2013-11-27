@@ -1,3 +1,15 @@
+Ver. 3.01a	Change 'IMELARNING' internal variable to 'IMELEARNING'.
+ (06/08/13)	Sorting rule for tree screen is adjusted to browser screen.
+		Bug that any invalid UID/GID breaks file list is fixed.
+		Bug that file list is not updated with lost directory is fixed.
+		Failure to compile with environments using termio is fixed.
+
+Ver. 3.01	Add 'WIDEDIGIT', 'SIZEUNIT' internal variables.
+ (08/03/12)	Add 'HISTUMASK', 'DIRHISTUMASK' internal variables.
+		Add 'IMELARNING', 'FREQFILE', 'FREQUMASK' internal variables.
+		Add 'getfreq', 'setfreq' builtins.
+		The object tables of 'IMEBUFFER' internal variable is extended.
+
 Ver. 3.00m	Add the identifier UTF8LANG for compile.
  (07/27/12)	Abortion when save file on customizer with some OS is fixed.
 		Wrong priority with IME translation candidates is fixed.

@@ -96,6 +96,7 @@ CONST char *promptstr = NULL;
 char **history[HISTTYPES];
 char *histfile[HISTTYPES];
 short histno[HISTTYPES];
+short histumask[HISTTYPES];
 short histsize[HISTTYPES];
 short savehist[HISTTYPES];
 int n_args = 0;
@@ -1617,7 +1618,7 @@ int flags;
 		for (n = 0; n < HISTTYPES; n++) {
 			history[n] = NULL;
 			histfile[n] = NULL;
-			histno[n] =
+			histno[n] = histumask[n] =
 			histsize[n] = savehist[n] = histbufsize[n] = (short)0;
 		}
 		return(0);
@@ -1716,7 +1717,7 @@ int n;
 	if (!histfile[n] || !*(histfile[n]) || savehist[n] <= 0) return(0);
 	if (!history[n] || !history[n][0]) return(-1);
 	lck = lockfopen(histfile[n], "w",
-		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC, 0);
+		O_BINARY | O_WRONLY | O_CREAT | O_TRUNC, histumask[n]);
 	if (!lck || !(lck -> fp)) {
 		lockclose(lck);
 		return(-1);

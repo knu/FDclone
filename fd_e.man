@@ -1,10 +1,10 @@
 .\"
-.\" Copyright (C) 1995-2012 Takashi SHIRAI
+.\" Copyright (C) 1995-2013 Takashi SHIRAI
 .\"                    <shirai@unixusers.net>
 .\"
-.\" @(#)fd.1   3.00m 07/27/12
+.\" @(#)fd.1   3.01a 06/08/13
 .\"   fd - File & Directory maintenance tool
-.TH FD 1 "July 27, 2012"
+.TH FD 1 "June 8, 2013"
 .de sh
 .br
 .PP
@@ -175,7 +175,7 @@ The clock at the right end is updated every
 seconds.
 .IP \fB2\fP
 The information line.
-It displays informations in this order:
+It displays information in this order:
 the current page (and the total pages),
 the number of marks (ant the total marks),
 the sorted type,
@@ -783,7 +783,9 @@ is displayed on the left end of the function line.
 .IP "\fBSwitch file type symbol mode\fP"
 Switch to display the symbol which means the file type
 after the filename in the file list,
-like as the display in -F option of
+like as the display in
+.B \-F
+option of
 .BR ls (1).
 It is toggle to switch if display the symbol or not.
 The each symbol means the following.
@@ -2211,6 +2213,23 @@ If
 is omitted,
 the current job is continued in the foreground.
 .RE
+.IP "\fBgetfreq\fP [\fIfile\fR]"
+Output the contents of the translation frequency file,
+specified by
+.IR file ,
+to the standard output for the users Kana-Kanji translation learning.
+The output format provides one record per line,
+which consists of "Yomi-Gana", "word" and "frequency" separated by tab.
+You can use this output as the argument of
+.B setfreq
+to import the frequency information.
+If
+.I file
+is omitted,
+it is regarded as the translation frequency file specified by
+.B FREQFILE
+the internal variable.
+.B (UNIX)
 .IP "\fBgetkey\fP [\fInum\fR]"
 Get the key code sequence for the pushed key.
 It prompts after executed,
@@ -2825,7 +2844,7 @@ any internal variable automatically when it is defined.
 .IP "\fB\-b\fP"
 When a background job has been terminated,
 its status report will be displayed immediately.
-there is no effect when the job control is not enable.
+there is no effect when the job control is not enabled.
 .IP "\fB\-C\fP"
 Prevent overwriting to any existent files in redirection.
 .IP "\fB\-e\fP"
@@ -3006,6 +3025,24 @@ You can confirm what drive name is valid by
 .B printdrv
 command.
 But any hard disk is registered as readonly, for security.
+.IP "\fBsetfreq\fP [\fIfile\fR]"
+Append the frequency information inputted from the standard input
+to the translation frequency file,
+specified by
+.IR file ,
+for the users Kana-Kanji translation learning.
+The input format is based on the output format of
+.BR getfreq .
+If you want to replace,
+rather than to append,
+you must remove the translation frequency file in advance.
+If
+.I file
+is omitted,
+it is regarded as the translation frequency file specified by
+.B FREQFILE
+the internal variable.
+.B (UNIX)
 .IP "\fBsetroman\fP [\fB-c\fP] [\fB-r\fP] [\fB-f\fP \fIfile\fR] [\fIroman\fR [\fIkanji\fR]]"
 Setup the Roman-Kana translation table for the Kana-Kanji IME mode.
 It means binding
@@ -3656,7 +3693,7 @@ and the default port number for
 .B http
 is
 .BR 80 .
-You can specify account informations to connect the remote host as
+You can specify account information to connect the remote host as
 .I user
 and
 .IR password .
@@ -4370,7 +4407,7 @@ or when
 macro is specified.
 .SS Customize
 You can customize
-.fd
+.B fd
 as the following ways.
 If you specify some configuration in multiple ways overlapped,
 it is prior in this order.
@@ -4790,6 +4827,16 @@ which can be referred by the directory input line.
 Unless you specify it,
 the directory history is not loaded nor saved.
 The default value is not specified.
+.IP "\fBDIRHISTUMASK\fP"
+Specify the file creation mask with octal expression
+for the directory history file.
+It is used only if no existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
 .IP "\fBDISPLAYMODE\fP"
 Specify the filename display mode of the file list when
 .B fd
@@ -4919,6 +4966,28 @@ etc. among them are the Kanji codes used in Samba.
 default	no convert
 .fi
 .RE
+.IP "\fBFREQFILE\fP"
+Specify the translation frequency file
+for the users Kana-Kanji translation learning.
+If the filename is not defined,
+the frequency information will not be saved nor be referred.
+The default value is
+.BR ~/.fd_freq .
+.B (UNIX)
+.IP "\fBFREQUMASK\fP"
+Specify the file creation mask with octal expression
+for the translation frequency file
+for the users Kana-Kanji translation learning.
+The updated translation frequency file will be rebuilt,
+not be overwritten,
+so that it is used even if existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
+.B (UNIX)
 .IP "\fBFTPADDRESS\fP"
 Specify the mail address used as the password for anonymous FTP,
 when the URL drive connects the FTP host.
@@ -4941,7 +5010,7 @@ or
 .B http
 as
 .IR scheme .
-You can specify account informations to connect the proxy server as
+You can specify account information to connect the proxy server as
 .I user
 and
 .IR password .
@@ -4995,6 +5064,16 @@ The default value is
 If this value is
 .BR 0 ,
 you can refer to no command history.
+.IP "\fBHISTUMASK\fP"
+Specify the file creation mask with octal expression
+for the command history file.
+It is used only if no existent file exists.
+But the mask value set by
+.B umask
+the builtin command is prior,
+then actual mask value is the logical OR of this value and
+.B umask
+value.
 .IP "\fBHOME\fP\(**"
 Specify the default value
 when no argument of
@@ -5024,7 +5103,7 @@ You can specify
 .B http
 as
 .IR scheme .
-You can specify account informations to connect the proxy server as
+You can specify account information to connect the proxy server as
 .I user
 and
 .IR password .
@@ -5043,14 +5122,30 @@ Any value except
 and null effects valid.
 .B (UNIX)
 .IP "\fBIMEBUFFER\fP"
-Hold the Kana-Kanji translation table on memory.
+Specify whether if the Kana-Kanji translation table is held on memory or not.
 It will be fast to translate strings from Kana to Kanji.
 You should set this if you have enough memory.
-The table held on memory is only the Hinsi information table,
-then you will have no effect when you use the dictionary file with no Hinsi information.
-Any value except
-.B 0
-and null effects valid.
+The following are specifiable values.
+.B (UNIX)
+.RS 18
+.ta 0.5i 1i
+.nf
+\fB0\fP	not hold on memory
+\fB1\fP	only the Hinsi information table
+\fB2\fP	also includes the index tables
+\fB3\fP	hold all tables
+.fi
+.RE
+.IP "\fBIMELEARNING\fP"
+Specify the learning level with the translation frequency file
+for the users Kana-Kanji translation learning.
+The larger value will increase the importance of the frequency information.
+If the value is
+.BR 0 ,
+the frequency information is only saved,
+without any reference.
+The default value is
+.BR 16 .
 .B (UNIX)
 .IP "\fBIMEKEY\fP"
 Specify the key to toggle the direct input mode and the Kana-Kanji IME mode when you input some strings.
@@ -5245,7 +5340,7 @@ default	the value of \fBLANGUAGE\fP
 Specify the minimum character length of filename display area
 in the file list.
 When the area enough to be specified here cannot be obtained,
-the informations are reduced in the order of UID, GID, timestamp, size.
+the information is reduced in the order of UID, GID, timestamp, size.
 The default value is
 .B 12
 characters.
@@ -5270,7 +5365,7 @@ which is invoked first.
 .B (UNIX)
 .IP "\fBPRECEDEPATH\fP"
 Specify the file preceding function,
-which displays only filenames before obtaining their file informations,
+which displays only filenames before obtaining their file information,
 for the directory which has a lot of files like as /dev.
 You can specify multiple pathnames separating with
 .RB ' : '.
@@ -5280,7 +5375,7 @@ then the file preceding function is valid
 in all of the directories under that directory.
 When the file preceding function is effective,
 any files are not sorted in that directory,
-and file informations are obtained file by file while waiting the key input.
+and file information is obtained file by file while waiting the key input.
 No pathname is specified by default.
 .IP "\fBPRECOPYMENU\fP"
 Display the menu in advance,
@@ -5507,6 +5602,13 @@ but the sum of disk block size occupied actually.
 Any value except
 .B 0
 and null effects valid.
+.IP "\fBSIZEUNIT\fP"
+Represent the huge file size which overflows the displayed digit
+with the prefix of the SI unit,
+as "KB", "MB" and so on.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBSORTTREE\fP"
 Sort directories in the tree screen.
 The sorted type specified by
@@ -5661,10 +5763,10 @@ default	no convert
 Specify communication options,
 when the URL drive communicates with the host.
 You can select individually whether if PASV, PORT, MDTM, FEAT each commands for the FTP communication are limited or not,
-or whether if the exact file informations are need or not.
+or whether if the exact file information is need or not.
 On the HTTP protocol,
 you will get the timestamp and size of files with some rounding error in bulk.
-If you need the exact informations,
+If you need the exact information,
 the operations by file will spend the more communication time.
 The default value is
 .BR 0 .
@@ -5750,6 +5852,21 @@ Any value except
 .B 0
 and null effects valid.
 .B (UNIX)
+.IP "\fBWIDEDIGIT\fP"
+Widen the displayed digits for the number of pages and files.
+The standard displayed digits for the number of pages and files are
+.B 2
+and
+.B 4
+respectively.
+This expands them into
+.B 4
+and
+.B 5
+respectively.
+Any value except
+.B 0
+and null effects valid.
 .IP "\fBWRITEFS\fP"
 Forbid use of
 .B WRITE_DIR
@@ -5856,7 +5973,8 @@ The individual initial configuration file for
 The command history file by default
 .TP
 .B ~/.fd_freq
-The translation frequency file for the users Kana-Kanji translation learning
+The translation frequency file by default
+for the users Kana-Kanji translation learning
 .TP
 .B /bin/sh
 The user shell when
@@ -5935,4 +6053,4 @@ The symbolic links in an archive file cannot be unpacked individually.
 
 The user interface is cheap.
 .SH COPYRIGHT
-Copyright (C) 1995-2012 by Takashi SHIRAI
+Copyright (C) 1995-2013 by Takashi SHIRAI

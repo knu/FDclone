@@ -95,7 +95,7 @@ DDEESSCCRRIIPPTTIIOONN
      11         The title line.  The clock at the right end is
                updated every 1100 seconds.
 
-     22         The information line.  It displays informations in
+     22         The information line.  It displays information in
                this order: the current page (and the total
                pages), the number of marks (ant the total marks),
                the sorted type, the pattern string for file
@@ -650,7 +650,7 @@ DDEESSCCRRIIPPTTIIOONN
         SSwwiittcchh ffiillee ttyyppee ssyymmbbooll mmooddee
              Switch to display the symbol which means the file
              type after the filename in the file list, like as
-             the display in -F option of llss(1).  It is toggle to
+             the display in --FF option of llss(1).  It is toggle to
              switch if display the symbol or not.  The each sym-
              bol means the following.
                   //    directory
@@ -1445,6 +1445,19 @@ DDEESSCCRRIIPPTTIIOONN
                    If _j_o_b is omitted, the current job is contin-
                    ued in the foreground.
 
+     ggeettffrreeqq [_f_i_l_e]
+                   Output the contents of the translation fre-
+                   quency file, specified by _f_i_l_e, to the stan-
+                   dard output for the users Kana-Kanji trans-
+                   lation learning.  The output format provides
+                   one record per line, which consists of "Yomi-
+                   Gana", "word" and "frequency" separated by tab.
+                   You can use this output as the argument of
+                   sseettffrreeqq to import the frequency information.
+                   If _f_i_l_e is omitted, it is regarded as the
+                   translation frequency file specified by
+                   FFRREEQQFFIILLEE the internal variable.  ((UUNNIIXX))
+
      ggeettkkeeyy [_n_u_m]  Get the key code sequence for the pushed key.
                    It prompts after executed, and displays the
                    key code sequence for the key which you push
@@ -1787,7 +1800,7 @@ DDEESSCCRRIIPPTTIIOONN
                         minated, its status report will be
                         displayed immediately.  there is no
                         effect when the job control is not
-                        enable.
+                        enabled.
                    --CC   Prevent overwriting to any existent files
                         in redirection.
                    --ee   Exit immediately when any command returns
@@ -1911,6 +1924,19 @@ DDEESSCCRRIIPPTTIIOONN
                    ignored.  You can confirm what drive name is
                    valid by pprriinnttddrrvv command.  But any hard disk
                    is registered as readonly, for security.
+
+     sseettffrreeqq [_f_i_l_e]
+                   Append the frequency information inputted from
+                   the standard input to the translation fre-
+                   quency file, specified by _f_i_l_e, for the users
+                   Kana-Kanji translation learning.  The input
+                   format is based on the output format of
+                   ggeettffrreeqq.  If you want to replace, rather than
+                   to append, you must remove the translation fre-
+                   quency file in advance.  If _f_i_l_e is omitted,
+                   it is regarded as the translation frequency
+                   file specified by FFRREEQQFFIILLEE the internal vari-
+                   able.  ((UUNNIIXX))
 
      sseettrroommaann [--cc] [--rr] [--ff _f_i_l_e] [_r_o_m_a_n [_k_a_n_j_i]]
                    Setup the Roman-Kana translation table for the
@@ -2287,7 +2313,7 @@ DDEESSCCRRIIPPTTIIOONN
      TCP port number as _p_o_r_t.  If _p_o_r_t is omitted, the default
      port number is used.  The default port number for ffttpp is 2211,
      and the default port number for hhttttpp is 8800.  You can specify
-     account informations to connect the remote host as _u_s_e_r and
+     account information to connect the remote host as _u_s_e_r and
      _p_a_s_s_w_o_r_d.  If _u_s_e_r is omitted, the anonymous FTP connection
      will be used with ffttpp, or you will be queried as needed with
      hhttttpp.  If _p_a_s_s_w_o_r_d is omitted, you will be queried as needed.
@@ -2727,7 +2753,7 @@ DDEESSCCRRIIPPTTIIOONN
      cuting command, or when %%NN macro is specified.
 
      CCuussttoommiizzee
-     You can customize as the following ways.  If you specify
+     You can customize ffdd as the following ways.  If you specify
      some configuration in multiple ways overlapped, it is prior
      in this order.
 
@@ -3028,6 +3054,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    history is not loaded nor saved.  The default
                    value is not specified.
 
+     DDIIRRHHIISSTTUUMMAASSKK  Specify the file creation mask with octal
+                   expression for the directory history file.  It
+                   is used only if no existent file exists.  But
+                   the mask value set by uummaasskk the builtin com-
+                   mand is prior, then actual mask value is the
+                   logical OR of this value and uummaasskk value.
+
      DDIISSPPLLAAYYMMOODDEE   Specify the filename display mode of the file
                    list when ffdd is invoked.  Each of the symbolic
                    link mode, the file type symbol mode and the
@@ -3124,6 +3157,22 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                        UUTTFF88--iiccoonnvv     UTF-8 for iconv
                        default        no convert
 
+     FFRREEQQFFIILLEE      Specify the translation frequency file for the
+                   users Kana-Kanji translation learning.  If the
+                   filename is not defined, the frequency infor-
+                   mation will not be saved nor be referred.  The
+                   default value is ~~//..ffdd_ffrreeqq.  ((UUNNIIXX))
+
+     FFRREEQQUUMMAASSKK     Specify the file creation mask with octal
+                   expression for the translation frequency file
+                   for the users Kana-Kanji translation learning.
+                   The updated translation frequency file will be
+                   rebuilt, not be overwritten, so that it is
+                   used even if existent file exists.  But the
+                   mask value set by uummaasskk the builtin command is
+                   prior, then actual mask value is the logical
+                   OR of this value and uummaasskk value.  ((UUNNIIXX))
+
      FFTTPPAADDDDRREESSSS    Specify the mail address used as the password
                    for anonymous FTP, when the URL drive connects
                    the FTP host.  The default value is FFDDcclloonnee@@.
@@ -3140,7 +3189,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    the URL drive connects the FTP host.  The URL
                    format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
                    _p_o_r_t].  You can specify ffttpp or hhttttpp as _s_c_h_e_m_e.
-                   You can specify account informations to con-
+                   You can specify account information to con-
                    nect the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.
                    The default value is not specified.  ((UUNNIIXX))
 
@@ -3172,6 +3221,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    this value is 00, you can refer to no command
                    history.
 
+     HHIISSTTUUMMAASSKK     Specify the file creation mask with octal
+                   expression for the command history file.  It
+                   is used only if no existent file exists.  But
+                   the mask value set by uummaasskk the builtin com-
+                   mand is prior, then actual mask value is the
+                   logical OR of this value and uummaasskk value.
+
      HHOOMMEE*         Specify the default value when no argument of
                    ccdd the builtin command is specified.  When
                    invoked as a login shell, if this variable is
@@ -3197,7 +3253,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    the URL drive connects the HTTP host.  The URL
                    format is _s_c_h_e_m_e::////[_u_s_e_r[::_p_a_s_s_w_o_r_d]@@]_h_o_s_t[::
                    _p_o_r_t].  You can specify hhttttpp as _s_c_h_e_m_e.  You
-                   can specify account informations to connect
+                   can specify account information to connect
                    the proxy server as _u_s_e_r and _p_a_s_s_w_o_r_d.  The
                    default value is not specified.  ((UUNNIIXX))
 
@@ -3210,14 +3266,23 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    compared.  Any value except 00 and null effects
                    valid.  ((UUNNIIXX))
 
-     IIMMEEBBUUFFFFEERR     Hold the Kana-Kanji translation table on mem-
-                   ory.  It will be fast to translate strings
-                   from Kana to Kanji.  You should set this if
-                   you have enough memory.  The table held on mem-
-                   ory is only the Hinsi information table, then
-                   you will have no effect when you use the dic-
-                   tionary file with no Hinsi information.  Any
-                   value except 00 and null effects valid.  ((UUNNIIXX))
+     IIMMEEBBUUFFFFEERR     Specify whether if the Kana-Kanji translation
+                   table is held on memory or not.  It will be
+                   fast to translate strings from Kana to Kanji.
+                   You should set this if you have enough memory.
+                   The following are specifiable values.  ((UUNNIIXX))
+                       00    not hold on memory
+                       11    only the Hinsi information table
+                       22    also includes the index tables
+                       33    hold all tables
+
+     IIMMEELLEEAARRNNIINNGG   Specify the learning level with the trans-
+                   lation frequency file for the users Kana-Kanji
+                   translation learning.  The larger value will
+                   increase the importance of the frequency infor-
+                   mation.  If the value is 00, the frequency
+                   information is only saved, without any refer-
+                   ence.  The default value is 1166.  ((UUNNIIXX))
 
      IIMMEEKKEEYY        Specify the key to toggle the direct input
                    mode and the Kana-Kanji IME mode when you in-
@@ -3353,7 +3418,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
      MMIINNFFIILLEENNAAMMEE   Specify the minimum character length of
                    filename display area in the file list.  When
                    the area enough to be specified here cannot be
-                   obtained, the informations are reduced in the
+                   obtained, the information is reduced in the
                    order of UID, GID, timestamp, size.  The
                    default value is 1122 characters.
 
@@ -3375,7 +3440,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
 
      PPRREECCEEDDEEPPAATTHH   Specify the file preceding function, which
                    displays only filenames before obtaining their
-                   file informations, for the directory which has
+                   file information, for the directory which has
                    a lot of files like as /dev.  You can specify
                    multiple pathnames separating with '::'.  You
                    are enough to specify only the top directory
@@ -3384,7 +3449,7 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    valid in all of the directories under that
                    directory.  When the file preceding function
                    is effective, any files are not sorted in that
-                   directory, and file informations are obtained
+                   directory, and file information is obtained
                    file by file while waiting the key input.  No
                    pathname is specified by default.
 
@@ -3569,6 +3634,11 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    block size occupied actually.  Any value
                    except 00 and null effects valid.
 
+     SSIIZZEEUUNNIITT      Represent the huge file size which overflows
+                   the displayed digit with the prefix of the SI
+                   unit, as "KB", "MB" and so on.  Any value ex-
+                   cept 00 and null effects valid.
+
      SSOORRTTTTRREEEE      Sort directories in the tree screen.  The
                    sorted type specified by SSOORRTT_DDIIRR is used,
                    but they can not be sorted when it is "by
@@ -3680,10 +3750,10 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    lect individually whether if PASV, PORT, MDTM,
                    FEAT each commands for the FTP communication
                    are limited or not, or whether if the exact
-                   file informations are need or not.  On the
+                   file information is need or not.  On the
                    HTTP protocol, you will get the timestamp and
                    size of files with some rounding error in bulk.
-                   If you need the exact informations, the opera-
+                   If you need the exact information, the opera-
                    tions by file will spend the more communica-
                    tion time.  The default value is 00.  The fol-
                    lowing are specifiable values.  ((UUNNIIXX))
@@ -3749,6 +3819,13 @@ EENNVVIIRROONNMMEENNTT VVAARRIIAABBLLEESS
                    priority is always LOG_INFO.  LOG_USER is used
                    as the facirity if it can be specified.  Any
                    value except 0 and null effects valid.  ((UUNNIIXX))
+
+     WWIIDDEEDDIIGGIITT     Widen the displayed digits for the number of
+                   pages and files.  The standard displayed dig-
+                   its for the number of pages and files are 22
+                   and 44 respectively.  This expands them into 44
+                   and 55 respectively.  Any value except 00 and
+                   null effects valid.
 
      WWRRIITTEEFFSS       Forbid use of WWRRIITTEE_DDIIRR command.  If the value
                    is 11, the directory is written only when the
@@ -3821,7 +3898,8 @@ FFIILLEESS
      ~~//..ffdd_hhiissttoorryy
                The command history file by default
      ~~//..ffdd_ffrreeqq
-               The translation frequency file for the users Kana-
+               The translation frequency file by default for the
+               users Kana-Kanji translation learning
                Kanji translation learning
      //bbiinn//sshh   The user shell when SSHHEELLLL the environment variable
                is undefined
@@ -3871,4 +3949,4 @@ BBUUGGSS
      The user interface is cheap.
 
 CCOOPPYYRRIIGGHHTT
-     Copyright (C) 1995-2012 by Takashi SHIRAI
+     Copyright (C) 1995-2013 by Takashi SHIRAI

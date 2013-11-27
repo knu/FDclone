@@ -65,6 +65,7 @@ static int NEAR realrmdir __P_((CONST char *));
 #define	realmkdir		Xmkdir
 #define	realrmdir		Xrmdir
 #endif
+static int NEAR retrievecwd __P_((char *, CONST char *));
 static int NEAR cpfile __P_((CONST char *, CONST char *,
 		struct stat *, struct stat *));
 static VOID changemes __P_((VOID_A));
@@ -179,64 +180,62 @@ CONST VOID_P vp2;
 
 	if (!isdir(namep1) && isdir(namep2)) return(1);
 	if (isdir(namep1) && !isdir(namep2)) return(-1);
-	if ((tmp = isdotdir(namep2 -> name) - isdotdir(namep1 -> name)))
-		return(tmp);
+	tmp = isdotdir(namep2 -> name) - isdotdir(namep1 -> name);
+	if (tmp) return(tmp);
+	cp1 = namep1 -> name;
+	cp2 = namep2 -> name;
 
-	switch (sorton & 7) {
-		case 5:
-			tmp = (int)strlen(namep1 -> name)
-				- (int)strlen(namep2 -> name);
+	tmp = 0;
+	switch (sorton & SRT_TYPE) {
+		case SRT_LENGTH:
+			tmp = (int)strlen(cp1) - (int)strlen(cp2);
 			if (tmp) break;
 /*FALLTHRU*/
-		case 1:
-			tmp = strpathcmp2(namep1 -> name, namep2 -> name);
+		case SRT_FILENAME:
+			tmp = strverscmp2(cp1, cp2);
 			break;
-		case 2:
+		case SRT_EXTENSION:
 			if (isdir(namep1)) {
-				tmp = strpathcmp2(namep1 -> name,
-					namep2 -> name);
+				tmp = strverscmp2(cp1, cp2);
 				break;
 			}
-			cp1 = namep1 -> name + strlen(namep1 -> name);
-			cp2 = namep2 -> name + strlen(namep2 -> name);
+			cp1 += strlen(cp1);
+			cp2 += strlen(cp2);
 			for (;;) {
 				while (cp1 > namep1 -> name)
 					if (*(--cp1) == '.') break;
 				while (cp2 > namep2 -> name)
 					if (*(--cp2) == '.') break;
-				if (*cp2 != '.') {
-					tmp = (*cp1 == '.');
+				if (cp2 <= namep2 -> name) {
+					tmp = (cp1 > namep1 -> name) ? 1 : 0;
 					break;
 				}
-				else if (*cp1 != '.') {
+				if (cp1 <= namep1 -> name) {
 					tmp = -1;
 					break;
 				}
-				if ((tmp = strpathcmp2(cp1 + 1, cp2 + 1)))
-					break;
+				tmp = strverscmp2(cp1 + 1, cp2 + 1);
+				if (tmp) break;
 			}
 			break;
-		case 3:
-			if (isdir(namep1))
-				tmp = strpathcmp2(namep1 -> name,
-					namep2 -> name);
-			else if (namep1 -> st_size == namep2 -> st_size)
-				tmp = 0;
-			else tmp = (namep1 -> st_size > namep2 -> st_size)
-				? 1 : -1;
+		case SRT_SIZE:
+			if (isdir(namep1)) tmp = strverscmp2(cp1, cp2);
+			else if (namep1 -> st_size < namep2 -> st_size)
+				tmp = -1;
+			else if (namep1 -> st_size > namep2 -> st_size)
+				tmp = 1;
 			break;
-		case 4:
-			if (namep1 -> st_mtim == namep2 -> st_mtim)
-				tmp = 0;
-			else tmp = (namep1 -> st_mtim > namep2 -> st_mtim)
-				? 1 : -1;
+		case SRT_DATE:
+			if (namep1 -> st_mtim < namep2 -> st_mtim)
+				tmp = -1;
+			else if (namep1 -> st_mtim > namep2 -> st_mtim)
+				tmp = 1;
 			break;
 		default:
-			tmp = 0;
 			break;
 	}
 
-	if (sorton > 7) tmp = -tmp;
+	if (sorton & SRT_DESC) tmp = -tmp;
 	if (!tmp) tmp = namep1 -> ent - namep2 -> ent;
 
 	return(tmp);
@@ -253,26 +252,25 @@ CONST VOID_P vp2;
 
 	tp1 = (treelist *)vp1;
 	tp2 = (treelist *)vp2;
-	if (!(tp1 -> name)) return(1);
+	if (!(tp1 -> name)) return((tp2 -> name) ? 1 : 0);
 	if (!(tp2 -> name)) return(-1);
-	switch (sorton & 7) {
-		case 1:
-			tmp = strpathcmp2(tp1 -> name, tp2 -> name);
+	cp1 = tp1 -> name;
+	cp2 = tp2 -> name;
+
+	tmp = 0;
+	switch (sorton & SRT_TYPE) {
+		case SRT_LENGTH:
+			tmp = (int)strlen(cp1) - (int)strlen(cp2);
+			if (tmp) break;
+/*FALLTHRU*/
+		case SRT_FILENAME:
+		case SRT_EXTENSION:
+			tmp = strverscmp2(cp1, cp2);
 			break;
-		case 2:
-			if ((cp1 = Xstrrchr(tp1 -> name, '.'))) cp1++;
-			else cp1 = nullstr;
-			if ((cp2 = Xstrrchr(tp2 -> name, '.'))) cp2++;
-			else cp2 = nullstr;
-			tmp = strpathcmp2(cp1, cp2);
-			break;
-		case 3:
-		case 4:
 		default:
-			tmp = 0;
 			break;
 	}
-	if (sorton > 7) tmp = -tmp;
+	if (sorton & SRT_DESC) tmp = -tmp;
 
 	return(tmp);
 }
@@ -838,6 +836,15 @@ CONST char *path;
 }
 #endif	/* DEP_PSEUDOPATH */
 
+static int NEAR retrievecwd(cwd, path)
+char *cwd;
+CONST char *path;
+{
+	if (!path || realchdir(path) < 0 || !realgetwd(cwd)) return(-1);
+
+	return(0);
+}
+
 VOID lostcwd(path)
 char *path;
 {
@@ -847,16 +854,16 @@ char *path;
 
 	duperrno = errno;
 	if (!path) path = buf;
-
-	if (path != fullpath && realchdir(fullpath) >= 0 && realgetwd(path))
-		cp = NOCWD_K;
-#ifdef	DEP_PSEUDOPATH
-	else if (unixpath && realchdir(unixpath) >= 0 && realgetwd(path))
-		cp = NOPSU_K;
+#ifdef	FAKEUNINIT
+	cp = NULL;	/* fake for -Wuninitialized */
 #endif
-	else if ((cp = gethomedir()) && realchdir(cp) >= 0 && realgetwd(path))
-		cp = GOHOM_K;
-	else if (realchdir(rootpath) >= 0 && realgetwd(path)) cp = GOROT_K;
+
+	if (path != fullpath && retrievecwd(path, fullpath) >= 0) cp = NOCWD_K;
+#ifdef	DEP_PSEUDOPATH
+	else if (retrievecwd(path, unixpath) >= 0) cp = NOPSU_K;
+#endif
+	else if (retrievecwd(path, gethomedir()) >= 0) cp = GOHOM_K;
+	else if (retrievecwd(path, rootpath) >= 0) cp = GOROT_K;
 	else error(rootpath);
 
 	if (path != fullpath) Xstrncpy(fullpath, path, MAXPATHLEN - 1);

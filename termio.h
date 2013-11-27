@@ -79,7 +79,7 @@ typedef struct termios		ldiscioctl_t;
 #define	FLSHIN			TCIFLUSH
 #define	FLSHOUT			TCOFLUSH
 #define	FLSHIO			TCIOFLUSH
-#endif	/* !USETERMIOS */
+#endif	/* USETERMIOS */
 
 #ifdef	USETERMIO
 typedef struct termio		termioctl_t;
@@ -93,10 +93,10 @@ typedef struct termio		ldiscioctl_t;
 #define	REQSETP			TCSETAF
 #define	REQSETD			TCSETAW
 #define	REQSETN			TCSETA
-#define	FLSHIN			TCIFLUSH
-#define	FLSHOUT			TCOFLUSH
-#define	FLSHIO			TCIOFLUSH
-#endif	/* !USETERMIO */
+#define	FLSHIN			0
+#define	FLSHOUT			1
+#define	FLSHIO			2
+#endif	/* USETERMIO */
 
 #ifdef	USESGTTY
 typedef struct sgttyb		termioctl_t;
@@ -113,7 +113,7 @@ typedef int			ldiscioctl_t;
 #define	FLSHIN			FREAD
 #define	FLSHOUT			FWRITE
 #define	FLSHIO			(FREAD | FWRITE)
-#endif	/* !USESGTTY */
+#endif	/* USESGTTY */
 
 #if	defined (CYGWIN) && (CYGWIN > 1007009)
 /* for Cygwin buggy ioctl */

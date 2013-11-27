@@ -51,6 +51,7 @@ int physical_path = 0;
 #ifdef	DEP_PSEUDOPATH
 char *unixpath = NULL;
 #endif
+int lostcount = 0;
 
 static char *lastpath = NULL;
 static int wasttyflags = 0;
@@ -129,7 +130,10 @@ CONST char *path;
 		}
 # endif	/* CYGWIN */
 		duperrno = errno;
-		if (Xchdir(cwd) < 0) lostcwd(cwd);
+		if (Xchdir(cwd) < 0) {
+			lostcwd(cwd);
+			lostcount++;
+		}
 		errno = duperrno;
 		return(-1);
 	}
@@ -162,7 +166,10 @@ CONST char *path;
 
 	if (_chdir2(fullpath) < 0) {
 		duperrno = errno;
-		if (_chdir2(cwd) < 0) lostcwd(fullpath);
+		if (_chdir2(cwd) < 0) {
+			lostcwd(fullpath);
+			lostcount++;
+		}
 		else Xstrcpy(fullpath, cwd);
 		errno = duperrno;
 		return(-1);
@@ -235,9 +242,7 @@ int raw;
 	if ((drive = dospath3(fullpath))) flushdrv(drive, NULL);
 #endif
 	if (chdir2(path) < 0) return(-1);
-	if (!cwd) {
-		if (!Xgetwd(fullpath)) lostcwd(fullpath);
-	}
+	if (!cwd && !Xgetwd(fullpath)) lostcwd(fullpath);
 #ifndef	_NOUSEHASH
 	else VOID_C searchhash(NULL, nullstr, nullstr);
 #endif

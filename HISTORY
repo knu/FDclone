@@ -1,3 +1,15 @@
+Ver. 3.01a	混乱防止のため内部変数 IMELARNING を IMELEARNING に改名。
+ (06/08/13)	ツリー画面の拡張子順ソート規則をブラウザ画面と同一仕様に変更。
+		存在しない UID/GID を一覧に正しく表示できない点を修正。
+		カレントディレクトリを失った際に一覧が更新されない点を修正。
+		termio を用いる環境でコンパイルに失敗する点を修正。
+
+Ver. 3.01	内部変数 WIDEDIGIT, SIZEUNIT の追加。
+ (08/03/12)	内部変数 HISTUMASK, DIRHISTUMASK の追加。
+		内部変数 IMELARNING, FREQFILE, FREQUMASK の追加。
+		組込みコマンド getfreq, setfreq の追加。
+		内部変数 IMEBUFFER の対象テーブルを拡張。
+
 Ver. 3.00m	コンパイル用識別子 UTF8LANG を追加。
  (07/27/12)	一部環境でカスタマイザの設定保存時に異常終了する点を修正。
 		IME 変換候補の優先順位がおかしかった点を修正。

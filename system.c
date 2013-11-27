@@ -1337,6 +1337,9 @@ static CONST char *adjustvar[] = {
 #  ifdef	FD >= 2
 	"FD_DIRHISTFILE",
 #  endif
+#  if	FD >= 3
+	"FD_FREQFILE",
+#  endif
 	"FD_TMPDIR",
 #  ifndef	_NOROCKRIDGE
 	"FD_RRPATH",
@@ -4696,7 +4699,7 @@ CONST VOID_P vp2;
 	fp1 = (shfunctable *)vp1;
 	fp2 = (shfunctable *)vp2;
 
-	return(strpathcmp2(fp1 -> ident, fp2 -> ident));
+	return(strverscmp2(fp1 -> ident, fp2 -> ident));
 }
 
 static char *NEAR getifs(VOID_A)

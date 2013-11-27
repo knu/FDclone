@@ -41,6 +41,7 @@ extern CONST functable funclist[];
 extern int writefs;
 #endif
 extern char *curfilename;
+extern int lostcount;
 extern char *origpath;
 #ifndef	_NOARCHIVE
 extern char archivedir[];
@@ -61,11 +62,12 @@ static int NEAR getcolor __P_((int));
 #endif
 static VOID NEAR pathbar __P_((VOID_A));
 static CONST char *NEAR skipstr __P_((CONST char *, int));
+static VOID NEAR putsorttype __P_((VOID_A));
 static VOID NEAR statusbar __P_((VOID_A));
 static VOID NEAR stackbar __P_((VOID_A));
 static VOID NEAR cputbytes __P_((off_t, off_t, int));
 static VOID NEAR sizebar __P_((VOID_A));
-static int NEAR putsize __P_((char *, off_t, int, int));
+static int NEAR putsize __P_((char *, off_t, int, int, int));
 static int NEAR putsize2 __P_((char *, namelist *, int));
 static int NEAR putfilename __P_((char *, namelist *, int));
 static VOID NEAR infobar __P_((VOID_A));
@@ -87,6 +89,8 @@ static VOID NEAR initcwd __P_((CONST char *, int));
 int curcolumns = 0;
 int defcolumns = 0;
 int minfilename = 0;
+int widedigit = 0;
+int sizeunit = 0;
 int mark = 0;
 int fnameofs = 0;
 int displaymode = 0;
@@ -277,6 +281,10 @@ static VOID NEAR pathbar(VOID_A)
 		Xlocate(TC_MARK, TL_PATH);
 		VOID_C XXcprintf("%<*d", TD_MARK, mark);
 		Xattrputs(TS_MARK, 1);
+# if	FD >= 3
+		if (sizeunit) VOID_C XXcprintf("%>'*qd", TD_SIZE, marksize);
+		else
+# endif
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, marksize);
 
 		Xtflush();
@@ -369,10 +377,34 @@ int n;
 	return(s);
 }
 
+static VOID NEAR putsorttype(VOID_A)
+{
+	CONST char *str[MAXSORTTYPE + 1];
+
+#ifndef	_NOPRECEDE
+	if (haste) {
+		VOID_C Xkanjiputs(OMIT_K);
+		return;
+	}
+#endif
+
+	str[0] = ORAW_K;
+	str[SRT_FILENAME] = ONAME_K;
+	str[SRT_EXTENSION] = OEXT_K;
+	str[SRT_SIZE] = OSIZE_K;
+	str[SRT_DATE] = ODATE_K;
+	str[SRT_LENGTH] = OLEN_K;
+	VOID_C Xkanjiputs(skipstr(str[sorton & SRT_TYPE], 3));
+
+	if (!(sorton & SRT_TYPE)) return;
+
+	str[0] = OINC_K;
+	str[1] = ODEC_K;
+	VOID_C XXcprintf("(%k)", skipstr(str[(sorton & SRT_DESC) ? 1 : 0], 3));
+}
+
 static VOID NEAR statusbar(VOID_A)
 {
-	CONST char *str[6];
-
 #ifndef	_NOTRADLAYOUT
 	if (istradlayout()) {
 		Xlocate(0, TL_STATUS);
@@ -384,6 +416,10 @@ static VOID NEAR statusbar(VOID_A)
 		Xlocate(TC_SIZE, TL_STATUS);
 		VOID_C XXcprintf("%<*d", TD_MARK, maxfile);
 		Xattrputs(TS_SIZE, 1);
+# if	FD >= 3
+		if (sizeunit) VOID_C XXcprintf("%>'*qd", TD_SIZE, totalsize);
+		else
+# endif
 		VOID_C XXcprintf("%<'*qd", TD_SIZE, totalsize);
 
 		return;
@@ -406,24 +442,7 @@ static VOID NEAR statusbar(VOID_A)
 	if (!ishardomit()) {
 		Xlocate(C_SORT, L_STATUS);
 		Xattrputs(S_SORT, 1);
-
-#ifndef	_NOPRECEDE
-		if (haste) VOID_C Xkanjiputs(OMIT_K);
-		else
-#endif
-		if (!(sorton & 7)) VOID_C Xkanjiputs(skipstr(ORAW_K, 3));
-		else {
-			str[0] = ONAME_K;
-			str[1] = OEXT_K;
-			str[2] = OSIZE_K;
-			str[3] = ODATE_K;
-			str[4] = OLEN_K;
-			VOID_C Xkanjiputs(skipstr(str[(sorton & 7) - 1], 3));
-
-			str[0] = OINC_K;
-			str[1] = ODEC_K;
-			VOID_C XXcprintf("(%k)", skipstr(str[sorton / 8], 3));
-		}
+		putsorttype();
 	}
 
 	Xlocate(C_FIND, L_STATUS);
@@ -545,6 +564,12 @@ static VOID NEAR sizebar(VOID_A)
 
 	Xlocate(C_SIZE, L_SIZE);
 	Xattrputs(S_SIZE, 1);
+#if	FD >= 3
+	if (sizeunit)
+		VOID_C XXcprintf("%>'*qd/%>'*qd",
+			D_SIZE, marksize, D_SIZE, totalsize);
+	else
+#endif
 	VOID_C XXcprintf("%<'*qd/%<'*qd", D_SIZE, marksize, D_SIZE, totalsize);
 
 	if (!ishardomit()) {
@@ -646,15 +671,21 @@ g_id_t gid;
 }
 #endif	/* !NOUID */
 
-static int NEAR putsize(buf, n, width, max)
+/*ARGSUSED*/
+static int NEAR putsize(buf, n, width, max, sz)
 char *buf;
 off_t n;
-int width, max;
+int width, max, sz;
 {
 	char tmp[MAXLONGWIDTH + 1];
 	int i, len;
 
 	if (max > MAXLONGWIDTH) max = MAXLONGWIDTH;
+#if	FD >= 3
+	if (sz && sizeunit)
+		VOID_C Xsnprintf(tmp, sizeof(tmp), "%>*qd", max, n);
+	else
+#endif
 	VOID_C Xsnprintf(tmp, sizeof(tmp), "%<*qd", max, n);
 	for (i = max - width; i > 0; i--) if (tmp[i - 1] == ' ') break;
 	len = max - i;
@@ -689,6 +720,11 @@ int width;
 			width - (width / 2) - 1,
 			(u_long)minor((u_long)(namep -> st_size)));
 #endif	/* !MSDOS */
+#if	FD >= 3
+	else if (sizeunit)
+		VOID_C Xsnprintf(buf, width + 1,
+			"%>*qd", width, namep -> st_size);
+#endif
 	else VOID_C Xsnprintf(buf, width + 1,
 		"%<*qd", width, namep -> st_size);
 
@@ -871,17 +907,17 @@ static VOID NEAR infobar(VOID_A)
 	if (isdev(&(filelist[filepos]))) {
 		len += putsize(&(buf[len]),
 			(off_t)major((u_long)(filelist[filepos].st_size)),
-			3, n_lastcolumn - len);
+			3, n_lastcolumn - len, 0);
 		buf[len++] = ',';
 		buf[len++] = ' ';
 		len += putsize(&(buf[len]),
 			(off_t)minor((u_long)(filelist[filepos].st_size)),
-			3, n_lastcolumn - len);
+			3, n_lastcolumn - len, 0);
 	}
 	else
 #endif
 	len += putsize(&(buf[len]),
-		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len);
+		filelist[filepos].st_size, WSIZE2, n_lastcolumn - len, 1);
 	buf[len++] = ' ';
 
 	VOID_C Xsnprintf(&(buf[len]), WDATE + 1 + WTIME + 1 + 1,
@@ -1761,6 +1797,7 @@ static int NEAR browsedir(VOID_A)
 
 		curfilename = filelist[filepos].name;
 		setlastfile(NULL);
+		lostcount = 0;
 		no = dointernal(getfuncno(ch),
 			filelist[filepos].name, ICM_BINDKEY, &funcstat);
 
@@ -1777,6 +1814,7 @@ static int NEAR browsedir(VOID_A)
 		if (sorton) haste = 0;
 #endif
 		if (no < FNC_NONE || no >= FNC_EFFECT) break;
+		if (no == FNC_CANCEL && lostcount > 0) break;
 		if (no == FNC_CANCEL || no == FNC_HELPSPOT) helpbar();
 		if (no < FNC_UPDATE) {
 			funcstat = 0;
@@ -1806,11 +1844,10 @@ static int NEAR browsedir(VOID_A)
 #endif
 
 #ifndef	_NOARCHIVE
-	if (archivefile) i = 0;
+	if (archivefile) /*EMPTY*/;
 	else
 #endif
-	i = maxfile;
-	while (i-- > 0) {
+	for (i = 0; i < maxfile; i++) {
 		Xfree(filelist[i].name);
 		filelist[i].name = NULL;
 	}

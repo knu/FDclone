@@ -354,7 +354,7 @@ int width, prec;
 			if (Xisdigit(num[len])) num[len] = '9';
 #endif
 
-	while (i++ < len) if (setchar(num[len - i], pbufp) < 0) return(-1);
+	while (i < len) if (setchar(num[len - ++i], pbufp) < 0) return(-1);
 
 	if (width >= 0) for (; i < width; i++) {
 		if (setchar(' ', pbufp) < 0) return(-1);

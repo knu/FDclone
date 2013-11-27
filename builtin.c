@@ -58,6 +58,9 @@ extern CONST functable funclist[];
 extern char **history[];
 extern short histsize[];
 extern short histno[];
+#if	FD >= 3
+extern char *freqfile;
+#endif
 extern helpindex_t helpindex;
 #ifndef	_NOCUSTOMIZE
 extern orighelpindex_t orighelpindex;
@@ -140,7 +143,11 @@ static int NEAR savetty __P_((int, char *CONST []));
 static int NEAR setroman __P_((int, char *CONST []));
 static VOID NEAR disproman __P_((char *, int, XFILE *));
 static int NEAR printroman __P_((int, char *CONST []));
-#endif
+# if	FD >= 3
+static int NEAR getfreq __P_((int, char *CONST []));
+static int NEAR setfreq __P_((int, char *CONST []));
+# endif
+#endif	/* DEP_IME */
 #ifndef	DEP_ORIGSHELL
 static int NEAR printenv __P_((int, char *CONST []));
 static int NEAR setalias __P_((int, char *CONST []));
@@ -222,7 +229,11 @@ static CONST builtintable builtinlist[] = {
 #ifdef	DEP_IME
 	{setroman,	BL_SETROMAN},
 	{printroman,	BL_PRINTROMAN},
-#endif
+# if	FD >= 3
+	{getfreq,	BL_GETFREQ},
+	{setfreq,	BL_SETFREQ},
+# endif
+#endif	/* DEP_IME */
 #ifndef	DEP_ORIGSHELL
 # if	FD >= 2
 	{printenv,	BL_SET},
@@ -2780,6 +2791,36 @@ char *CONST argv[];
 
 	return(ret);
 }
+
+# if	FD >= 3
+static int NEAR getfreq(argc, argv)
+int argc;
+char *CONST argv[];
+{
+	CONST char *path;
+	int ret;
+
+	path = (argc < 2) ? freqfile : argv[1];
+	ret = fgetuserfreq(path, Xstdout);
+	if (ret < 0) builtinerror(argv, path, -1);
+
+	return(ret);
+}
+
+static int NEAR setfreq(argc, argv)
+int argc;
+char *CONST argv[];
+{
+	CONST char *path;
+	int ret;
+
+	path = (argc < 2) ? freqfile : argv[1];
+	ret = fputuserfreq(path, Xstdin);
+	if (ret < 0) builtinerror(argv, path, -1);
+
+	return(ret);
+}
+# endif	/* FD >= 3 */
 #endif	/* DEP_IME */
 
 #ifndef	DEP_ORIGSHELL

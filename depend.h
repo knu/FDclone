@@ -83,6 +83,12 @@
 && !defined (_NOPTY)
 #define	_NOPTY
 #endif
+#if	(!defined (FD) || FD < 3) && !defined (_NOVERSCMP)
+#define	_NOVERSCMP
+#else
+#undef	_NOVERSCMP
+#define	_NOVERSCMP		"unsupported"
+#endif
 
 #undef	DEP_DOSDRIVE
 #undef	DEP_DOSEMU

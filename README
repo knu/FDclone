@@ -1,9 +1,9 @@
 ############################################################
 #
-#	FDclone Ver. 3.00 に関して
+#	FDclone Ver. 3.01 に関して
 #
 #	Takashi SHIRAI, <shirai@unixusers.net>
-#	Jul 27, 2012
+#	Jun 8, 2013
 #
 ############################################################
 
@@ -35,7 +35,7 @@ MS-DOS ユーザにとってはこの "FD" という呼称がファイル管理ツ
 
 
 --
-　FDclone-3.00 のパッケージには、以下のファイルが含まれます。
+　FDclone-3.01 のパッケージには、以下のファイルが含まれます。
 
 README		このファイル
 README.eng	このファイル (英文)
@@ -247,75 +247,75 @@ fd.spec		RPM 用スペックファイル
 
 　最後になりましたが、FDclone の完成に際してお世話になった以
 下の方々に、この場を借りて感謝の意を表させて頂きます。
-(敬称略、アルファベット順)
+(敬称略、アルファベット順、「@」を「 at 」にて表記)
 
 ・『ＦＤ』の作者で FDclone の公開を快諾して頂きました。
-	SDI00544@niftyserve.or.jp (出射　厚)
+	SDI00544 at niftyserve.or.jp (出射　厚)
 
 ・WINC 勉強会 ML にて、ファイルシステムに関する相談に乗って
 　頂きました。
-	kenji@reseau.toyonaka.osaka.jp (Kenji Rikitake)
-	mori@chuo-computer.co.jp (森　秀和)
-	ohm@kyoto.wide.ad.jp (森島晃年)
-	saitoh@ics.es.osaka-u.ac.jp (齊藤明紀)
+	kenji at reseau.toyonaka.osaka.jp (Kenji Rikitake)
+	mori at chuo-computer.co.jp (森　秀和)
+	ohm at kyoto.wide.ad.jp (森島晃年)
+	saitoh at ics.es.osaka-u.ac.jp (齊藤明紀)
 
 ・βテスト用 ML の管理運営を担当して頂きました。
-	matusita@ics.es.osaka-u.ac.jp (Makoto MATSUSHITA)
+	matusita at ics.es.osaka-u.ac.jp (Makoto MATSUSHITA)
 
 ・fj.sources.d での募集を受けてβテストに協力して頂きました。
-	7m2vej@ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
-	aki@pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
-	ao@orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
-	daikoku@lang2.bs1.fc.nec.co.jp (大黒洋史)
-	fuku@amorph.rim.or.jp (FUKUSHIMA Osamu)
-	go@cclub.tutcc.tut.ac.jp (Go Watanabe)
-	h-inoue@is.aist-nara.ac.jp (Hiroyuki Inoue)
-	h-yagi@zero0.nsis.cl.nec.co.jp (八木英雄)
-	hashi@star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
-	hide@mamoru.ee.sophia.ac.jp (Takahide Yamaguchi)
-	hiro@akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
-	i4579@info.nara-k.ac.jp (Kimura Masashi)
-	ishida@econ.shinshu-u.ac.jp (Akira Ishida)
-	ito@getz.isc.chubu.ac.jp (Maki ITO)
-	j0442@cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
-	j9194169@ed.yama.sut.ac.jp (Keitarou Yoshimura)
-	jt@ng.nefs.nec.co.jp (Jiro_Takabatake)
-	katsu@cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
-	ke3057yt@ex.ecip.osaka-u.ac.jp (yosioka tuneo)
-	kimai@av.crl.sony.co.jp (IMAI Kenichi)
-	kjm@yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
-	kkubota@crl.go.jp (Kazuo Kubota)
-	kmiya@mm.rd.nttdata.jp (Kunio Miyamoto)
-	kobashi@comp.eng.himeji-tech.ac.jp (kobashi)
-	manabu@saskg.semicon.sony.co.jp (Niizato -Gamer- Manabu)
-	mat@azalea.gose.nara.jp (Matsuo Kazunori)
-	mats@cc.tuat.ac.jp (Seiji Matsumoto)
-	mhirano@avkk.yamaha.co.jp (Mitsuyuki HIRANO)
-	mino@kis-gw.msk.kis.co.jp (MINOMO Kazutoshi)
-	mori@isc.mew.co.jp (Shigeki Morimoto)
-	nino@windy.mech.utsunomiya-u.ac.jp (Nao NINOMIYA)
-	nyoshi@kaba.or.jp (YOSHIDA Nobuaki)
-	ohge@enzan.ee.kansai-u.ac.jp (Hiroki Ohge)
-	ohishi@otc.qnes.nec.co.jp (Isao Ohishi)
-	okubo@mem.cl.nec.co.jp (Shuichi OHKUBO)
-	ozawa@prince.pe.u-tokyo.ac.jp
-	roy@lit.cs.uec.ac.jp (SATOU Masaki / 佐藤雅規)
-	ryoji@kgupyr.kwansei.ac.jp (Ryoji Nagai)
-	sakai@csl.cl.nec.co.jp (Junji SAKAI)
-	sakanaga@ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
-	sawada@h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)
-	senshu@astro.yamagata-cit.ac.jp (Hiroyuki Senshu / 千秋)
-	shige@luck.imasy.or.jp (Shigechika Aikawa)
-	shirai@atropos.gen.u-tokyo.ac.jp (Izuru Shirai)
-	taka-mm@super.win.or.jp (Takahasi Mamoru)
-	tan@kei-n.huap.hokudai.ac.jp (Takushi Tanaka)
-	tanaka@inf.ptg.sony.co.jp ("T.Tanaka")
-	tomiyan@cv.sony.co.jp (富田 光彦)
-	tsuka@ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
-	uno@meleager.mel.go.jp
-	wakui@casiogw.rd.casio.co.jp (WAKUI Kazuhiko)
-	watanabe@jis.ptg.sony.co.jp (ebaN)
-	yajima@ccedu.sendai-ct.ac.jp (Kuniaki YAJIMA)
-	yaku@jedi.seg.kobe-u.ac.jp (Masao Yakushijin)
-	yamakawa@crdl.pioneer.co.jp (Yuzo Yamakawa)
-	yamamoto@ogw.ei.hosei.ac.jp (Kouya Yamamoto)
+	7m2vej at ritp.ye.IHI.co.jp (UENO Fumihiro  上野文裕)
+	aki at pic.hitachi-sk.co.jp (Akiyoshi Sakaguchi)
+	ao at orient.tuins.cs.toyo.ac.jp (AOYAGI Yoichi)
+	daikoku at lang2.bs1.fc.nec.co.jp (大黒洋史)
+	fuku at amorph.rim.or.jp (FUKUSHIMA Osamu)
+	go at cclub.tutcc.tut.ac.jp (Go Watanabe)
+	h-inoue at is.aist-nara.ac.jp (Hiroyuki Inoue)
+	h-yagi at zero0.nsis.cl.nec.co.jp (八木英雄)
+	hashi at star.rcast.u-tokyo.ac.jp (TAKAHASHI Katsuyuki)
+	hide at mamoru.ee.sophia.ac.jp (Takahide Yamaguchi)
+	hiro at akinus1.aki.che.tohoku.ac.jp (Akiyasu Hirotani)
+	i4579 at info.nara-k.ac.jp (Kimura Masashi)
+	ishida at econ.shinshu-u.ac.jp (Akira Ishida)
+	ito at getz.isc.chubu.ac.jp (Maki ITO)
+	j0442 at cranesv.egg.kushiro-ct.ac.jp (Kazunori Yoshida)
+	j9194169 at ed.yama.sut.ac.jp (Keitarou Yoshimura)
+	jt at ng.nefs.nec.co.jp (Jiro_Takabatake)
+	katsu at cs.uec.ac.jp (鈴木克明(Katsuaki Suzuki))
+	ke3057yt at ex.ecip.osaka-u.ac.jp (yosioka tuneo)
+	kimai at av.crl.sony.co.jp (IMAI Kenichi)
+	kjm at yonka.ngy.mhi.co.jp (KOJIMA Hajime/ 小島肇)
+	kkubota at crl.go.jp (Kazuo Kubota)
+	kmiya at mm.rd.nttdata.jp (Kunio Miyamoto)
+	kobashi at comp.eng.himeji-tech.ac.jp (kobashi)
+	manabu at saskg.semicon.sony.co.jp (Niizato -Gamer- Manabu)
+	mat at azalea.gose.nara.jp (Matsuo Kazunori)
+	mats at cc.tuat.ac.jp (Seiji Matsumoto)
+	mhirano at avkk.yamaha.co.jp (Mitsuyuki HIRANO)
+	mino at kis-gw.msk.kis.co.jp (MINOMO Kazutoshi)
+	mori at isc.mew.co.jp (Shigeki Morimoto)
+	nino at windy.mech.utsunomiya-u.ac.jp (Nao NINOMIYA)
+	nyoshi at kaba.or.jp (YOSHIDA Nobuaki)
+	ohge at enzan.ee.kansai-u.ac.jp (Hiroki Ohge)
+	ohishi at otc.qnes.nec.co.jp (Isao Ohishi)
+	okubo at mem.cl.nec.co.jp (Shuichi OHKUBO)
+	ozawa at prince.pe.u-tokyo.ac.jp
+	roy at lit.cs.uec.ac.jp (SATOU Masaki / 佐藤雅規)
+	ryoji at kgupyr.kwansei.ac.jp (Ryoji Nagai)
+	sakai at csl.cl.nec.co.jp (Junji SAKAI)
+	sakanaga at ds.kyoto.omronsoft.co.jp (Toshiyuki Sakanaga)
+	sawada at h3news1.kais.kyoto-u.ac.jp (Yutaka SAWADA)
+	senshu at astro.yamagata-cit.ac.jp (Hiroyuki Senshu / 千秋)
+	shige at luck.imasy.or.jp (Shigechika Aikawa)
+	shirai at atropos.gen.u-tokyo.ac.jp (Izuru Shirai)
+	taka-mm at super.win.or.jp (Takahasi Mamoru)
+	tan at kei-n.huap.hokudai.ac.jp (Takushi Tanaka)
+	tanaka at inf.ptg.sony.co.jp ("T.Tanaka")
+	tomiyan at cv.sony.co.jp (富田 光彦)
+	tsuka at ohsaki.meidensha.co.jp (Yoshihiro Tsukamoto)
+	uno at meleager.mel.go.jp
+	wakui at casiogw.rd.casio.co.jp (WAKUI Kazuhiko)
+	watanabe at jis.ptg.sony.co.jp (ebaN)
+	yajima at ccedu.sendai-ct.ac.jp (Kuniaki YAJIMA)
+	yaku at jedi.seg.kobe-u.ac.jp (Masao Yakushijin)
+	yamakawa at crdl.pioneer.co.jp (Yuzo Yamakawa)
+	yamamoto at ogw.ei.hosei.ac.jp (Kouya Yamamoto)

@@ -28,6 +28,9 @@
 #endif
 
 extern int curcolumns;
+#if	FD >= 3
+extern int widedigit;
+#endif
 extern int mark;
 extern off_t marksize;
 extern off_t blocksize;
@@ -1123,8 +1126,8 @@ CONST char *arg;
 static int sort_dir(arg)
 CONST char *arg;
 {
-	CONST char *str[6];
-	int i, tmp1, tmp2, val[6], *dupl;
+	CONST char *str[MAXSORTTYPE + 1];
+	int i, n, tmp1, tmp2, val[MAXSORTTYPE + 1], *dupl;
 
 	str[0] = ONAME_K;
 	str[1] = OEXT_K;
@@ -1132,29 +1135,30 @@ CONST char *arg;
 	str[3] = ODATE_K;
 	str[4] = OLEN_K;
 	str[5] = ORAW_K;
-	val[0] = 1;
-	val[1] = 2;
-	val[2] = 3;
-	val[3] = 4;
-	val[4] = 5;
+	val[0] = SRT_FILENAME;
+	val[1] = SRT_EXTENSION;
+	val[2] = SRT_SIZE;
+	val[3] = SRT_DATE;
+	val[4] = SRT_LENGTH;
 	val[5] = 0;
 
-	tmp1 = sorton & 7;
-	tmp2 = sorton & ~7;
+	tmp1 = (sorton & SRT_TYPE);
+	tmp2 = (sorton & SRT_DESC);
 	if (arg && *arg) {
-		i = Xatoi(arg);
-		if ((i >= 0 && i <= 13) || (i & 7) <= 5) {
-			tmp1 = i & 7;
-			tmp2 = i & ~7;
+		n = Xatoi(arg);
+		if ((n >= 0 && n <= (MAXSORTTYPE | SRT_DESC))
+		|| (n & SRT_TYPE) <= MAXSORTTYPE) {
+			tmp1 = (n & SRT_TYPE);
+			tmp2 = (n & SRT_DESC);
 		}
 	}
 	else {
-		if (tmp1) i = 6;
-		else {
-			i = 5;
+		n = arraysize(str);
+		if (!tmp1) {
+			n--;
 			tmp1 = val[0];
 		}
-		if (selectstr(&tmp1, i, 0, str, val) != K_CR)
+		if (selectstr(&tmp1, n, 0, str, val) != K_CR)
 			return(FNC_CANCEL);
 	}
 
@@ -1166,10 +1170,10 @@ CONST char *arg;
 		str[0] = OINC_K;
 		str[1] = ODEC_K;
 		val[0] = 0;
-		val[1] = 8;
+		val[1] = SRT_DESC;
 		if (selectstr(&tmp2, 2, 56, str, val) != K_CR)
 			return(FNC_CANCEL);
-		sorton = tmp1 + tmp2;
+		sorton = (tmp1 | tmp2);
 		dupl = (int *)Xmalloc(maxfile * sizeof(int));
 		for (i = 0; i < maxfile; i++) {
 			dupl[i] = filelist[i].ent;

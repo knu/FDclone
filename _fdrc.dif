@@ -1,5 +1,5 @@
 --- ../FD-1.03u/_fdrc	Tue Dec 18 00:00:00 2001
-+++ _fdrc	Sat May 31 00:00:00 2008
++++ _fdrc	Fri Aug 3 00:00:00 2012
 @@ -1,6 +1,11 @@
  # Initialize file for FD
  #
@@ -23,7 +23,7 @@
  
  # default display mode
  #	0: normal (Default)
-@@ -21,98 +27,361 @@
+@@ -21,98 +27,389 @@
  #	5: sym-link status &				invisible dot file
  #	6: 			file type symbol &	invisible dot file
  #	7: sym-link status &	file type symbol &	invisible dot file
@@ -87,6 +87,16 @@
 -#MINFILENAME	=	12
 +#MINFILENAME=12
 +
++# widen digit for the number of pages & files
++#	0: not widen (Default)
++#	>= 1: widen
++#WIDEDIGIT=0
++
++# use SI unit with huge file size
++#	0: not use SI unit (Default)
++#	>= 1: use SI unit
++#SIZEUNIT=0
++
 +# history file of sh mode
 +#	Default: ~/.fd_history
 +#HISTFILE=~/.fd_history
@@ -114,6 +124,14 @@
  #	Default: 50
 -#SAVEHIST	=	50
 +#SAVEDIRHIST=50
++
++# file creation mask for command history
++#	Default: 022
++#HISTUMASK=022
++
++# file creation mask for directory history
++#	Default: 022
++#DIRHISTUMASK=022
  
  # limit of counting files in directory, on tree mode
  #	Default: 50
@@ -161,8 +179,18 @@
 +
 +# whether if hold the Kana-Kanji translation table on memory
 +#	0: not hold (Default)
-+#	>= 1: hold
++#	1: only Hinsi info. table
++#	2: also includes index table
++#	3: hold all tables
 +#IMEBUFFER=0
++
++# learning level for the Kana-Kanji translation
++#	default: 16
++#IMELEARNING=16
++
++# file creation mask for the Kana-Kanji translation frequency
++#	Default: 022
++#FREQUMASK=022
  
  # whether if support ANSI color escape sequence
  #	0: monochrome (Default)
@@ -407,14 +435,17 @@
  
  # Kanji code to be inputted
  #	Default: No convert
-@@ -120,49 +389,249 @@
+@@ -120,49 +417,249 @@
  #	sjis, SJIS: Shift JIS
  #	utf8, UTF8: UTF-8
  #	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 -#INPUTKCODE	=	""
 +#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 +#INPUTKCODE=""
-+
+ 
+-#PAGER	=	more%K
+-#EDITOR	=	vi
+-#SHELL	=	/bin/sh
 +# Kanji code to be inputted to the pseudo terminal
 +#	Default: No convert
 +#	euc, EUC: EUC-JP
@@ -423,10 +454,7 @@
 +#	utf8-mac, UTF8-MAC: UTF-8 for Mac OS X
 +#	utf8-iconv, UTF8-ICONV: UTF-8 for iconv
 +#PTYINKCODE=""
- 
--#PAGER	=	more%K
--#EDITOR	=	vi
--#SHELL	=	/bin/sh
++
 +# Kanji code to be outputted from the pseudo terminal
 +#	Default: No convert
 +#	euc, EUC: EUC-JP
@@ -687,7 +715,7 @@
  
  # archiver definition
  #(Default)
-@@ -178,6 +647,7 @@
+@@ -178,6 +675,7 @@
  #(Examples)
  #arch ".zip"	"zip -q %C %TA"			"unzip -q %C %TA"
  #arch ".zoo"	"zoo aq %C %TA"			"zoo xq %C %TA"
@@ -695,7 +723,7 @@
  
  # examples for MS-DOS
  #arch ".lzh"	"lha a %S %TA"			"lha x %S %TA"
-@@ -198,22 +668,52 @@
+@@ -198,22 +696,52 @@
  #bind '{'	ROLL_UP
  #bind '}'	ROLL_DOWN
  #bind '~'	"cd ~%N%K"
@@ -758,7 +786,7 @@
  #}
  
  # MS-DOS drive definition
-@@ -222,7 +722,7 @@
+@@ -222,7 +750,7 @@
  
  # alias definition
  #(Example)
