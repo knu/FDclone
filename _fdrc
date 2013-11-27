@@ -584,7 +584,7 @@ done
 launch "/.lzh"	"lha -lq"			"%a %u/%g %s %x %m %d %{yt} %f"
 arch   "/.lzh"	"lha aq %C %TA"			"lha xq %C %TA"
 
-for ext in /.zip /.jar; do
+for ext in /.zip /.jar /.xpi; do
   launch "$ext"	"unzip -lqq"			" %s %m-%d-%y %t %f"
   arch   "$ext"	"zip -qr %C %TA"		"unzip -q %C %TA"
 done
