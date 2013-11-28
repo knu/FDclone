@@ -574,6 +574,9 @@ for ext in .tar.bz2 .tbz2 /.tbz; do
   arch   "$ext"	"$tar cf - %T | bzip2 -9c > %C"	"$tar jxf %C %TA"
 done
 
+launch	".tar.lzma"	"lzma -cd %C | $tar tvf -"	"$tar_format"
+arch	".tar.lzma"	"$tar cf - %T | lzma -9c > %C"	"lzma -cd %C | $tar xf - %TA"
+
 for ext in .tar.xz /.txz; do
 # launch "$ext"	"$tar Jtvf %C"			"$tar_format"
   launch "$ext"	"xz -cd %C | $tar tvf -"	"$tar_format"
@@ -595,6 +598,8 @@ launch	"/.gz"	"zcat %C | $PAGER"
 arch	"/.gz"	"gzip -9 %M"			"gzip -d %C"
 launch  "/.bz2"	"bzip2 -cd %C | $PAGER"
 arch	"/.bz2"	"bzip2 -9 %M"			"bzip2 -d %C"
+launch  "/.lzma" "lzma -cd %C | $PAGER"
+arch	"/.lzma" "lzma -9 %M"			"lzma -d %C"
 launch  "/.xz"	"xz -cd %C | $PAGER"
 arch	"/.xz"	"xz -9 %M"			"xz -d %C"
 
