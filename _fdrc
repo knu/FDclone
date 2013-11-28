@@ -584,6 +584,9 @@ for ext in .tar.xz /.txz; do
   arch	 "$ext"	"$tar cf - %T | xz -9c > %C"	"xz -cd %C | $tar xf - %TA"
 done
 
+launch	".a"	"ar -tv %C"			"%a %u/%g %s %m %d %t %y %f"
+arch	".a"	"ar -rc %C %TA"			"ar -x %C %TA"
+
 launch "/.lzh"	"lha -lq"			"%a %u/%g %s %x %m %d %{yt} %f"
 arch   "/.lzh"	"lha aq %C %TA"			"lha xq %C %TA"
 
@@ -605,8 +608,8 @@ arch	"/.xz"	"xz -9 %M"			"xz -d %C"
 
 launch	".rpm"	"rpm2cpio %C | cpio -tv"	"%a %x %u %g %s %m %d %y %f"
 arch	".rpm"	"false"				"rpm2cpio %C | cpio -id %TA"
-launch	".deb"	"ar p %C data.tar.gz | tar ztvf - "	"$tar_format"
-arch	".deb"	"false"				"ar p %C data.tar.gz | tar zxf - %TA"
+launch	".deb"	"ar -tv %C"			"%a %u/%g %s %m %d %t %y %f"
+arch	".deb"	"false"				"ar -x %C %TA"
 
 # RCS/CVS files
 launch ",v"		"rlog %C | $PAGER"
