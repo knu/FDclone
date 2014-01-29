@@ -597,7 +597,7 @@ done
 
 launch	".Z"	"zcat %C | $PAGER"
 arch	".Z"	"compress %M"			"uncompress %C"
-launch	"/.gz"	"zcat %C | $PAGER"
+launch	"/.gz"	"gzcat %C | $PAGER"
 arch	"/.gz"	"gzip -9 %M"			"gzip -d %C"
 launch  "/.bz2"	"bzip2 -cd %C | $PAGER"
 arch	"/.bz2"	"bzip2 -9 %M"			"bzip2 -d %C"
